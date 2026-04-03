@@ -8,15 +8,14 @@
 <style>
 :root{
   --a50:#FAEEDA;--a100:#FAC775;--a200:#EF9F27;--a400:#BA7517;--a600:#854F0B;--a800:#633806;--a900:#412402;
-  --g50:#F1EFE8;--g100:#D3D1C7;--g200:#B4B2A9;--g400:#888780;--g600:#5F5E5A;--g800:#444441;--g900:#2C2C2A;
+  --g50:#F1EFE8;--g100:#D3D1C7;--g200:#B4B2A9;--g400:#888780;--g800:#444441;
   --gr50:#EAF3DE;--gr200:#97C459;--gr400:#639922;--gr600:#3B6D11;--gr800:#27500A;
   --r50:#FCEBEB;--r200:#F09595;--r400:#E24B4A;--r600:#A32D2D;--r800:#791F1F;
-  --bl50:#E6F1FB;--bl400:#378ADD;--bl800:#0C447C;
+  --bl50:#E6F1FB;--bl200:#85B7EB;--bl400:#378ADD;--bl800:#0C447C;
   --bg:#FAEEDA;--card:#fff;--text:#412402;--text2:#854F0B;--border:#FAC775;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
-
 #auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;text-align:center;}
 .auth-logo{width:64px;height:64px;background:var(--a400);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:28px;color:#fff;font-weight:500;}
 .auth-title{font-size:24px;font-weight:500;margin-bottom:8px;}
@@ -24,95 +23,95 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .google-btn{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 24px;font-size:15px;color:var(--text);cursor:pointer;width:100%;max-width:320px;justify-content:center;}
 .auth-note{font-size:12px;color:var(--text2);margin-top:20px;line-height:1.6;max-width:280px;}
 #loading-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:12px;}
-.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--a400);border-radius:50%;animation:spin 0.8s linear infinite;}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--a400);border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 #app-screen{display:none;}
 
-.topbar{background:var(--a400);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
+.topbar{background:var(--a400);padding:14px 16px;display:flex;align-items:center;justify-content:space-between;}
 .topbar-title{font-size:17px;font-weight:500;color:#fff;}
 .topbar-sub{font-size:12px;color:var(--a50);margin-top:1px;}
 .topbar-right{display:flex;align-items:center;gap:8px;}
-.topbar-btn{background:rgba(255,255,255,0.2);border:none;color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;}
-.user-avatar{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,0.4);}
-
+.topbar-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;}
+.user-avatar{width:28px;height:28px;border-radius:50%;border:2px solid rgba(255,255,255,.4);}
 .bottom-nav{background:var(--a900);display:flex;justify-content:space-around;padding:8px 0 12px;}
 .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 12px;border-radius:8px;}
-.nav-item.active{background:rgba(255,255,255,0.12);}
+.nav-item.active{background:rgba(255,255,255,.12);}
 .nav-icon{font-size:18px;}
 .nav-label{font-size:10px;color:var(--a100);}
 .nav-item.active .nav-label{color:#fff;font-weight:500;}
 
 .screen{display:none;padding:16px;padding-bottom:80px;}
 .screen.active{display:block;}
-
-.card{background:var(--card);border-radius:12px;border:0.5px solid var(--border);padding:14px 16px;margin-bottom:12px;}
-.card-title{font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px;}
+.card{background:var(--card);border-radius:12px;border:.5px solid var(--border);padding:14px 16px;margin-bottom:12px;}
+.card-title{font-size:12px;color:var(--text2);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.5px;}
 .balance-big{font-size:32px;font-weight:500;}
-.balance-sub{font-size:13px;color:var(--text2);margin-top:4px;}
 .balance-big.neg{color:var(--r400);}
-
+.balance-big.pos{color:var(--gr400);}
+.balance-sub{font-size:13px;color:var(--text2);margin-top:4px;}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.metric{background:var(--card);border-radius:10px;border:0.5px solid var(--border);padding:12px;}
+.metric{background:var(--card);border-radius:10px;border:.5px solid var(--border);padding:12px;}
 .metric-label{font-size:11px;color:var(--text2);margin-bottom:4px;}
 .metric-val{font-size:18px;font-weight:500;}
 .metric-val.pos{color:var(--gr400);}
 .metric-val.neg{color:var(--r400);}
 
-.wallet-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid var(--border);}
+.wallet-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:.5px solid var(--border);}
 .wallet-row:last-child{border-bottom:none;}
 .wallet-amount{font-size:14px;font-weight:500;color:var(--a400);}
 .wallet-amount.neg{color:var(--r400);}
-.wallet-badge{font-size:10px;padding:2px 6px;border-radius:8px;background:var(--r50);color:var(--r600);border:0.5px solid var(--r200);margin-left:6px;}
+.w-badge{font-size:10px;padding:2px 6px;border-radius:8px;background:var(--r50);color:var(--r600);border:.5px solid var(--r200);margin-left:6px;}
 
-.split-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;background:var(--a50);border-radius:8px;margin-bottom:4px;}
-.split-row.inc-row{background:var(--gr50);}
+.split-row{display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:8px;margin-bottom:4px;}
 .split-label{font-size:13px;}
 .split-pct{font-size:11px;color:var(--text2);}
-.split-amount{font-size:13px;font-weight:500;color:var(--a400);}
-.split-amount.inc{color:var(--gr400);}
+.split-amount{font-size:13px;font-weight:500;}
 
-.op-item{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 0;border-bottom:0.5px solid var(--border);}
+.op-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 0;border-bottom:.5px solid var(--border);}
 .op-item:last-child{border-bottom:none;}
 .op-left{flex:1;min-width:0;}
-.op-cat{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.op-cat{font-size:13px;font-weight:500;}
 .op-meta{font-size:11px;color:var(--text2);margin-top:2px;}
 .op-right{display:flex;align-items:center;gap:6px;flex-shrink:0;}
 .op-amount{font-size:14px;font-weight:500;}
 .op-amount.pos{color:var(--gr400);}
 .op-amount.neg{color:var(--r400);}
-.op-planned{font-size:10px;padding:2px 6px;border-radius:8px;background:var(--bl50);color:var(--bl800);}
-.op-del{background:none;border:none;color:var(--g200);font-size:14px;cursor:pointer;padding:2px 4px;}
+.op-amount.plan{color:var(--bl400);}
+.op-del{background:none;border:none;color:var(--g200);font-size:13px;cursor:pointer;padding:2px 4px;}
 .op-del:active{color:var(--r400);}
+.badge{font-size:10px;padding:2px 7px;border-radius:8px;display:inline-block;margin-top:2px;}
+.badge-plan{background:var(--bl50);color:var(--bl800);}
+.badge-plan-cat{background:var(--a50);color:var(--a800);}
 
 .fab{position:fixed;bottom:72px;right:20px;width:52px;height:52px;background:var(--a400);border-radius:50%;border:none;color:#fff;font-size:26px;cursor:pointer;z-index:100;display:flex;align-items:center;justify-content:center;}
-
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(65,36,2,0.45);z-index:200;align-items:flex-end;}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(65,36,2,.45);z-index:200;align-items:flex-end;}
 .modal-overlay.open{display:flex;}
 .modal{background:var(--card);border-radius:20px 20px 0 0;padding:20px 16px 32px;width:100%;max-height:92vh;overflow-y:auto;}
 .modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
 .modal-title{font-size:17px;font-weight:500;}
 .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);}
-
 .form-group{margin-bottom:14px;}
 .form-label{font-size:12px;color:var(--text2);margin-bottom:5px;display:block;font-weight:500;}
 .form-input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:15px;background:#fff;color:var(--text);outline:none;-webkit-appearance:none;}
 .form-input:focus{border-color:var(--a400);}
-select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23BA7517' d='M6 8L0 0h12z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;}
-
-.type-toggle{display:flex;gap:6px;margin-bottom:14px;}
-.type-btn{flex:1;padding:9px 4px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--text2);font-size:13px;cursor:pointer;text-align:center;}
+select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23BA7517' d='M5 6L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;}
+.type-toggle{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;}
+.type-btn{flex:1;min-width:60px;padding:9px 4px;border-radius:8px;border:1px solid var(--border);background:#fff;color:var(--text2);font-size:13px;cursor:pointer;text-align:center;}
 .type-btn.active-income{background:var(--gr50);border-color:var(--gr400);color:var(--gr800);font-weight:500;}
 .type-btn.active-expense{background:var(--r50);border-color:var(--r400);color:var(--r800);font-weight:500;}
 .type-btn.active-transfer{background:var(--a50);border-color:var(--a400);color:var(--a900);font-weight:500;}
-.type-btn.active-planned{background:var(--bl50);border-color:var(--bl400);color:var(--bl800);font-weight:500;}
-
+.type-btn.active-planned_income{background:var(--bl50);border-color:var(--bl400);color:var(--bl800);font-weight:500;}
+.type-btn.active-planned_expense{background:var(--r50);border-color:var(--bl400);color:var(--bl800);font-weight:500;}
 .btn-primary{width:100%;padding:13px;background:var(--a400);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:500;cursor:pointer;margin-top:4px;}
 .btn-primary:active{background:var(--a600);}
 .btn-secondary{width:100%;padding:11px;background:transparent;color:var(--text2);border:1px solid var(--border);border-radius:10px;font-size:14px;cursor:pointer;margin-top:8px;}
 .btn-danger{width:100%;padding:11px;background:var(--r50);color:var(--r600);border:1px solid var(--r200);border-radius:10px;font-size:14px;cursor:pointer;margin-top:8px;}
-
 .row-flex{display:flex;gap:10px;}
 .row-flex .form-group{flex:1;min-width:0;}
+.notice{padding:10px 12px;border-radius:8px;font-size:13px;margin-bottom:10px;line-height:1.5;}
+.notice.amber{background:var(--a50);color:var(--text2);}
+.notice.blue{background:var(--bl50);color:var(--bl800);}
+.notice.green{background:var(--gr50);color:var(--gr800);}
+.empty-state{text-align:center;padding:24px 16px;color:var(--text2);font-size:14px;}
 
 /* DDS */
 .dds-month-sel{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
@@ -120,69 +119,65 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 .dds-month-label{font-size:15px;font-weight:500;}
 .dds-table{width:100%;border-collapse:collapse;font-size:13px;}
 .dds-table th{text-align:left;padding:8px 6px;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);}
-.dds-table td{padding:8px 6px;border-bottom:0.5px solid var(--border);}
+.dds-table td{padding:8px 6px;border-bottom:.5px solid var(--border);}
 .dds-table tr:last-child td{border-bottom:none;}
 .dds-table td.pos{color:var(--gr400);font-weight:500;}
 .dds-table td.neg{color:var(--r400);font-weight:500;}
 .dds-table tr.total-row td{font-weight:500;background:var(--a50);}
-.dds-cat-badge{font-size:10px;color:var(--text2);display:inline-block;background:var(--a50);padding:1px 6px;border-radius:8px;margin-top:2px;}
 
-/* PLAN BARS */
-.plan-item{margin-bottom:14px;}
-.plan-item-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;}
-.plan-item-name{font-size:13px;font-weight:500;}
-.plan-item-nums{font-size:12px;color:var(--text2);}
-.plan-item-nums .spent{color:var(--r400);}
-.plan-item-nums .left{color:var(--gr400);}
-.plan-item-nums .over{color:var(--r400);}
+/* PLAN */
+.plan-item{margin-bottom:16px;padding-bottom:12px;border-bottom:.5px solid var(--border);}
+.plan-item:last-child{border-bottom:none;}
+.plan-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:8px;}
+.plan-item-name{font-size:14px;font-weight:500;}
+.plan-item-alloc{font-size:13px;color:var(--text2);}
+.plan-nums{display:flex;gap:12px;font-size:12px;margin-bottom:5px;flex-wrap:wrap;}
+.plan-nums span{padding:2px 8px;border-radius:6px;}
+.plan-nums .spent{background:var(--r50);color:var(--r600);}
+.plan-nums .left{background:var(--gr50);color:var(--gr600);}
+.plan-nums .over{background:var(--r50);color:var(--r800);}
+.plan-nums .alloc{background:var(--a50);color:var(--a800);}
 .plan-bar-bg{background:var(--g50);border-radius:4px;height:8px;}
-.plan-bar-fill{height:8px;border-radius:4px;background:var(--a200);transition:width 0.3s;}
+.plan-bar-fill{height:8px;border-radius:4px;background:var(--a200);}
 .plan-bar-fill.warn{background:var(--a100);}
 .plan-bar-fill.over{background:var(--r400);}
-.plan-cats{font-size:11px;color:var(--text2);margin-top:3px;}
+.plan-cats{font-size:11px;color:var(--text2);margin-top:4px;}
 
 /* CALENDAR */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:8px;}
 .cal-day-label{text-align:center;font-size:11px;color:var(--text2);padding:4px 0;}
-.cal-day{text-align:center;padding:5px 2px;font-size:12px;border-radius:6px;cursor:pointer;position:relative;}
-.cal-day.has-op{background:var(--a50);color:var(--a800);font-weight:500;}
-.cal-day.has-planned{background:var(--bl50);color:var(--bl800);}
-.cal-day.has-both{background:var(--a50);color:var(--a800);font-weight:500;}
-.cal-day.today{background:var(--a400);color:#fff;font-weight:500;}
+.cal-day{text-align:center;padding:5px 2px;font-size:12px;border-radius:6px;cursor:pointer;}
+.cal-day.has-fact{background:var(--a50);color:var(--a800);font-weight:500;}
+.cal-day.has-plan{outline:1.5px solid var(--bl200);}
+.cal-day.has-both{background:var(--a50);color:var(--a800);font-weight:500;outline:1.5px solid var(--bl200);}
+.cal-day.today{background:var(--a400);color:#fff;font-weight:500;outline:none;}
 .cal-day.empty{color:transparent;pointer-events:none;}
-.cal-dot{width:4px;height:4px;border-radius:50%;background:var(--bl400);margin:1px auto 0;}
-
-.cal-summary{display:flex;gap:8px;margin-bottom:10px;}
-.cal-sum-item{flex:1;background:var(--card);border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;}
+.cal-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px;}
+.cal-sum-item{background:var(--card);border:.5px solid var(--border);border-radius:8px;padding:8px 10px;}
 .cal-sum-label{font-size:10px;color:var(--text2);margin-bottom:2px;}
-.cal-sum-val{font-size:14px;font-weight:500;}
+.cal-sum-val{font-size:13px;font-weight:500;}
+.day-bal-row{display:flex;gap:8px;margin-bottom:8px;}
+.day-bal{flex:1;background:var(--a50);border-radius:8px;padding:8px 10px;}
+.day-bal.blue{background:var(--bl50);}
+.day-bal-label{font-size:10px;color:var(--text2);margin-bottom:2px;}
+.day-bal-val{font-size:14px;font-weight:500;}
+.sec-div{font-size:11px;color:var(--text2);margin:10px 0 6px;padding-bottom:4px;border-bottom:.5px solid var(--border);font-weight:500;text-transform:uppercase;letter-spacing:.4px;}
 
 /* SETTINGS */
 .settings-section{margin-bottom:20px;}
 .settings-title{font-size:14px;font-weight:500;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
-.setting-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);}
+.setting-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:.5px solid var(--border);}
 .setting-item:last-child{border-bottom:none;}
 .setting-meta{font-size:11px;color:var(--text2);margin-top:2px;}
-.small-btn{padding:5px 10px;background:var(--a50);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--a800);cursor:pointer;}
-.small-btn.del{background:var(--r50);border-color:var(--r200);color:var(--r800);}
-.small-btn.edit{background:var(--bl50);border-color:#b5d4f4;color:var(--bl800);}
-
+.sbtn{padding:5px 10px;background:var(--a50);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--a800);cursor:pointer;}
+.sbtn.del{background:var(--r50);border-color:var(--r200);color:var(--r800);}
+.sbtn.edit{background:var(--bl50);border-color:var(--bl200);color:var(--bl800);}
 .pct-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .pct-row label{font-size:13px;flex:1;}
 .pct-row input[type=number]{width:64px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:14px;color:var(--text);background:#fff;text-align:right;}
 .pct-row span{font-size:13px;color:var(--text2);}
-
-.notice{background:var(--a50);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--text2);margin-bottom:10px;line-height:1.5;}
-.notice.info{background:var(--bl50);color:var(--bl800);}
-.empty-state{text-align:center;padding:24px 16px;color:var(--text2);font-size:14px;}
-
-.tag{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:10px;margin-right:4px;margin-bottom:4px;background:var(--a50);color:var(--a800);border:1px solid var(--border);}
-.tag-plan{font-size:10px;color:var(--text2);}
-
-.export-btns{display:flex;gap:8px;}
-.export-btns button{flex:1;}
-
-.section-divider{font-size:11px;color:var(--text2);margin:12px 0 6px;padding-bottom:4px;border-bottom:0.5px solid var(--border);font-weight:500;text-transform:uppercase;letter-spacing:0.4px;}
+.btns-row{display:flex;gap:8px;}
+.btns-row button{flex:1;}
 </style>
 </head>
 <body>
@@ -190,15 +185,15 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 <div id="auth-screen">
   <div class="auth-logo">₽</div>
   <div class="auth-title">Мои финансы</div>
-  <div class="auth-sub">Личный учёт доходов, расходов<br>и финансового плана</div>
+  <div class="auth-sub">Личный учёт доходов, расходов и финансового плана</div>
   <button class="google-btn" onclick="signInGoogle()">
     <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Войти через Google
   </button>
-  <div class="auth-note">Данные хранятся в вашем Google аккаунте. Никто другой не имеет доступа.</div>
+  <div class="auth-note">Данные хранятся только в вашем Google аккаунте</div>
 </div>
 
-<div id="loading-screen" style="display:none"><div class="spinner"></div><div style="font-size:14px;color:var(--text2)">Загрузка...</div></div>
+<div id="loading-screen" style="display:none"><div class="spinner"></div><div style="font-size:14px;color:var(--text2);margin-top:8px">Загрузка...</div></div>
 
 <div id="app-screen">
   <div class="topbar">
@@ -213,7 +208,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <!-- DASHBOARD -->
   <div id="screen-dashboard" class="screen active">
     <div class="card">
-      <div class="card-title">Общий баланс</div>
+      <div class="card-title">Баланс (доходы − расходы)</div>
       <div class="balance-big" id="total-balance">₽ 0</div>
       <div class="balance-sub" id="balance-sub"></div>
     </div>
@@ -232,9 +227,9 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <!-- DDS -->
   <div id="screen-dds" class="screen">
     <div class="dds-month-sel">
-      <button class="dds-arrow" onclick="ddsChangeMonth(-1)">&#8249;</button>
+      <button class="dds-arrow" onclick="ddsChM(-1)">&#8249;</button>
       <span class="dds-month-label" id="dds-month-label"></span>
-      <button class="dds-arrow" onclick="ddsChangeMonth(1)">&#8250;</button>
+      <button class="dds-arrow" onclick="ddsChM(1)">&#8250;</button>
     </div>
     <div class="card"><div class="card-title">Финансовый план — выполнение</div><div id="dds-plan"></div></div>
     <div class="card"><div class="card-title">Все операции</div><div style="overflow-x:auto"><table class="dds-table" id="dds-table"></table></div></div>
@@ -244,24 +239,29 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <div id="screen-calendar" class="screen">
     <div class="card">
       <div class="dds-month-sel" style="margin-bottom:8px">
-        <button class="dds-arrow" onclick="calChangeMonth(-1)">&#8249;</button>
+        <button class="dds-arrow" onclick="calChM(-1)">&#8249;</button>
         <span class="dds-month-label" id="cal-month-label"></span>
-        <button class="dds-arrow" onclick="calChangeMonth(1)">&#8250;</button>
+        <button class="dds-arrow" onclick="calChM(1)">&#8250;</button>
       </div>
       <div class="cal-summary">
-        <div class="cal-sum-item"><div class="cal-sum-label">Факт доходы</div><div class="cal-sum-val pos" id="cal-fact-in">₽ 0</div></div>
-        <div class="cal-sum-item"><div class="cal-sum-label">Факт расходы</div><div class="cal-sum-val neg" id="cal-fact-out">₽ 0</div></div>
-        <div class="cal-sum-item"><div class="cal-sum-label">План (ожид.)</div><div class="cal-sum-val" id="cal-plan-total" style="color:var(--bl400)">₽ 0</div></div>
+        <div class="cal-sum-item"><div class="cal-sum-label">Факт доход</div><div class="cal-sum-val pos" id="cs-fi">₽0</div></div>
+        <div class="cal-sum-item"><div class="cal-sum-label">Факт расход</div><div class="cal-sum-val neg" id="cs-fo">₽0</div></div>
+        <div class="cal-sum-item"><div class="cal-sum-label">План доход</div><div class="cal-sum-val" style="color:var(--bl400)" id="cs-pi">₽0</div></div>
+        <div class="cal-sum-item"><div class="cal-sum-label">План расход</div><div class="cal-sum-val" style="color:var(--bl400)" id="cs-po">₽0</div></div>
       </div>
       <div class="cal-grid" id="cal-grid"></div>
-      <div style="display:flex;gap:12px;font-size:11px;color:var(--text2);padding-top:4px">
-        <span><span style="display:inline-block;width:8px;height:8px;background:var(--a50);border-radius:2px;margin-right:3px"></span>Факт</span>
-        <span><span style="display:inline-block;width:8px;height:8px;background:var(--bl50);border-radius:2px;margin-right:3px"></span>План</span>
+      <div style="display:flex;gap:12px;font-size:11px;color:var(--text2);padding-top:4px;flex-wrap:wrap">
+        <span><span style="display:inline-block;width:8px;height:8px;background:var(--a50);border-radius:2px;margin-right:3px;border:.5px solid var(--a100)"></span>Факт</span>
+        <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:3px;border:1.5px solid var(--bl200)"></span>План</span>
         <span><span style="display:inline-block;width:8px;height:8px;background:var(--a400);border-radius:2px;margin-right:3px"></span>Сегодня</span>
       </div>
     </div>
     <div class="card">
       <div class="card-title" id="cal-day-title">Выберите день</div>
+      <div class="day-bal-row" id="day-bal-row" style="display:none">
+        <div class="day-bal"><div class="day-bal-label">Факт за день</div><div class="day-bal-val" id="day-fact-bal">₽ 0</div></div>
+        <div class="day-bal blue"><div class="day-bal-label">Ожидаемый баланс</div><div class="day-bal-val" id="day-plan-bal">₽ 0</div></div>
+      </div>
       <div id="cal-day-ops"></div>
     </div>
   </div>
@@ -270,18 +270,18 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
   <div id="screen-settings" class="screen">
     <div class="settings-section">
       <div class="settings-title">Кошельки</div>
-      <div class="notice">Для кредитных карт и долгов введите отрицательный баланс (например: -50000)</div>
+      <div class="notice amber">Для кредитных карт и долгов введите отрицательный баланс (например: −50000)</div>
       <div id="wallets-settings"></div>
       <div style="display:flex;gap:8px;margin-top:10px">
-        <input class="form-input" id="new-wallet-name" placeholder="Название" style="flex:1">
-        <input class="form-input" id="new-wallet-balance" type="number" placeholder="Баланс" style="width:100px">
-        <button class="small-btn" onclick="addWallet()">+ Добавить</button>
+        <input class="form-input" id="nw-name" placeholder="Название" style="flex:1">
+        <input class="form-input" id="nw-bal" type="number" placeholder="Баланс" style="width:100px">
+        <button class="sbtn" onclick="addWallet()">+</button>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="settings-title">Статьи финансового плана</div>
-      <div class="notice">Укажите % от любого поступления. Итого должно быть 100%</div>
+      <div class="notice amber">Итого должно быть 100%. При каждом доходе суммы распределяются автоматически.</div>
       <div id="plan-settings"></div>
       <div style="text-align:right;font-size:13px;color:var(--text2);margin-top:6px">Итого: <span id="plan-total-pct" style="font-weight:500">0%</span></div>
       <button class="btn-secondary" style="margin-top:8px" onclick="savePlanSettings()">Сохранить план</button>
@@ -291,35 +291,35 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div class="settings-title">Категории доходов</div>
       <div id="income-cats-list"></div>
       <div style="display:flex;gap:8px;margin-top:8px">
-        <input class="form-input" id="new-income-cat" placeholder="Новая категория" style="flex:1">
-        <button class="small-btn" onclick="addIncomeCat()">+ Добавить</button>
+        <input class="form-input" id="new-inc-cat" placeholder="Новая категория" style="flex:1">
+        <button class="sbtn" onclick="addIncomeCat()">+ Добавить</button>
       </div>
     </div>
 
     <div class="settings-section">
       <div class="settings-title">Категории расходов</div>
-      <div class="notice info">Каждая категория привязывается к статье финплана — так расходы автоматически учитываются в нужной статье</div>
+      <div class="notice blue">Каждая категория привязана к статье финплана — расходы автоматически учитываются в нужной статье</div>
       <div id="expense-cats-list"></div>
-      <button class="btn-secondary" style="margin-top:8px" onclick="openAddExpCatModal()">+ Добавить категорию расходов</button>
+      <button class="btn-secondary" style="margin-top:8px" onclick="openModal('modal-exp-cat',true)">+ Добавить категорию расходов</button>
     </div>
 
     <div class="settings-section">
       <div class="settings-title">Данные</div>
-      <div class="notice">Экспортируй данные перед обновлением версии. При импорте все текущие данные заменятся.</div>
-      <div class="export-btns">
-        <button class="btn-secondary" onclick="exportData()">Экспорт (скачать)</button>
-        <button class="btn-secondary" onclick="document.getElementById('import-input').click()">Импорт (загрузить)</button>
+      <div class="notice amber">Экспортируй перед обновлением версии — импортируй в новую.</div>
+      <div class="btns-row" style="margin-bottom:8px">
+        <button class="btn-secondary" onclick="exportData()">Экспорт</button>
+        <button class="btn-secondary" onclick="$('import-input').click()">Импорт</button>
       </div>
       <input type="file" id="import-input" accept=".json" style="display:none" onchange="importData(event)">
       <button class="btn-danger" onclick="clearAllOps()">Удалить все операции</button>
     </div>
   </div>
 
-  <button class="fab" onclick="openModal()">+</button>
+  <button class="fab" onclick="openModal('modal',true)">+</button>
   <div class="bottom-nav">
     <div class="nav-item active" id="nav-dashboard" onclick="showScreen('dashboard')"><span class="nav-icon">&#9632;</span><span class="nav-label">Главная</span></div>
     <div class="nav-item" id="nav-dds" onclick="showScreen('dds')"><span class="nav-icon">&#8645;</span><span class="nav-label">ДДС</span></div>
-    <div class="nav-item" id="nav-calendar" onclick="showScreen('calendar')"><span class="nav-icon">&#9635;</span><span class="nav-label">Календарь</span></div>
+    <div class="nav-item" id="nav-calendar" onclick="showScreen('calendar')"><span class="nav-label" style="font-size:18px">&#9635;</span><span class="nav-label">Календарь</span></div>
   </div>
 </div>
 
@@ -331,16 +331,17 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <div class="type-btn active-income" id="type-income" onclick="setType('income')">Доход</div>
       <div class="type-btn" id="type-expense" onclick="setType('expense')">Расход</div>
       <div class="type-btn" id="type-transfer" onclick="setType('transfer')">Перевод</div>
-      <div class="type-btn" id="type-planned" onclick="setType('planned')">План</div>
+      <div class="type-btn" id="type-planned_income" onclick="setType('planned_income')">План +</div>
+      <div class="type-btn" id="type-planned_expense" onclick="setType('planned_expense')">План −</div>
     </div>
-    <div id="planned-notice" style="display:none" class="notice info" style="margin-bottom:12px">Плановая операция — отображается в календаре отдельно, не влияет на баланс</div>
+    <div id="planned-notice" class="notice blue" style="display:none">Плановая операция — видна в календаре, не влияет на баланс</div>
     <div class="row-flex">
       <div class="form-group"><label class="form-label">Сумма</label><input class="form-input" type="number" id="op-amount" placeholder="0"></div>
       <div class="form-group"><label class="form-label">Дата</label><input class="form-input" type="date" id="op-date"></div>
     </div>
     <div class="form-group" id="wallet-group"><label class="form-label" id="wallet-label">Кошелёк</label><select class="form-input" id="op-wallet"></select></div>
     <div class="form-group" id="wallet2-group" style="display:none"><label class="form-label">Кошелёк назначения</label><select class="form-input" id="op-wallet2"></select></div>
-    <div class="form-group" id="cat-group"><label class="form-label">Категория</label><select class="form-input" id="op-cat"></select></div>
+    <div class="form-group" id="cat-group"><label class="form-label" id="cat-label">Категория</label><select class="form-input" id="op-cat"></select></div>
     <div class="form-group"><label class="form-label">Заметка (необязательно)</label><input class="form-input" id="op-note" placeholder="Описание"></div>
     <button class="btn-primary" onclick="saveOperation()">Сохранить</button>
     <button class="btn-secondary" onclick="closeModal('modal')">Отмена</button>
@@ -350,13 +351,11 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 <!-- ADD EXPENSE CAT MODAL -->
 <div class="modal-overlay" id="modal-exp-cat">
   <div class="modal">
-    <div class="modal-header"><span class="modal-title">Категория расходов</span><button class="modal-close" onclick="closeModal('modal-exp-cat')">&#10005;</button></div>
-    <div class="form-group"><label class="form-label">Название категории</label><input class="form-input" id="new-exp-cat-name" placeholder="Например: Продукты"></div>
-    <div class="form-group">
-      <label class="form-label">Статья финплана</label>
-      <select class="form-input" id="new-exp-cat-plan"></select>
-    </div>
-    <button class="btn-primary" onclick="saveExpCat()">Добавить</button>
+    <div class="modal-header"><span class="modal-title" id="exp-cat-modal-title">Категория расходов</span><button class="modal-close" onclick="closeModal('modal-exp-cat')">&#10005;</button></div>
+    <div class="form-group"><label class="form-label">Название категории</label><input class="form-input" id="ec-name" placeholder="Например: Продукты"></div>
+    <div class="form-group"><label class="form-label">Статья финплана</label><select class="form-input" id="ec-plan"></select></div>
+    <input type="hidden" id="ec-idx" value="-1">
+    <button class="btn-primary" onclick="saveExpCat()">Сохранить</button>
     <button class="btn-secondary" onclick="closeModal('modal-exp-cat')">Отмена</button>
   </div>
 </div>
@@ -365,9 +364,9 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 <div class="modal-overlay" id="modal-wallet">
   <div class="modal">
     <div class="modal-header"><span class="modal-title">Редактировать кошелёк</span><button class="modal-close" onclick="closeModal('modal-wallet')">&#10005;</button></div>
-    <div class="form-group"><label class="form-label">Название</label><input class="form-input" id="edit-wallet-name" placeholder="Название"></div>
-    <div class="form-group"><label class="form-label">Текущий баланс</label><input class="form-input" type="number" id="edit-wallet-balance" placeholder="0"><div style="font-size:12px;color:var(--text2);margin-top:4px">Для кредиток и долгов введите отрицательное число</div></div>
-    <input type="hidden" id="edit-wallet-idx">
+    <div class="form-group"><label class="form-label">Название</label><input class="form-input" id="ew-name"></div>
+    <div class="form-group"><label class="form-label">Текущий баланс</label><input class="form-input" type="number" id="ew-bal"><div style="font-size:12px;color:var(--text2);margin-top:4px">Для кредиток и долгов — отрицательное число</div></div>
+    <input type="hidden" id="ew-idx">
     <button class="btn-primary" onclick="saveWalletEdit()">Сохранить</button>
     <button class="btn-secondary" onclick="closeModal('modal-wallet')">Отмена</button>
   </div>
@@ -375,25 +374,25 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
 
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,signOut as fbSignOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signOut as fbOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import{getFirestore,doc,getDoc,setDoc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbApp=initializeApp({apiKey:"AIzaSyDZUAeJU97_ZhrsqAQVDCiwBe7yHMz68xM",authDomain:"my-finance-25c36.firebaseapp.com",projectId:"my-finance-25c36",storageBucket:"my-finance-25c36.firebasestorage.app",messagingSenderId:"529108431297",appId:"1:529108431297:web:bf43f0e6765c6ce958bf40"});
-const auth=getAuth(fbApp),db=getFirestore(fbApp),provider=new GoogleAuthProvider();
-
+const auth=getAuth(fbApp),db=getFirestore(fbApp),prov=new GoogleAuthProvider();
 const MONTHS=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
 
 const DEFAULT={
   wallets:[{id:'w1',name:'Карта',balance:0},{id:'w2',name:'Наличные',balance:0},{id:'w3',name:'Сбережения',balance:0}],
   incomeCats:['Зарплата','Фриланс','Подработка','Прочее'],
   expenseCats:[
-    {name:'Продукты',planId:'p4'},{name:'Квартплата',planId:'p4'},{name:'Транспорт',planId:'p4'},
-    {name:'Кафе и рестораны',planId:'p5'},{name:'Одежда',planId:'p5'},{name:'Развлечения',planId:'p5'},
+    {name:'З/П жены',planId:'p1'},
+    {name:'Продукты',planId:'p4'},{name:'Квартплата',planId:'p4'},{name:'Транспорт',planId:'p4'},{name:'Связь',planId:'p4'},
+    {name:'Кафе и рестораны',planId:'p5'},{name:'Одежда',planId:'p5'},{name:'Развлечения',planId:'p5'},{name:'Здоровье',planId:'p5'},
     {name:'Кредит',planId:'p6'},{name:'Кредитная карта',planId:'p6'},
-    {name:'Крупные покупки',planId:'p7'},{name:'Здоровье',planId:'p5'},{name:'Связь',planId:'p4'}
+    {name:'Крупные покупки',planId:'p7'}
   ],
   plan:[
-    {id:'p1',label:'З/П жены',pct:10,type:'income'},
+    {id:'p1',label:'З/П жены',pct:10,type:'expense'},
     {id:'p2',label:'Накопления',pct:10,type:'income'},
     {id:'p3',label:'Бизнес',pct:10,type:'income'},
     {id:'p4',label:'Постоянные расходы',pct:35,type:'expense'},
@@ -401,36 +400,45 @@ const DEFAULT={
     {id:'p6',label:'Кредиты',pct:15,type:'expense'},
     {id:'p7',label:'Покупки',pct:10,type:'expense'}
   ],
-  operations:[],
-  version:2
+  operations:[],version:3
 };
 
-let D=null,CU=null,saveTimer=null;
-let currentType='income',ddsOff=0,calOff=0,calDay=null;
-
+let D=null,CU=null,saveTimer=null,curType='income',ddsOff=0,calOff=0,calDay=null;
 const $=id=>document.getElementById(id);
 const fmt=n=>'₽ '+Math.abs(Math.round(n)).toLocaleString('ru-RU');
 const fmtS=n=>(n>=0?'+ ':'\u2212 ')+'₽ '+Math.abs(Math.round(n)).toLocaleString('ru-RU');
 const today=()=>new Date().toISOString().split('T')[0];
-const wName=id=>{const w=D.wallets.find(w=>w.id===id);return w?w.name:(id||'?');};
-const fmtDate=ds=>{if(!ds)return'';const[y,m,d]=ds.split('-');return d+'.'+m+'.'+y;};
-const monthOps=off=>{const dt=new Date(new Date().getFullYear(),new Date().getMonth()+off,1);const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');return D.operations.filter(o=>o.date&&o.date.startsWith(ym));};
+const wName=id=>{const w=D.wallets.find(w=>w.id===id);return w?w.name:id||'?';};
+const fmtD=ds=>{if(!ds)return'';const[y,m,d]=ds.split('-');return d+'.'+m+'.'+y;};
+const mOps=off=>{const dt=new Date(new Date().getFullYear(),new Date().getMonth()+off,1);const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');return D.operations.filter(o=>o.date&&o.date.startsWith(ym));};
 const planById=id=>D.plan.find(p=>p.id===id);
-const expCatPlanId=name=>{const c=D.expenseCats.find(c=>c.name===name);return c?c.planId:null;};
+const catPlanId=name=>{const c=D.expenseCats.find(c=>c.name===name);return c?c.planId:null;};
+const isPlanned=t=>t==='planned_income'||t==='planned_expense';
 
 async function loadData(uid){
-  try{const snap=await getDoc(doc(db,'users',uid,'data','main'));if(snap.exists()){D=snap.data();if(!D.version||D.version<2)migrateData();}else{D=JSON.parse(JSON.stringify(DEFAULT));await saveNow(uid);}}
-  catch(e){D=JSON.parse(JSON.stringify(DEFAULT));}
+  try{
+    const snap=await getDoc(doc(db,'users',uid,'data','main'));
+    if(snap.exists()){D=snap.data();migrate();}
+    else{D=JSON.parse(JSON.stringify(DEFAULT));await saveNow(uid);}
+  }catch(e){D=JSON.parse(JSON.stringify(DEFAULT));}
 }
-function migrateData(){
-  if(!D.expenseCats||typeof D.expenseCats[0]==='string'){D.expenseCats=(D.expenseCats||[]).map(name=>({name,planId:D.plan.find(p=>p.type==='expense')?.id||''}));}
-  D.version=2;
+function migrate(){
+  if(!D.version||D.version<3){
+    if(D.expenseCats&&typeof D.expenseCats[0]==='string')D.expenseCats=D.expenseCats.map(n=>({name:n,planId:D.plan.find(p=>p.type==='expense')?.id||''}));
+    D.operations=D.operations.map(o=>{
+      if(o.type==='planned')return{...o,type:'planned_income'};
+      return o;
+    });
+    const p1=D.plan.find(p=>p.id==='p1');
+    if(p1)p1.type='expense';
+    D.version=3;
+  }
 }
 async function saveNow(uid){if(!uid)return;try{await setDoc(doc(db,'users',uid,'data','main'),D);}catch(e){}}
-function scheduleSave(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveNow(CU?.uid),1500);}
+function sched(){if(saveTimer)clearTimeout(saveTimer);saveTimer=setTimeout(()=>saveNow(CU?.uid),1500);}
 
-window.signInGoogle=async()=>{try{await signInWithPopup(auth,provider);}catch(e){alert('Ошибка: '+e.message);}};
-window.doSignOut=async()=>{if(!confirm('Выйти?'))return;await fbSignOut(auth);};
+window.signInGoogle=async()=>{try{await signInWithPopup(auth,prov);}catch(e){alert('Ошибка: '+e.message);}};
+window.doSignOut=async()=>{if(!confirm('Выйти?'))return;await fbOut(auth);};
 
 onAuthStateChanged(auth,async user=>{
   if(user){
@@ -441,7 +449,8 @@ onAuthStateChanged(auth,async user=>{
     $('topbar-date').textContent=MONTHS[new Date().getMonth()]+' '+new Date().getFullYear();
     renderDashboard();
   }else{
-    CU=null;D=null;$('app-screen').style.display='none';$('loading-screen').style.display='none';$('auth-screen').style.display='flex';
+    CU=null;D=null;
+    $('app-screen').style.display='none';$('loading-screen').style.display='none';$('auth-screen').style.display='flex';
   }
 });
 
@@ -451,287 +460,394 @@ window.showScreen=name=>{
   $('screen-'+name).classList.add('active');
   const nav=$('nav-'+name);if(nav)nav.classList.add('active');
   if(name==='dashboard')renderDashboard();
-  if(name==='dds')renderDDS();
-  if(name==='calendar')renderCalendar();
-  if(name==='settings')renderSettings();
+  else if(name==='dds')renderDDS();
+  else if(name==='calendar')renderCalendar();
+  else if(name==='settings')renderSettings();
 };
 
+/* ===== DASHBOARD ===== */
 function renderDashboard(){
   if(!D)return;
-  const total=D.wallets.reduce((s,w)=>s+w.balance,0);
-  const tb=$('total-balance');tb.textContent=fmt(total);tb.className='balance-big'+(total<0?' neg':'');
-  $('balance-sub').textContent='на '+new Date().toLocaleDateString('ru-RU');
-  const ops=monthOps(0);
-  const inc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-  const exp=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
-  $('month-income').textContent=fmt(inc);$('month-expense').textContent=fmt(exp);
-  $('wallets-list').innerHTML=D.wallets.map(w=>`<div class="wallet-row"><div><span style="font-size:14px">${w.name}</span>${w.balance<0?'<span class="wallet-badge">долг</span>':''}</div><span class="wallet-amount ${w.balance<0?'neg':''}">${w.balance<0?'\u2212 ':''} ${fmt(w.balance)}</span></div>`).join('');
+  const allOps=D.operations.filter(o=>!isPlanned(o.type));
+  const totalInc=allOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const totalExp=allOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const bal=totalInc-totalExp;
+  const tb=$('total-balance');
+  tb.textContent=(bal<0?'\u2212 ':'')+fmt(bal);
+  tb.className='balance-big'+(bal<0?' neg':(bal>0?' pos':''));
+  $('balance-sub').textContent='все время · доход '+fmt(totalInc)+' · расход '+fmt(totalExp);
+
+  const ops=mOps(0);
+  const mInc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  $('month-income').textContent=fmt(mInc);$('month-expense').textContent=fmt(mExp);
+
+  $('wallets-list').innerHTML=D.wallets.map(w=>`<div class="wallet-row">
+    <div><span style="font-size:14px">${w.name}</span>${w.balance<0?'<span class="w-badge">долг</span>':''}</div>
+    <span class="wallet-amount ${w.balance<0?'neg':''}">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}</span>
+  </div>`).join('');
+
   const lastInc=[...D.operations].reverse().find(o=>o.type==='income');
-  if(lastInc&&D.plan.length){$('budget-card').style.display='';renderBudgetSplit(lastInc.amount);}
+  if(lastInc&&D.plan.length){$('budget-card').style.display='';renderBudgetSplit(lastInc.amount,ops);}
   else $('budget-card').style.display='none';
-  const recent=[...D.operations].filter(o=>o.type!=='planned').reverse().slice(0,8);
+
+  const recent=[...D.operations].filter(o=>!isPlanned(o.type)).reverse().slice(0,8);
   const ro=$('recent-ops');
   if(!recent.length){ro.innerHTML='<div class="empty-state">Операций пока нет.<br>Нажмите + чтобы добавить</div>';return;}
   ro.innerHTML=recent.map(o=>opHtml(o,true)).join('');
 }
 
-function opHtml(o,showDel){
-  const isIn=o.type==='income',isOut=o.type==='expense';
-  const sign=isIn?'pos':(isOut?'neg':'');
-  const pfx=isIn?'+':(isOut?'\u2212':'');
-  const label=o.type==='transfer'?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
-  const planLabel=expCatPlanId(o.category)?`<span class="dds-cat-badge">${planById(expCatPlanId(o.category))?.label||''}</span>`:'';
-  return`<div class="op-item">
-    <div class="op-left"><div class="op-cat">${label}</div><div class="op-meta">${wName(o.wallet)} · ${fmtDate(o.date)}${o.note?' · '+o.note:''}</div>${isOut?planLabel:''}</div>
-    <div class="op-right"><div class="op-amount ${sign}">${pfx} ${fmt(o.amount)}</div>${showDel?`<button class="op-del" onclick="deleteOp('${o.id}')">&#10005;</button>`:''}</div>
-  </div>`;
-}
-
-function renderBudgetSplit(amount){
-  const inc=D.plan.filter(p=>p.type==='income'),exp=D.plan.filter(p=>p.type==='expense');
+function renderBudgetSplit(amount,ops){
+  const inc=D.plan.filter(p=>p.type==='income');
+  const exp=D.plan.filter(p=>p.type==='expense');
   let html='';
-  if(inc.length){html+=`<div style="font-size:12px;font-weight:500;color:var(--text2);padding:4px 0 6px">Приход (${inc.reduce((s,p)=>s+p.pct,0)}%)</div>`;inc.forEach(p=>{const v=Math.round(amount*p.pct/100);html+=`<div class="split-row inc-row"><span class="split-label">${p.label}</span><span class="split-pct">${p.pct}%</span><span class="split-amount inc">${fmt(v)}</span></div>`;});}
-  if(exp.length){html+=`<div style="font-size:12px;font-weight:500;color:var(--text2);padding:8px 0 6px">Расход (${exp.reduce((s,p)=>s+p.pct,0)}%)</div>`;exp.forEach(p=>{const v=Math.round(amount*p.pct/100);html+=`<div class="split-row"><span class="split-label">${p.label}</span><span class="split-pct">${p.pct}%</span><span class="split-amount">${fmt(v)}</span></div>`;});}
+  if(inc.length){
+    html+='<div style="font-size:12px;font-weight:500;color:var(--text2);padding:2px 0 6px">Откладываем</div>';
+    inc.forEach(p=>{
+      const v=Math.round(amount*p.pct/100);
+      html+=`<div class="split-row" style="background:var(--gr50)"><span class="split-label">${p.label}</span><span class="split-pct">${p.pct}%</span><span class="split-amount" style="color:var(--gr400)">${fmt(v)}</span></div>`;
+    });
+  }
+  if(exp.length){
+    html+='<div style="font-size:12px;font-weight:500;color:var(--text2);padding:8px 0 6px">Расходы</div>';
+    exp.forEach(p=>{
+      const v=Math.round(amount*p.pct/100);
+      const cats=D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
+      const spent=ops?ops.filter(o=>o.type==='expense'&&cats.includes(o.category)).reduce((s,o)=>s+o.amount,0):0;
+      const left=v-spent;
+      html+=`<div class="split-row" style="background:var(--a50);margin-bottom:2px">
+        <span class="split-label">${p.label}</span>
+        <span class="split-pct">${p.pct}%</span>
+        <div style="text-align:right">
+          <div class="split-amount" style="color:var(--a400)">${fmt(v)}</div>
+          <div style="font-size:11px;color:${left>=0?'var(--gr400)':'var(--r400)'}">ост: ${left>=0?'':'\u2212'}${fmt(left)}</div>
+        </div>
+      </div>`;
+    });
+  }
   $('budget-split-content').innerHTML=html;
 }
 
+function opHtml(o,showDel){
+  const isIn=o.type==='income',isOut=o.type==='expense';
+  const sc=isIn?'pos':(isOut?'neg':'');
+  const pfx=isIn?'+':(isOut?'\u2212':'');
+  const label=o.type==='transfer'?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
+  const pid=catPlanId(o.category);
+  const plbl=pid&&isOut?`<span class="badge badge-plan-cat">${planById(pid)?.label||''}</span>`:'';
+  return`<div class="op-item">
+    <div class="op-left"><div class="op-cat">${label}</div><div class="op-meta">${wName(o.wallet)} · ${fmtD(o.date)}${o.note?' · '+o.note:''}</div>${plbl}</div>
+    <div class="op-right"><div class="op-amount ${sc}">${pfx} ${fmt(o.amount)}</div>${showDel?`<button class="op-del" onclick="deleteOp('${o.id}')">&#10005;</button>`:''}</div>
+  </div>`;
+}
+
+/* ===== DDS ===== */
+window.ddsChM=d=>{ddsOff+=d;renderDDS();};
 function renderDDS(){
   if(!D)return;
-  const now=new Date(),dt=new Date(now.getFullYear(),now.getMonth()+ddsOff,1);
+  const dt=new Date(new Date().getFullYear(),new Date().getMonth()+ddsOff,1);
   $('dds-month-label').textContent=MONTHS[dt.getMonth()]+' '+dt.getFullYear();
-  const ops=monthOps(ddsOff).filter(o=>o.type!=='planned');
+  const ops=mOps(ddsOff).filter(o=>!isPlanned(o.type));
   const totalInc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-  const plan=$('dds-plan');
+  const totalExp=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
 
-  if(D.plan.length&&totalInc>0){
+  const planEl=$('dds-plan');
+  if(!D.plan.length||totalInc===0){
+    planEl.innerHTML='<div class="empty-state">Добавьте доходы для отображения плана</div>';
+  }else{
     let ph='';
     D.plan.forEach(p=>{
-      const planned=Math.round(totalInc*p.pct/100);
+      const alloc=Math.round(totalInc*p.pct/100);
       const cats=D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
-      const spent=p.type==='expense'?ops.filter(o=>o.type==='expense'&&cats.includes(o.category)).reduce((s,o)=>s+o.amount,0):0;
-      const alloc=p.type==='income'?planned:planned;
-      const left=alloc-spent;
-      const pct=planned>0?Math.min(Math.round(spent/planned*100),100):0;
-      const catStr=cats.length?cats.join(', '):'—';
       if(p.type==='expense'){
+        const spent=ops.filter(o=>o.type==='expense'&&cats.includes(o.category)).reduce((s,o)=>s+o.amount,0);
+        const left=alloc-spent;
+        const pct=alloc>0?Math.min(Math.round(spent/alloc*100),100):0;
         ph+=`<div class="plan-item">
-          <div class="plan-item-header"><span class="plan-item-name">${p.label}</span><span class="plan-item-nums">потрачено: <span class="spent">${fmt(spent)}</span> / план: ${fmt(planned)} / <span class="${left>=0?'left':'over'}">${left>=0?'остаток: '+fmt(left):'перерасход: '+fmt(-left)}</span></span></div>
-          <div class="plan-bar-bg"><div class="plan-bar-fill ${pct>80&&pct<100?'warn':''} ${pct>=100?'over':''}" style="width:${pct}%"></div></div>
-          <div class="plan-cats">Категории: ${catStr}</div>
+          <div class="plan-item-header"><span class="plan-item-name">${p.label}</span><span class="plan-item-alloc">план: ${fmt(alloc)}</span></div>
+          <div class="plan-nums">
+            <span class="spent">потрачено: ${fmt(spent)}</span>
+            <span class="${left>=0?'left':'over'}">${left>=0?'остаток: '+fmt(left):'перерасход: '+fmt(-left)}</span>
+          </div>
+          <div class="plan-bar-bg"><div class="plan-bar-fill${pct>80&&pct<100?' warn':''}${pct>=100?' over':''}" style="width:${pct}%"></div></div>
+          <div class="plan-cats">Категории: ${cats.length?cats.join(', '):'не привязаны'}</div>
         </div>`;
       }else{
         ph+=`<div class="plan-item">
-          <div class="plan-item-header"><span class="plan-item-name">${p.label}</span><span class="plan-item-nums" style="color:var(--gr400)">${fmt(planned)}</span></div>
+          <div class="plan-item-header"><span class="plan-item-name">${p.label}</span><span class="plan-item-alloc" style="color:var(--gr400)">отложить: ${fmt(alloc)}</span></div>
           <div class="plan-bar-bg"><div class="plan-bar-fill" style="width:100%;background:var(--gr200)"></div></div>
         </div>`;
       }
     });
-    plan.innerHTML=ph;
-  }else{
-    plan.innerHTML=`<div class="empty-state">${totalInc===0?'Добавьте доходы для отображения плана':'Нет данных'}</div>`;
+    planEl.innerHTML=ph;
   }
 
   const table=$('dds-table');
   if(!ops.length){table.innerHTML='<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Операций нет</td></tr>';return;}
   const sorted=[...ops].sort((a,b)=>a.date<b.date?1:-1);
-  let totalOut=0;
-  ops.filter(o=>o.type==='expense').forEach(o=>totalOut+=o.amount);
-  let html='<thead><tr><th>Дата</th><th>Категория / статья</th><th>Кошелёк</th><th style="text-align:right">Сумма</th></tr></thead><tbody>';
+  let html='<thead><tr><th>Дата</th><th>Категория</th><th>Кошелёк</th><th style="text-align:right">Сумма</th></tr></thead><tbody>';
   sorted.forEach(o=>{
     const isIn=o.type==='income',isOut=o.type==='expense';
     const cls=isIn?'pos':(isOut?'neg':'');
     const pfx=isIn?'+':(isOut?'\u2212':'');
     const cat=o.type==='transfer'?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
-    const planLbl=isOut&&expCatPlanId(o.category)?`<br><span class="dds-cat-badge">${planById(expCatPlanId(o.category))?.label||''}</span>`:'';
-    html+=`<tr><td>${fmtDate(o.date)}</td><td>${cat}${planLbl}${o.note?'<br><span class="dds-cat-badge">'+o.note+'</span>':''}</td><td>${wName(o.wallet)}</td><td class="${cls}" style="text-align:right">${pfx} ${fmt(o.amount)}</td></tr>`;
+    const pid=catPlanId(o.category);
+    const plbl=isOut&&pid?`<br><span class="badge badge-plan-cat">${planById(pid)?.label||''}</span>`:'';
+    html+=`<tr><td>${fmtD(o.date)}</td><td>${cat}${plbl}${o.note?'<br><span style="font-size:10px;color:var(--text2)">'+o.note+'</span>':''}</td><td>${wName(o.wallet)}</td><td class="${cls}" style="text-align:right">${pfx} ${fmt(o.amount)}</td></tr>`;
   });
   html+=`<tr class="total-row"><td colspan="2">Итого доходов</td><td colspan="2" class="pos" style="text-align:right">+ ${fmt(totalInc)}</td></tr>`;
-  html+=`<tr class="total-row"><td colspan="2">Итого расходов</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalOut)}</td></tr>`;
-  html+=`<tr class="total-row"><td colspan="2">Чистый поток</td><td colspan="2" class="${totalInc-totalOut>=0?'pos':'neg'}" style="text-align:right">${fmtS(totalInc-totalOut)}</td></tr></tbody>`;
+  html+=`<tr class="total-row"><td colspan="2">Итого расходов</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
+  html+=`<tr class="total-row"><td colspan="2">Чистый поток</td><td colspan="2" class="${totalInc-totalExp>=0?'pos':'neg'}" style="text-align:right">${fmtS(totalInc-totalExp)}</td></tr></tbody>`;
   table.innerHTML=html;
 }
 
-window.ddsChangeMonth=d=>{ddsOff+=d;renderDDS();};
-
+/* ===== CALENDAR ===== */
+window.calChM=d=>{calOff+=d;renderCalendar();};
 function renderCalendar(){
   if(!D)return;
-  const now=new Date(),dt=new Date(now.getFullYear(),now.getMonth()+calOff,1);
+  const dt=new Date(new Date().getFullYear(),new Date().getMonth()+calOff,1);
   $('cal-month-label').textContent=MONTHS[dt.getMonth()]+' '+dt.getFullYear();
   const y=dt.getFullYear(),m=dt.getMonth();
   const dim=new Date(y,m+1,0).getDate(),first=(new Date(y,m,1).getDay()+6)%7;
   const todayStr=today();
   const ym=y+'-'+String(m+1).padStart(2,'0');
-  const mOps=D.operations.filter(o=>o.date&&o.date.startsWith(ym));
-  const factIn=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-  const factOut=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
-  const planTotal=mOps.filter(o=>o.type==='planned').reduce((s,o)=>s+o.amount,0);
-  $('cal-fact-in').textContent=fmt(factIn);$('cal-fact-out').textContent=fmt(factOut);$('cal-plan-total').textContent=fmt(planTotal);
+  const allM=D.operations.filter(o=>o.date&&o.date.startsWith(ym));
+  const factI=allM.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const factO=allM.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const planI=allM.filter(o=>o.type==='planned_income').reduce((s,o)=>s+o.amount,0);
+  const planO=allM.filter(o=>o.type==='planned_expense').reduce((s,o)=>s+o.amount,0);
+  $('cs-fi').textContent=fmt(factI);$('cs-fo').textContent=fmt(factO);
+  $('cs-pi').textContent=fmt(planI);$('cs-po').textContent=fmt(planO);
 
-  const factDays=new Set(mOps.filter(o=>o.type!=='planned').map(o=>parseInt(o.date.split('-')[2])));
-  const planDays=new Set(mOps.filter(o=>o.type==='planned').map(o=>parseInt(o.date.split('-')[2])));
+  const factDays=new Set(allM.filter(o=>!isPlanned(o.type)).map(o=>+o.date.split('-')[2]));
+  const planDays=new Set(allM.filter(o=>isPlanned(o.type)).map(o=>+o.date.split('-')[2]));
 
   let html=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].map(d=>`<div class="cal-day-label">${d}</div>`).join('');
   for(let i=0;i<first;i++)html+='<div class="cal-day empty">0</div>';
   for(let d=1;d<=dim;d++){
     const ds=ym+'-'+String(d).padStart(2,'0');
-    const isTod=ds===todayStr,hasFact=factDays.has(d),hasPlan=planDays.has(d);
-    const cls=isTod?'today':(hasFact&&hasPlan?'has-both':(hasFact?'has-op':(hasPlan?'has-planned':'')));
-    const dot=hasPlan&&!isTod?'<div class="cal-dot"></div>':'';
-    html+=`<div class="cal-day ${cls}" onclick="selCalDay('${ds}')">${d}${dot}</div>`;
+    const isTod=ds===todayStr,hF=factDays.has(d),hP=planDays.has(d);
+    const cls=isTod?'today':(hF&&hP?'has-both':(hF?'has-fact':(hP?'has-plan':'')));
+    html+=`<div class="cal-day ${cls}" onclick="selCalDay('${ds}')">${d}</div>`;
   }
   $('cal-grid').innerHTML=html;
   showCalDay(calDay||todayStr);
 }
-
-window.calChangeMonth=d=>{calOff+=d;renderCalendar();};
 window.selCalDay=ds=>{calDay=ds;showCalDay(ds);};
 
 function showCalDay(ds){
   const d=new Date(ds+'T12:00:00');
   $('cal-day-title').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
   const ops=D.operations.filter(o=>o.date===ds);
+  const fact=ops.filter(o=>!isPlanned(o.type));
+  const plan=ops.filter(o=>isPlanned(o.type));
+  const factBal=fact.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0)-fact.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const planBal=plan.filter(o=>o.type==='planned_income').reduce((s,o)=>s+o.amount,0)-plan.filter(o=>o.type==='planned_expense').reduce((s,o)=>s+o.amount,0);
+  const dbr=$('day-bal-row');
+  if(ops.length){
+    dbr.style.display='flex';
+    const fb=$('day-fact-bal');fb.textContent=(factBal<0?'\u2212 ':'')+fmt(factBal);fb.style.color=factBal<0?'var(--r400)':(factBal>0?'var(--gr400)':'var(--text)');
+    const pb=$('day-plan-bal');pb.textContent=(planBal<0?'\u2212 ':'')+fmt(planBal);pb.style.color=planBal<0?'var(--r400)':(planBal>0?'var(--gr400)':'var(--text2)');
+  }else dbr.style.display='none';
   const el=$('cal-day-ops');
-  if(!ops.length){el.innerHTML='<div style="padding:12px 0;color:var(--text2);font-size:13px">Нет операций</div>';return;}
-  const fact=ops.filter(o=>o.type!=='planned');
-  const plan=ops.filter(o=>o.type==='planned');
+  if(!ops.length){el.innerHTML='<div style="padding:12px 0;font-size:13px;color:var(--text2)">Нет операций</div>';return;}
   let html='';
-  if(fact.length){html+='<div class="section-divider">Факт</div>'+fact.map(o=>opHtml(o,true)).join('');}
-  if(plan.length){html+='<div class="section-divider">Плановые</div>'+plan.map(o=>`<div class="op-item"><div class="op-left"><div class="op-cat">${o.category||o.note||'—'} <span class="op-planned">план</span></div><div class="op-meta">${fmtDate(o.date)}${o.note?' · '+o.note:''}</div></div><div class="op-right"><div class="op-amount" style="color:var(--bl400)">${fmt(o.amount)}</div><button class="op-del" onclick="deleteOp('${o.id}')">&#10005;</button></div></div>`).join('');}
+  if(fact.length){
+    html+='<div class="sec-div">Факт</div>';
+    html+=fact.map(o=>opHtml(o,true)).join('');
+  }
+  if(plan.length){
+    html+='<div class="sec-div">Плановые</div>';
+    html+=plan.map(o=>{
+      const isPI=o.type==='planned_income';
+      return`<div class="op-item">
+        <div class="op-left">
+          <div class="op-cat">${o.category||o.note||'—'} <span class="badge badge-plan">${isPI?'план +':'план \u2212'}</span></div>
+          <div class="op-meta">${fmtD(o.date)}${o.note?' · '+o.note:''}</div>
+        </div>
+        <div class="op-right">
+          <div class="op-amount plan">${isPI?'+ ':'\u2212 '}${fmt(o.amount)}</div>
+          <button class="op-del" onclick="deleteOp('${o.id}')">&#10005;</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
   el.innerHTML=html;
 }
 
+/* ===== SETTINGS ===== */
 function renderSettings(){
   if(!D)return;
-  $('wallets-settings').innerHTML=D.wallets.map((w,i)=>`<div class="setting-item"><div><div style="font-size:14px">${w.name}${w.balance<0?' <span class="wallet-badge">долг</span>':''}</div><div class="setting-meta">${w.balance<0?'\u2212 ':''} ${fmt(w.balance)}</div></div><div style="display:flex;gap:6px"><button class="small-btn edit" onclick="openEditWallet(${i})">Изменить</button><button class="small-btn del" onclick="deleteWallet(${i})">Удалить</button></div></div>`).join('');
+  $('wallets-settings').innerHTML=D.wallets.map((w,i)=>`<div class="setting-item">
+    <div><div style="font-size:14px">${w.name}${w.balance<0?'<span class="w-badge">долг</span>':''}</div><div class="setting-meta">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}</div></div>
+    <div style="display:flex;gap:6px"><button class="sbtn edit" onclick="openEditWallet(${i})">Изм.</button><button class="sbtn del" onclick="delWallet(${i})">Удал.</button></div>
+  </div>`).join('');
 
-  $('plan-settings').innerHTML=D.plan.map((p,i)=>`<div class="pct-row"><label>${p.label} <span style="font-size:11px;color:var(--text2)">(${p.type==='income'?'приход':'расход'})</span></label><input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="updPlanTotal()"><span>%</span></div>`).join('');
-  updPlanTotal();
+  $('plan-settings').innerHTML=D.plan.map((p,i)=>`<div class="pct-row">
+    <label>${p.label} <span style="font-size:10px;color:var(--text2)">(${p.type==='income'?'откладываем':'расход'})</span></label>
+    <input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="updPT()">
+    <span>%</span>
+  </div>`).join('');
+  updPT();
 
-  $('income-cats-list').innerHTML=D.incomeCats.map((c,i)=>`<span class="tag">${c}<span onclick="delIncomeCat(${i})" style="cursor:pointer;color:var(--r400);margin-left:2px">✕</span></span>`).join('');
+  $('income-cats-list').innerHTML=D.incomeCats.map((c,i)=>`<div class="setting-item">
+    <span style="font-size:14px">${c}</span>
+    <button class="sbtn del" onclick="delIncomeCat(${i})">Удалить</button>
+  </div>`).join('');
 
   $('expense-cats-list').innerHTML=D.expenseCats.map((c,i)=>{
     const pl=planById(c.planId);
-    return`<div class="setting-item"><div><div style="font-size:14px">${c.name}</div><div class="setting-meta">→ ${pl?pl.label:'не привязано'}</div></div><button class="small-btn del" onclick="delExpCat(${i})">Удалить</button></div>`;
+    return`<div class="setting-item">
+      <div><div style="font-size:14px">${c.name}</div><div class="setting-meta">\u2192 ${pl?pl.label:'не привязано'}</div></div>
+      <div style="display:flex;gap:6px"><button class="sbtn edit" onclick="openEditExpCat(${i})">Изм.</button><button class="sbtn del" onclick="delExpCat(${i})">Удал.</button></div>
+    </div>`;
   }).join('');
 }
 
-window.updPlanTotal=()=>{
-  let t=0;D.plan.forEach((_,i)=>{const el=$('pp-'+i);if(el)t+=parseFloat(el.value)||0;});
-  const el=$('plan-total-pct');if(el){el.textContent=Math.round(t)+'%';el.style.color=Math.round(t)===100?'var(--gr400)':'var(--r400)';}
+window.updPT=()=>{
+  let t=0;D.plan.forEach((_,i)=>{const e=$('pp-'+i);if(e)t+=parseFloat(e.value)||0;});
+  const e=$('plan-total-pct');if(e){e.textContent=Math.round(t)+'%';e.style.color=Math.round(t)===100?'var(--gr400)':'var(--r400)';}
 };
 window.savePlanSettings=()=>{
-  let t=0;D.plan.forEach((p,i)=>{const el=$('pp-'+i);const v=parseFloat(el?.value)||0;p.pct=v;t+=v;});
+  let t=0;D.plan.forEach((p,i)=>{const e=$('pp-'+i);const v=parseFloat(e?.value)||0;p.pct=v;t+=v;});
   if(Math.round(t)!==100){alert('Сумма должна быть 100%. Сейчас: '+Math.round(t)+'%');return;}
-  scheduleSave();alert('План сохранён');
+  sched();alert('План сохранён');
 };
 window.addWallet=()=>{
-  const name=$('new-wallet-name').value.trim(),bal=parseFloat($('new-wallet-balance').value)||0;
-  if(!name)return;D.wallets.push({id:'w'+Date.now(),name,balance:bal});
-  scheduleSave();$('new-wallet-name').value='';$('new-wallet-balance').value='';renderSettings();
+  const n=$('nw-name').value.trim(),b=parseFloat($('nw-bal').value)||0;
+  if(!n)return;D.wallets.push({id:'w'+Date.now(),name:n,balance:b});
+  sched();$('nw-name').value='';$('nw-bal').value='';renderSettings();
 };
-window.deleteWallet=i=>{
+window.delWallet=i=>{
   if(D.wallets.length<=1){alert('Нужен хотя бы один кошелёк');return;}
   if(!confirm('Удалить "'+D.wallets[i].name+'"?'))return;
-  D.wallets.splice(i,1);scheduleSave();renderSettings();
+  D.wallets.splice(i,1);sched();renderSettings();
 };
-window.openEditWallet=i=>{
-  const w=D.wallets[i];$('edit-wallet-name').value=w.name;$('edit-wallet-balance').value=w.balance;$('edit-wallet-idx').value=i;
-  openModal('modal-wallet');
-};
+window.openEditWallet=i=>{const w=D.wallets[i];$('ew-name').value=w.name;$('ew-bal').value=w.balance;$('ew-idx').value=i;openModal('modal-wallet');};
 window.saveWalletEdit=()=>{
-  const i=parseInt($('edit-wallet-idx').value);
-  D.wallets[i].name=$('edit-wallet-name').value.trim()||D.wallets[i].name;
-  D.wallets[i].balance=parseFloat($('edit-wallet-balance').value)||0;
-  scheduleSave();closeModal('modal-wallet');renderSettings();
+  const i=+$('ew-idx').value;
+  D.wallets[i].name=$('ew-name').value.trim()||D.wallets[i].name;
+  D.wallets[i].balance=parseFloat($('ew-bal').value)||0;
+  sched();closeModal('modal-wallet');renderSettings();
 };
-window.addIncomeCat=()=>{
-  const v=$('new-income-cat').value.trim();if(!v)return;D.incomeCats.push(v);scheduleSave();$('new-income-cat').value='';renderSettings();
-};
-window.delIncomeCat=i=>{D.incomeCats.splice(i,1);scheduleSave();renderSettings();};
-window.openAddExpCatModal=()=>{
-  $('new-exp-cat-name').value='';
-  const expPlan=D.plan.filter(p=>p.type==='expense');
-  $('new-exp-cat-plan').innerHTML=expPlan.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+window.addIncomeCat=()=>{const v=$('new-inc-cat').value.trim();if(!v)return;D.incomeCats.push(v);sched();$('new-inc-cat').value='';renderSettings();};
+window.delIncomeCat=i=>{D.incomeCats.splice(i,1);sched();renderSettings();};
+
+function fillExpPlanSelect(selId){
+  const expP=D.plan.filter(p=>p.type==='expense');
+  $(selId).innerHTML=expP.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+}
+window.openEditExpCat=i=>{
+  const c=D.expenseCats[i];
+  $('exp-cat-modal-title').textContent='Изменить категорию';
+  $('ec-name').value=c.name;$('ec-idx').value=i;
+  fillExpPlanSelect('ec-plan');
+  $('ec-plan').value=c.planId;
   openModal('modal-exp-cat');
 };
 window.saveExpCat=()=>{
-  const name=$('new-exp-cat-name').value.trim(),planId=$('new-exp-cat-plan').value;
-  if(!name)return;D.expenseCats.push({name,planId});scheduleSave();closeModal('modal-exp-cat');renderSettings();
+  const name=$('ec-name').value.trim(),planId=$('ec-plan').value,idx=+$('ec-idx').value;
+  if(!name)return;
+  if(idx>=0){D.expenseCats[idx]={name,planId};}
+  else{D.expenseCats.push({name,planId});}
+  sched();closeModal('modal-exp-cat');renderSettings();
 };
-window.delExpCat=i=>{D.expenseCats.splice(i,1);scheduleSave();renderSettings();};
+window.delExpCat=i=>{D.expenseCats.splice(i,1);sched();renderSettings();};
 
-window.openModal=id=>{$(id||'modal').classList.add('open');};
-window.closeModal=id=>{$(id||'modal').classList.remove('open');};
-
-window.openModal=function(id){
-  if(id&&id!=='modal'){$(id).classList.add('open');return;}
+/* ===== MODAL ===== */
+window.openModal=function(id,isNew){
+  if(id!=='modal'){
+    if(id==='modal-exp-cat'&&isNew){
+      $('exp-cat-modal-title').textContent='Новая категория расходов';
+      $('ec-name').value='';$('ec-idx').value=-1;
+      fillExpPlanSelect('ec-plan');
+    }
+    $(id).classList.add('open');return;
+  }
   $('modal').classList.add('open');
   $('op-date').value=today();setType('income');
   const opts=D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
   $('op-wallet').innerHTML=opts;$('op-wallet2').innerHTML=opts;
   $('op-amount').value='';$('op-note').value='';
 };
+window.closeModal=id=>{$(id).classList.remove('open');};
+
 window.setType=type=>{
-  currentType=type;
-  ['income','expense','transfer','planned'].forEach(t=>{$('type-'+t).className='type-btn'+(t===type?' active-'+t:'');});
+  curType=type;
+  ['income','expense','transfer','planned_income','planned_expense'].forEach(t=>{
+    const el=$('type-'+t);if(el)el.className='type-btn'+(t===type?' active-'+t:'');
+  });
+  const isPlan=isPlanned(type);
+  $('planned-notice').style.display=isPlan?'':'none';
+  $('wallet-group').style.display=(type==='transfer'||isPlan)?'none':'';
   $('wallet2-group').style.display=type==='transfer'?'':'none';
-  $('cat-group').style.display=type==='transfer'?'none':'';
-  $('wallet-group').style.display=type==='planned'?'none':'';
-  $('planned-notice').style.display=type==='planned'?'':'none';
+  $('cat-group').style.display='';
   $('wallet-label').textContent=type==='transfer'?'Откуда':'Кошелёк';
-  const cats=type==='income'?D.incomeCats:(type==='planned'?[...D.incomeCats,...D.expenseCats.map(c=>c.name)]:D.expenseCats.map(c=>c.name));
-  $('op-cat').innerHTML=cats.map(c=>`<option value="${typeof c==='string'?c:c}">${typeof c==='string'?c:c}</option>`).join('');
+  $('cat-label').textContent=isPlan?'Название / категория':'Категория';
+  let cats=[];
+  if(type==='income')cats=D.incomeCats;
+  else if(type==='expense')cats=D.expenseCats.map(c=>c.name);
+  else if(isPlan)cats=[...D.incomeCats,...D.expenseCats.map(c=>c.name),'Зарплата','Аванс','Кредит','Коммуналка'];
+  else cats=[];
+  const unique=[...new Set(cats)];
+  $('op-cat').innerHTML=unique.map(c=>`<option value="${c}">${c}</option>`).join('');
 };
+
 window.saveOperation=()=>{
   const amount=parseFloat($('op-amount').value);
   if(!amount||amount<=0){alert('Введите сумму');return;}
   const date=$('op-date').value,note=$('op-note').value.trim();
-  const op={id:'op'+Date.now(),type:currentType,amount,date,note};
-  if(currentType==='planned'){op.category=$('op-cat').value;}
-  else if(currentType==='income'){op.wallet=$('op-wallet').value;op.category=$('op-cat').value;const w=D.wallets.find(w=>w.id===op.wallet);if(w)w.balance+=amount;}
-  else if(currentType==='expense'){op.wallet=$('op-wallet').value;op.category=$('op-cat').value;const w=D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;}
-  else{op.wallet=$('op-wallet').value;op.walletTo=$('op-wallet2').value;const wf=D.wallets.find(w=>w.id===op.wallet),wt=D.wallets.find(w=>w.id===op.walletTo);if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;}
-  D.operations.push(op);scheduleSave();closeModal('modal');
-  const cur=document.querySelector('.screen.active').id.replace('screen-','');
+  const op={id:'op'+Date.now(),type:curType,amount,date,note,category:$('op-cat').value||note};
+  if(!isPlanned(curType)){
+    op.wallet=$('op-wallet').value;
+    if(curType==='income'){const w=D.wallets.find(w=>w.id===op.wallet);if(w)w.balance+=amount;}
+    else if(curType==='expense'){const w=D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;}
+    else if(curType==='transfer'){
+      op.walletTo=$('op-wallet2').value;
+      const wf=D.wallets.find(w=>w.id===op.wallet),wt=D.wallets.find(w=>w.id===op.walletTo);
+      if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;
+    }
+  }
+  D.operations.push(op);sched();closeModal('modal');
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
   if(cur==='dashboard')renderDashboard();else if(cur==='dds')renderDDS();else if(cur==='calendar')renderCalendar();
 };
 
 window.deleteOp=id=>{
   const idx=D.operations.findIndex(o=>o.id===id);if(idx===-1)return;
-  const o=D.operations[idx];
-  if(!confirm('Удалить операцию?'))return;
+  const o=D.operations[idx];if(!confirm('Удалить операцию?'))return;
   if(o.type==='income'){const w=D.wallets.find(w=>w.id===o.wallet);if(w)w.balance-=o.amount;}
   else if(o.type==='expense'){const w=D.wallets.find(w=>w.id===o.wallet);if(w)w.balance+=o.amount;}
   else if(o.type==='transfer'){const wf=D.wallets.find(w=>w.id===o.wallet),wt=D.wallets.find(w=>w.id===o.walletTo);if(wf)wf.balance+=o.amount;if(wt)wt.balance-=o.amount;}
-  D.operations.splice(idx,1);scheduleSave();
-  const cur=document.querySelector('.screen.active').id.replace('screen-','');
+  D.operations.splice(idx,1);sched();
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
   if(cur==='dashboard')renderDashboard();else if(cur==='dds')renderDDS();else renderCalendar();
 };
 
 window.clearAllOps=()=>{
-  if(!confirm('Удалить ВСЕ операции? Балансы кошельков сбросятся к начальным.'))return;
-  D.operations=[];D.wallets.forEach(w=>{const orig=DEFAULT.wallets.find(dw=>dw.id===w.id);if(orig)w.balance=orig.balance;});
-  scheduleSave();renderDashboard();alert('Все операции удалены');
+  if(!confirm('Удалить ВСЕ операции? Балансы кошельков не сбросятся — обнулите их вручную если нужно.'))return;
+  D.operations=[];sched();
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  if(cur==='dashboard')renderDashboard();else if(cur==='dds')renderDDS();else renderCalendar();
 };
 
 window.exportData=()=>{
-  const blob=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const b=new Blob([JSON.stringify(D,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
   a.download='my-finance-backup-'+today()+'.json';a.click();
 };
 window.importData=e=>{
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
     try{
-      const imported=JSON.parse(ev.target.result);
-      if(!imported.wallets||!imported.operations)throw new Error('Неверный формат файла');
-      if(!confirm('Заменить все данные данными из файла?'))return;
-      D=imported;if(!D.version||D.version<2)migrateData();
-      saveNow(CU?.uid);renderDashboard();alert('Данные импортированы');
-    }catch(err){alert('Ошибка импорта: '+err.message);}
+      const imp=JSON.parse(ev.target.result);
+      if(!imp.wallets||!imp.operations)throw new Error('Неверный формат');
+      if(!confirm('Заменить все данные из файла?'))return;
+      D=imp;migrate();saveNow(CU?.uid);renderDashboard();alert('Данные импортированы');
+    }catch(err){alert('Ошибка: '+err.message);}
   };
-  reader.readAsText(file);e.target.value='';
+  r.readAsText(f);e.target.value='';
 };
 </script>
 </body>
