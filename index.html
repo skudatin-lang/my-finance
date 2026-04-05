@@ -183,6 +183,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .notice.blue{background:var(--bl50);color:var(--bl800);}
 .btns-row{display:flex;gap:8px;margin-bottom:8px;}
 .btns-row button{flex:1;}
+.cat-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.cat-tab{flex:1;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;font-size:13px;color:var(--text2);cursor:pointer;font-weight:500;}
+.cat-tab:hover{background:var(--a50);}
+.cat-tab.active{background:var(--a400);border-color:var(--a400);color:#fff;}
+.cat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:.5px solid var(--border);}
+.cat-row:last-child{border-bottom:none;}
+.cat-row-name{font-size:13px;color:var(--text);}
+.cat-row-count{font-size:11px;color:var(--text2);margin-top:1px;}
+.cat-row-amount{font-size:14px;font-weight:500;}
+.cat-row-bar{height:4px;border-radius:2px;background:var(--a200);margin-top:4px;}
+.cat-row-bar.exp{background:var(--r400);}
+.year-row{display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;}
+.year-item{display:flex;flex-direction:column;gap:2px;}
+.year-label{font-size:10px;color:var(--text2);}
+.year-val{font-size:14px;font-weight:500;}
 
 /* MODALS */
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(65,36,2,.45);z-index:200;align-items:center;justify-content:center;padding:16px;}
@@ -274,14 +289,20 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
       <!-- TOP LEFT: BALANCE -->
       <div class="grid-cell">
         <div class="cell-title">Баланс</div>
-        <div class="bal-block">
-          <div class="bal-row">
-            <span class="bal-tag">Общий</span>
-            <span class="bal-val" id="r-total-bal">₽ 0</span>
-          </div>
-          <div class="bal-row">
-            <span class="bal-tag">За месяц</span>
-            <span class="bal-val sm" id="r-month-bal">₽ 0</span>
+        <div class="bal-row">
+          <span class="bal-tag">Общий</span>
+          <span class="bal-val" id="r-total-bal">₽ 0</span>
+        </div>
+        <div class="bal-row" style="margin-bottom:10px">
+          <span class="bal-tag">За месяц</span>
+          <span class="bal-val sm" id="r-month-bal">₽ 0</span>
+        </div>
+        <div style="border-top:.5px solid var(--border);padding-top:10px">
+          <div style="font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">За год</div>
+          <div class="year-row">
+            <div class="year-item"><span class="year-label">Доходы</span><span class="year-val pos" id="r-year-inc">₽ 0</span></div>
+            <div class="year-item"><span class="year-label">Расходы</span><span class="year-val neg" id="r-year-exp">₽ 0</span></div>
+            <div class="year-item"><span class="year-label">Итого</span><span class="year-val" id="r-year-bal">₽ 0</span></div>
           </div>
         </div>
       </div>
@@ -321,8 +342,16 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
         <div class="cell-title">Кошельки</div>
         <div id="r-wallets-full"></div>
       </div>
-      <!-- BOTTOM: WALLET OPS — slider -->
-      <div class="grid-cell" style="grid-column:1/-1">
+      <!-- BOTTOM: CATEGORIES + WALLET OPS -->
+      <div class="grid-cell">
+        <div class="cell-title">Доходы и расходы по категориям</div>
+        <div class="cat-tabs">
+          <button class="cat-tab active" id="cattab-income" onclick="setCatTab('income')">Доходы</button>
+          <button class="cat-tab" id="cattab-expense" onclick="setCatTab('expense')">Расходы</button>
+        </div>
+        <div id="r-cat-list"></div>
+      </div>
+      <div class="grid-cell">
         <div class="cell-title">Операции по кошельку за месяц</div>
         <div class="wallet-nav">
           <button class="wnav-arrow" onclick="chWallet(-1)">&#8249;</button>
@@ -571,6 +600,14 @@ window.showScreen=name=>{
 };
 
 window.chMonth=d=>{repOff+=d;renderReports();};
+function renderWalletOps(factOps){
+  const wid=D.wallets[walletIdx]?.id;
+  const wOps=factOps.filter(o=>o.wallet===wid||o.walletTo===wid);
+  const el=$('r-wallet-ops');
+  if(!wOps.length){el.innerHTML='<div class="empty-state">Нет операций по этому кошельку за месяц</div>';return;}
+  el.innerHTML=[...wOps].sort((a,b)=>a.date<b.date?1:-1).map(o=>opHtml(o,true)).join('');
+}
+
 window.chWallet=d=>{
   walletIdx=(walletIdx+d+D.wallets.length)%D.wallets.length;
   const ops=getMOps(repOff);
@@ -592,9 +629,8 @@ function renderReports(){
   const mExp=factOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
   const mBal=mInc-mExp;
 
-  // Общий баланс = сумма всех кошельков
+  // Общий баланс = сумма кошельков
   const totalWalletBal=D.wallets.reduce((s,w)=>s+w.balance,0);
-
   const tb=$('r-total-bal');
   tb.textContent=(totalWalletBal<0?'\u2212 ':'')+fmt(totalWalletBal);
   tb.className='bal-val'+(totalWalletBal<0?' neg':(totalWalletBal>0?' pos':''));
@@ -603,25 +639,34 @@ function renderReports(){
   mb.textContent=(mBal<0?'\u2212 ':'')+fmt(mBal);
   mb.className='bal-val sm'+(mBal<0?' neg':(mBal>0?' pos':''));
 
+  // Годовые итоги
+  const yr=new Date(new Date().getFullYear(),new Date().getMonth()+repOff,1).getFullYear();
+  const yrOps=D.operations.filter(o=>!isPlanned(o.type)&&o.date&&o.date.startsWith(String(yr)));
+  const yInc=yrOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const yExp=yrOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const yBal=yInc-yExp;
+  $('r-year-inc').textContent=fmt(yInc);
+  $('r-year-exp').textContent=fmt(yExp);
+  const yb=$('r-year-bal');yb.textContent=(yBal<0?'\u2212 ':'')+fmt(yBal);yb.className='year-val'+(yBal<0?' neg':(yBal>0?' pos':''));
+
+  // Ожидаемые
   const expInc=ops.filter(o=>o.type==='planned_income').reduce((s,o)=>s+o.amount,0);
   const expExp=ops.filter(o=>o.type==='planned_expense').reduce((s,o)=>s+o.amount,0);
   $('r-inc-cur').textContent=fmt(mInc);$('r-inc-exp').textContent=fmt(expInc);
   $('r-exp-cur').textContent=fmt(mExp);$('r-exp-exp').textContent=fmt(expExp);
 
-  // WALLETS
+  // КОШЕЛЬКИ
   $('r-wallets-full').innerHTML=D.wallets.map(w=>`<div class="wallet-row">
     <div style="display:flex;align-items:center"><span style="font-size:14px">${w.name}</span>${w.balance<0?'<span class="w-badge">долг</span>':''}</div>
     <span class="w-amount ${w.balance<0?'neg':''}">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}</span>
   </div>`).join('');
 
-  // PLAN
-  const lastInc=[...D.operations].reverse().find(o=>o.type==='income');
+  // ФИНАНСОВЫЙ ПЛАН — синхронизирован с ДДС (используем totalInc месяца)
   const rp=$('r-plan');
-  if(lastInc&&D.plan.length){
-    const base=lastInc.amount;
+  if(D.plan.length&&mInc>0){
     let html='';
     D.plan.forEach(p=>{
-      const alloc=Math.round(base*p.pct/100);
+      const alloc=Math.round(mInc*p.pct/100);
       if(p.type==='income'){
         html+=`<div class="plan-item"><div class="plan-hdr"><span class="plan-name">${p.label}</span><span style="font-size:12px;color:var(--gr400)">${fmt(alloc)}</span></div><div class="plan-bar-bg"><div class="plan-bar-fill saving" style="width:100%"></div></div></div>`;
       }else{
@@ -634,34 +679,52 @@ function renderReports(){
       }
     });
     rp.innerHTML=html;
-  }else rp.innerHTML='<div class="empty-state">Добавьте доходы</div>';
+  }else{
+    rp.innerHTML='<div class="empty-state">'+(mInc===0?'Добавьте доходы за этот месяц':'Настройте финплан')+'</div>';
+  }
 
-  // WALLET SLIDER
+  // СЛАЙДЕР КОШЕЛЬКА
   if(walletIdx>=D.wallets.length)walletIdx=0;
   $('wallet-nav-label').textContent=D.wallets[walletIdx]?.name||'—';
   renderWalletOps(factOps);
+
+  // КАТЕГОРИИ
+  renderCatList(factOps);
 }
 
-function renderWalletOps(factOps){
-  const wid=D.wallets[walletIdx]?.id;
-  const wOps=factOps.filter(o=>o.wallet===wid||o.walletTo===wid);
-  const el=$('r-wallet-ops');
-  if(!wOps.length){el.innerHTML='<div class="empty-state">Нет операций по этому кошельку за месяц</div>';return;}
-  el.innerHTML=[...wOps].sort((a,b)=>a.date<b.date?1:-1).map(o=>opHtml(o,true)).join('');
+let curCatTab='income';
+window.setCatTab=tab=>{
+  curCatTab=tab;
+  $('cattab-income').className='cat-tab'+(tab==='income'?' active':'');
+  $('cattab-expense').className='cat-tab'+(tab==='expense'?' active':'');
+  const ops=getMOps(repOff).filter(o=>!isPlanned(o.type));
+  renderCatList(ops);
+};
+
+function renderCatList(factOps){
+  const el=$('r-cat-list');if(!el)return;
+  const isInc=curCatTab==='income';
+  const cats=isInc?D.incomeCats:D.expenseCats.map(c=>c.name);
+  const rows=cats.map(cat=>{
+    const catOps=factOps.filter(o=>o.type===(isInc?'income':'expense')&&o.category===cat);
+    const total=catOps.reduce((s,o)=>s+o.amount,0);
+    return{cat,total,count:catOps.length};
+  }).filter(r=>r.total>0).sort((a,b)=>b.total-a.total);
+  const maxVal=rows.length?rows[0].total:1;
+  if(!rows.length){el.innerHTML='<div class="empty-state">Нет операций за этот месяц</div>';return;}
+  el.innerHTML=rows.map(r=>{
+    const pct=Math.round(r.total/maxVal*100);
+    return`<div class="cat-row">
+      <div style="flex:1;min-width:0">
+        <div class="cat-row-name">${r.cat}</div>
+        <div class="cat-row-count">${r.count} операц.</div>
+        <div class="cat-row-bar${isInc?'':' exp'}" style="width:${pct}%"></div>
+      </div>
+      <div class="cat-row-amount ${isInc?'pos':'neg'}" style="margin-left:12px">${isInc?'+ ':'\u2212 '}${fmt(r.total)}</div>
+    </div>`;
+  }).join('');
 }
 
-function opHtml(o,showDel){
-  const isIn=o.type==='income',isOut=o.type==='expense';
-  const sc=isIn?'pos':(isOut?'neg':'');
-  const pfx=isIn?'+':(isOut?'\u2212':'');
-  const label=o.type==='transfer'?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
-  const pid=catPlanId(o.category);
-  const plbl=pid&&isOut?`<span class="badge badge-plan-cat">${planById(pid)?.label||''}</span>`:'';
-  return`<div class="op-item">
-    <div class="op-left"><div class="op-cat">${label}</div><div class="op-meta">${wName(o.wallet)} · ${fmtD(o.date)}${o.note?' · '+o.note:''}</div>${plbl}</div>
-    <div class="op-right"><div class="op-amount ${sc}">${pfx} ${fmt(o.amount)}</div>${showDel?`<button class="op-del" onclick="deleteOp('${o.id}')">&#10005;</button>`:''}</div>
-  </div>`;
-}
 
 window.ddsChM=d=>{ddsOff+=d;renderDDS();};
 function renderDDS(){
