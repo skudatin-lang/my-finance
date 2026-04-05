@@ -126,8 +126,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .empty-state{text-align:center;padding:20px;color:var(--text2);font-size:13px;}
 
 /* FAB */
-.fab{position:fixed;bottom:24px;right:24px;width:54px;height:54px;background:var(--a400);border-radius:50%;border:none;color:#fff;font-size:26px;cursor:pointer;z-index:100;display:flex;align-items:center;justify-content:center;}
-.fab:hover{background:var(--a600);}
+
 
 /* DDS */
 .dds-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
@@ -273,6 +272,7 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
       <button class="tbtn" onclick="showScreen('settings')">НАСТРОЙКИ</button>
+      <button class="tbtn" style="background:var(--a400);font-size:16px;font-weight:500;padding:7px 16px" onclick="openModal('modal',true)">+ Операция</button>
       <button class="tbtn" onclick="doSignOut()">ВЫЙТИ</button>
     </div>
   </div>
@@ -469,7 +469,6 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     </div>
   </div>
 
-  <button class="fab" onclick="openModal('modal',true)">+</button>
 </div>
 
 <!-- MODALS -->
@@ -491,9 +490,29 @@ select.form-input{appearance:none;background-image:url("data:image/svg+xml,%3Csv
     <div class="form-group" id="wallet-group"><label class="form-label" id="wallet-label">Кошелёк</label><select class="form-input" id="op-wallet"></select></div>
     <div class="form-group" id="wallet2-group" style="display:none"><label class="form-label">Кошелёк назначения</label><select class="form-input" id="op-wallet2"></select></div>
     <div class="form-group" id="cat-group"><label class="form-label" id="cat-label">Категория</label><select class="form-input" id="op-cat"></select></div>
+    <div class="form-group" id="transfer-cat-group" style="display:none">
+      <label class="form-label">Статья финплана (необязательно)</label>
+      <select class="form-input" id="op-transfer-cat">
+        <option value="">— не указывать —</option>
+      </select>
+      <div style="font-size:11px;color:var(--bl800);background:var(--bl50);padding:6px 10px;border-radius:6px;margin-top:6px">Например: перевод на кредитный кошелёк можно пометить как "Кредиты" — тогда он учтётся в финплане как расход, но не как доход</div>
+    </div>
     <div class="form-group"><label class="form-label">Заметка (необязательно)</label><input class="form-input" id="op-note" placeholder="Описание"></div>
     <button class="btn-primary" onclick="saveOperation()">Сохранить</button>
     <button class="btn-secondary" onclick="closeModal('modal')">Отмена</button>
+  </div>
+</div>
+<div class="modal-overlay" id="modal-edit-op">
+  <div class="modal">
+    <div class="modal-header"><span class="modal-title">Редактировать операцию</span><button class="modal-close" onclick="closeModal('modal-edit-op')">&#10005;</button></div>
+    <div class="form-group"><label class="form-label">Сумма</label><input class="form-input" type="number" id="edit-op-amount" placeholder="0"></div>
+    <div class="form-group"><label class="form-label">Дата</label><input class="form-input" type="date" id="edit-op-date"></div>
+    <div class="form-group" id="edit-wallet-disp"><label class="form-label">Кошелёк</label><select class="form-input" id="edit-op-wallet"></select></div>
+    <div class="form-group" id="edit-cat-disp"><label class="form-label">Категория</label><select class="form-input" id="edit-op-cat"></select></div>
+    <div class="form-group"><label class="form-label">Заметка</label><input class="form-input" id="edit-op-note" placeholder="Описание"></div>
+    <input type="hidden" id="edit-op-id">
+    <button class="btn-primary" onclick="saveEditOp()">Сохранить</button>
+    <button class="btn-secondary" onclick="closeModal('modal-edit-op')">Отмена</button>
   </div>
 </div>
 <div class="modal-overlay" id="modal-exp-cat">
@@ -600,10 +619,26 @@ window.showScreen=name=>{
 };
 
 window.chMonth=d=>{repOff+=d;renderReports();};
-function renderWalletOps(factOps){
+function opHtml(o,showDel){
+  const isIn=o.type==='income',isOut=o.type==='expense',isTr=o.type==='transfer';
+  const sc=isIn?'pos':(isOut?'neg':'');
+  const pfx=isIn?'+':(isOut?'\u2212':'');
+  const label=isTr?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
+  const pid=isTr?o.planId:catPlanId(o.category);
+  const plbl=pid?`<span class="badge badge-plan-cat">${planById(pid)?.label||''}</span>`:'';
+  const editBtn=showDel&&!isTr&&!isPlanned(o.type)?`<button class="op-del" onclick="openEditOp('${o.id}')" title="Редактировать" style="color:var(--bl400)">&#9998;</button>`:'';
+  const delBtn=showDel?`<button class="op-del" onclick="deleteOp('${o.id}')" title="Удалить">&#10005;</button>`:'';
+  return`<div class="op-item">
+    <div class="op-left"><div class="op-cat">${label}</div><div class="op-meta">${wName(o.wallet||'')} · ${fmtD(o.date)}${o.note?' · '+o.note:''}</div>${plbl}</div>
+    <div class="op-right"><div class="op-amount ${sc}">${pfx} ${fmt(o.amount)}</div>${editBtn}${delBtn}</div>
+  </div>`;
+}
+
+function renderWalletOps(){
   const wid=D.wallets[walletIdx]?.id;
-  const wOps=factOps.filter(o=>o.wallet===wid||o.walletTo===wid);
-  const el=$('r-wallet-ops');
+  const allOps=getMOps(repOff).filter(o=>!isPlanned(o.type));
+  const wOps=allOps.filter(o=>o.wallet===wid||o.walletTo===wid);
+  const el=$('r-wallet-ops');if(!el)return;
   if(!wOps.length){el.innerHTML='<div class="empty-state">Нет операций по этому кошельку за месяц</div>';return;}
   el.innerHTML=[...wOps].sort((a,b)=>a.date<b.date?1:-1).map(o=>opHtml(o,true)).join('');
 }
@@ -613,7 +648,7 @@ window.chWallet=d=>{
   const ops=getMOps(repOff);
   const factOps=ops.filter(o=>!isPlanned(o.type));
   $('wallet-nav-label').textContent=D.wallets[walletIdx]?.name||'—';
-  renderWalletOps(factOps);
+  renderWalletOps();
 };
 
 function renderReports(){
@@ -671,7 +706,7 @@ function renderReports(){
         html+=`<div class="plan-item"><div class="plan-hdr"><span class="plan-name">${p.label}</span><span style="font-size:12px;color:var(--gr400)">${fmt(alloc)}</span></div><div class="plan-bar-bg"><div class="plan-bar-fill saving" style="width:100%"></div></div></div>`;
       }else{
         const cats=D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
-        const spent=factOps.filter(o=>o.type==='expense'&&cats.includes(o.category)).reduce((s,o)=>s+o.amount,0);
+        const spent=factOps.filter(o=>(o.type==='expense'&&cats.includes(o.category))||(o.type==='transfer'&&o.planId===p.id)).reduce((s,o)=>s+o.amount,0);
         const left=alloc-spent;const pct=alloc>0?Math.min(Math.round(spent/alloc*100),100):0;
         html+=`<div class="plan-item"><div class="plan-hdr"><span class="plan-name">${p.label}</span><span class="plan-nums">${fmt(spent)} / ${fmt(alloc)}</span></div>
           <div class="plan-bar-bg"><div class="plan-bar-fill${pct>80&&pct<100?' warn':''}${pct>=100?' over':''}" style="width:${pct}%"></div></div>
@@ -686,7 +721,7 @@ function renderReports(){
   // СЛАЙДЕР КОШЕЛЬКА
   if(walletIdx>=D.wallets.length)walletIdx=0;
   $('wallet-nav-label').textContent=D.wallets[walletIdx]?.name||'—';
-  renderWalletOps(factOps);
+  renderWalletOps();
 
   // КАТЕГОРИИ
   renderCatList(factOps);
@@ -744,7 +779,7 @@ function renderDDS(){
         ih+=`<div class="plan-item"><div class="plan-hdr"><span class="plan-name">${p.label}</span><span style="font-size:12px;color:var(--gr400)">${fmt(alloc)} (${p.pct}%)</span></div><div class="plan-bar-bg"><div class="plan-bar-fill saving" style="width:100%"></div></div></div>`;
       }else{
         const cats=D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
-        const spent=ops.filter(o=>o.type==='expense'&&cats.includes(o.category)).reduce((s,o)=>s+o.amount,0);
+        const spent=ops.filter(o=>(o.type==='expense'&&cats.includes(o.category))||(o.type==='transfer'&&o.planId===p.id)).reduce((s,o)=>s+o.amount,0);
         const left=alloc-spent;const pct=alloc>0?Math.min(Math.round(spent/alloc*100),100):0;
         eh+=`<div class="plan-item"><div class="plan-hdr"><span class="plan-name">${p.label}</span><span class="plan-nums">план: ${fmt(alloc)} (${p.pct}%)</span></div>
           <div style="font-size:11px;color:var(--text2);margin-bottom:4px">Категории: ${cats.length?cats.join(', '):'—'}</div>
@@ -763,7 +798,7 @@ function renderDDS(){
     const cls=isIn?'pos':(isOut?'neg':'');
     const pfx=isIn?'+':(isOut?'\u2212':'');
     const cat=o.type==='transfer'?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
-    const pid=catPlanId(o.category);
+    const pid=o.type==='transfer'?o.planId:catPlanId(o.category);
     const plbl=isOut&&pid?` <span class="badge badge-plan-cat">${planById(pid)?.label||''}</span>`:'';
     html+=`<tr><td>${fmtD(o.date)}</td><td>${cat}${plbl}${o.note?'<br><span style="font-size:10px;color:var(--text2)">'+o.note+'</span>':''}</td><td>${wName(o.wallet)}</td><td class="${cls}" style="text-align:right">${pfx} ${fmt(o.amount)}</td></tr>`;
   });
@@ -857,11 +892,19 @@ window.setType=type=>{
   curType=type;
   ['income','expense','transfer','planned_income','planned_expense'].forEach(t=>{const e=$('type-'+t);if(e)e.className='type-btn'+(t===type?' active-'+t:'');});
   const isPlan=isPlanned(type);
+  const isTransfer=type==='transfer';
   $('planned-notice').style.display=isPlan?'':'none';
   $('wallet-group').style.display=isPlan?'none':'';
-  $('wallet2-group').style.display=type==='transfer'?'':'none';
-  $('wallet-label').textContent=type==='transfer'?'Откуда':'Кошелёк';
+  $('wallet2-group').style.display=isTransfer?'':'none';
+  $('transfer-cat-group').style.display=isTransfer?'':'none';
+  $('cat-group').style.display=isTransfer?'none':'';
+  $('wallet-label').textContent=isTransfer?'Откуда':'Кошелёк';
   $('cat-label').textContent=isPlan?'Название / категория':'Категория';
+  if(isTransfer){
+    const expPlanOpts=D.plan.filter(p=>p.type==='expense').map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+    $('op-transfer-cat').innerHTML='<option value="">— не указывать —</option>'+expPlanOpts;
+    return;
+  }
   let cats=[];
   if(type==='income')cats=D.incomeCats;
   else if(type==='expense')cats=D.expenseCats.map(c=>c.name);
@@ -876,9 +919,49 @@ window.saveOperation=()=>{
     op.wallet=$('op-wallet').value;
     if(curType==='income'){const w=D.wallets.find(w=>w.id===op.wallet);if(w)w.balance+=amount;}
     else if(curType==='expense'){const w=D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;}
-    else if(curType==='transfer'){op.walletTo=$('op-wallet2').value;const wf=D.wallets.find(w=>w.id===op.wallet),wt=D.wallets.find(w=>w.id===op.walletTo);if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;}
+    else if(curType==='transfer'){
+      op.walletTo=$('op-wallet2').value;
+      op.planId=$('op-transfer-cat').value||'';
+      const wf=D.wallets.find(w=>w.id===op.wallet),wt=D.wallets.find(w=>w.id===op.walletTo);
+      if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;
+    }
   }
   D.operations.push(op);sched();closeModal('modal');
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  if(cur==='reports')renderReports();else if(cur==='dds')renderDDS();else if(cur==='calendar')renderCalendar();
+};
+window.openEditOp=id=>{
+  const o=D.operations.find(op=>op.id===id);if(!o)return;
+  if(isPlanned(o.type)||o.type==='transfer'){alert('Редактирование доступно только для доходов и расходов');return;}
+  $('edit-op-id').value=id;
+  $('edit-op-amount').value=o.amount;
+  $('edit-op-date').value=o.date;
+  $('edit-op-note').value=o.note||'';
+  const walletOpts=D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  $('edit-op-wallet').innerHTML=walletOpts;
+  $('edit-op-wallet').value=o.wallet;
+  const cats=o.type==='income'?D.incomeCats:D.expenseCats.map(c=>c.name);
+  $('edit-op-cat').innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  $('edit-op-cat').value=o.category||'';
+  openModal('modal-edit-op');
+};
+window.saveEditOp=()=>{
+  const id=$('edit-op-id').value;
+  const idx=D.operations.findIndex(o=>o.id===id);if(idx===-1)return;
+  const o=D.operations[idx];
+  const newAmount=parseFloat($('edit-op-amount').value);
+  if(!newAmount||newAmount<=0){alert('Введите сумму');return;}
+  const newWallet=$('edit-op-wallet').value;
+  const oldWallet=o.wallet;
+  const oldAmount=o.amount;
+  // Revert old balance effect
+  const wOld=D.wallets.find(w=>w.id===oldWallet);
+  if(wOld){if(o.type==='income')wOld.balance-=oldAmount;else wOld.balance+=oldAmount;}
+  // Apply new balance effect
+  const wNew=D.wallets.find(w=>w.id===newWallet);
+  if(wNew){if(o.type==='income')wNew.balance+=newAmount;else wNew.balance-=newAmount;}
+  D.operations[idx]={...o,amount:newAmount,date:$('edit-op-date').value,wallet:newWallet,category:$('edit-op-cat').value,note:$('edit-op-note').value.trim()};
+  sched();closeModal('modal-edit-op');
   const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
   if(cur==='reports')renderReports();else if(cur==='dds')renderDDS();else if(cur==='calendar')renderCalendar();
 };
