@@ -11,12 +11,9 @@ export function openModal(id,isNew,deps){
   }
   $(id).classList.add('open');
   $('op-date').value=today();
-  setType('income'); // Сброс типа при открытии
-  
+  setType('income');
   const opts=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-  $('op-wallet').innerHTML=opts;
-  $('op-wallet2').innerHTML=opts; // Заполняем второй селект теми же кошельками
-  
+  $('op-wallet').innerHTML=opts;$('op-wallet2').innerHTML=opts;
   $('op-amount').value='';$('op-note').value='';
 }
 
@@ -32,15 +29,15 @@ export function setType(type){
   });
   const isPlan=isPlanned(type),isTr=type==='transfer';
   $('planned-notice').style.display=isPlan?'':'none';
-  $('wallet-group').style.display=(isTr||isPlan)?'none':'';
+  $('wallet-group').style.display=isPlan?'none':'';
   $('wallet2-group').style.display=isTr?'':'none';
   $('transfer-cat-group').style.display=isTr?'':'none';
   $('cat-group').style.display=isTr?'none':'';
-  $('wallet-label').textContent=isTr?'КОШЕЛЁК (ОТКУДА)':'КОШЕЛЁК';
+  $('wallet-label').textContent=isTr?'ОТКУДА':'КОШЕЛЁК';
   $('cat-label').textContent=isPlan?'НАЗВАНИЕ / КАТЕГОРИЯ':'КАТЕГОРИЯ';
 
   if(isTr){
-    // Все статьи финплана (и доходы и расходы) доступны при переводе
+    // Пункт 3: все статьи финплана (и доходы и расходы) доступны при переводе
     $('op-transfer-cat').innerHTML='<option value="">— не указывать —</option>'+
       state.D.plan.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
     return;
@@ -66,35 +63,11 @@ export function saveOperation(onDone){
     }else if(type==='expense'){
       const w=state.D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;
     }else if(type==='transfer'){
-      // ВАЖНО: оба кошелька должны быть выбраны
-      const fromWallet = $('op-wallet').value;
-      const toWallet = $('op-wallet2').value;
-      
-      if(!fromWallet || !toWallet){
-        alert('Выберите оба кошелька (откуда и куда)');
-        return;
-      }
-      
-      if(fromWallet === toWallet){
-        alert('Нельзя переводить самому себе');
-        return;
-      }
-      
-      op.wallet = fromWallet;      // откуда списываем
-      op.walletTo = toWallet;      // куда зачисляем
-      op.planId = $('op-transfer-cat').value || '';
-      
-      const wf = state.D.wallets.find(w=>w.id===op.wallet);
-      const wt = state.D.wallets.find(w=>w.id===op.walletTo);
-      
-      if(!wf || !wt){
-        alert('Ошибка: кошелёк не найден');
-        return;
-      }
-      
-      // Списание с одного, зачисление на другой
-      wf.balance -= amount;
-      wt.balance += amount;
+      op.wallet=$('op-wallet').value;op.walletTo=$('op-wallet2').value;
+      op.planId=$('op-transfer-cat').value||'';
+      const wf=state.D.wallets.find(w=>w.id===op.wallet);
+      const wt=state.D.wallets.find(w=>w.id===op.walletTo);
+      if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;
     }
   }
   state.D.operations.push(op);
@@ -140,3 +113,5 @@ export function deleteOp(id,onDone){
   }
   state.D.operations.splice(idx,1);sched();onDone();
 }
+
+

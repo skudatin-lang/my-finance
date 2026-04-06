@@ -163,7 +163,7 @@
       <div class="dds-right">
         <div class="panel" style="height:100%">
           <div class="panel-head">ВСЕ ОПЕРАЦИИ</div>
-          <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"></td></div></div>
+          <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"></table></div></div>
         </div>
       </div>
     </div>
@@ -280,19 +280,8 @@
       <div class="fg"><label>СУММА</label><input class="fi" type="number" id="op-amount" placeholder="0"></div>
       <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="op-date"></div>
     </div>
-    
-    <!-- Первый кошелёк (откуда списываем) -->
-    <div class="fg" id="wallet-group">
-      <label id="wallet-label">КОШЕЛЁК</label>
-      <select class="fi" id="op-wallet"></select>
-    </div>
-    
-    <!-- Второй кошелёк (куда зачисляем) - изначально скрыт -->
-    <div class="fg" id="wallet2-group" style="display:none">
-      <label>КОШЕЛЁК (КУДА)</label>
-      <select class="fi" id="op-wallet2"></select>
-    </div>
-    
+    <div class="fg" id="wallet-group"><label id="wallet-label">КОШЕЛЁК</label><select class="fi" id="op-wallet"></select></div>
+    <div class="fg" id="wallet2-group" style="display:none"><label>КОШЕЛЁК НАЗНАЧЕНИЯ</label><select class="fi" id="op-wallet2"></select></div>
     <div class="fg" id="cat-group"><label id="cat-label">КАТЕГОРИЯ</label><select class="fi" id="op-cat"></select></div>
     <div class="fg" id="transfer-cat-group" style="display:none">
       <label>СТАТЬЯ ФИНПЛАНА (необязательно)</label>
