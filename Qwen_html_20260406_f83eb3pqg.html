@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Мои Финансы</title>
+  <style>
+    /* === БАЗОВЫЕ СТИЛИ === */
+    :root {
+      --primary: #6366f1;
+      --primary-dark: #4f46e5;
+      --bg: #f4f6f9;
+      --surface: #ffffff;
+      --text: #1f2937;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding-bottom: 20px;
+    }
+
+    /* === ШАПКА / ФОТО-ПАНЕЛЬ === */
+    .header-panel {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 16px 20px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .header-panel h1 { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+    .header-panel p { font-size: 0.85rem; opacity: 0.9; }
+
+    /* === ВКЛАДКИ (ИСПРАВЛЕНИЕ 1: видимость на мобильном) === */
+    .nav-tabs {
+      display: flex;
+      background: var(--surface);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      position: sticky;
+      top: 0;
+      z-index: 100; /* Гарантирует, что вкладки поверх контента, но под фиксированными хедерами */
+      margin-top: 0;
+    }
+    .nav-tab {
+      flex: 1;
+      padding: 14px 8px;
+      text-align: center;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      border-bottom: 3px solid transparent;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+    .nav-tab:hover { background: #f9fafb; }
+    .nav-tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: #f0f4ff;
+    }
+
+    /* === БАЛАНС === */
+    .balance-panel {
+      background: var(--surface);
+      padding: 16px 12px;
+      margin: 8px 0;
+      box-shadow: var(--shadow);
+    }
+    .balance-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 12px;
+      text-align: center;
+    }
+    .balance-item span { display: block; font-size: 0.75rem; color: var(--text-muted); }
+    .balance-item strong { display: block; font-size: 1.05rem; margin-top: 2px; }
+
+    /* === КОНТЕНТ ВКЛАДОК === */
+    .content-wrapper { padding: 8px; max-width: 1200px; margin: 0 auto; }
+    .tab-content { display: none; animation: fadeIn 0.2s ease; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .section-title { font-size: 1.1rem; font-weight: 600; margin: 12px 0 8px; }
+    .placeholder-box {
+      background: var(--surface);
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      min-height: 150px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      border: 1px dashed var(--border);
+    }
+
+    /* === КАЛЕНДАРЬ (ИСПРАВЛЕНИЕ 2: 2 строки на мобильном) === */
+    .calendar-layout {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr; /* Десктоп: календарь шире, детали уже */
+      gap: 16px;
+    }
+    .calendar-block, .details-block {
+      background: var(--surface);
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: var(--shadow);
+      min-height: 320px;
+    }
+    .block-header { font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+    /* === МОБИЛЬНАЯ АДАПТАЦИЯ === */
+    @media (max-width: 768px) {
+      .header-panel { padding: 14px 16px; }
+      .nav-tab { padding: 12px 4px; font-size: 0.85rem; }
+      .balance-grid { grid-template-columns: repeat(2, 1fr); }
+      .content-wrapper { padding: 6px; }
+      
+      /* Календарь в 2 строки на мобильном */
+      .calendar-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto;
+      }
+      .calendar-block, .details-block { min-height: 260px; }
+    }
+
+    /* === КНОПКИ И УТИЛИТЫ === */
+    .btn {
+      padding: 10px 16px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn:hover { background: var(--primary-dark); }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- Шапка / Фото-панель -->
+  <header class="header-panel">
+    <h1>₽ МОИ ФИНАНСЫ</h1>
+    <p>Личный учёт доходов, расходов и финансового плана</p>
+  </header>
+
+  <!-- Вкладки навигации -->
+  <nav class="nav-tabs">
+    <div class="nav-tab active" data-target="reports">ОТЧЁТЫ</div>
+    <div class="nav-tab" data-target="cfd">ДДС</div>
+    <div class="nav-tab" data-target="calendar">КАЛЕНДАРЬ</div>
+  </nav>
+
+  <!-- Баланс -->
+  <section class="balance-panel">
+    <div class="balance-grid">
+      <div class="balance-item"><span>БАЛАНС ОБЩИЙ</span><strong>₽ 0</strong></div>
+      <div class="balance-item"><span>ЗА МЕСЯЦ</span><strong>0</strong></div>
+      <div class="balance-item"><span>ЗА ГОД</span><strong>0</strong></div>
+      <div class="balance-item"><span>ДОХОД ЗА МЕСЯЦ</span><strong>₽ 0</strong></div>
+      <div class="balance-item"><span>РАСХОД ЗА МЕСЯЦ</span><strong>₽ 0</strong></div>
+    </div>
+  </section>
+
+  <!-- Основной контент -->
+  <main class="content-wrapper">
+    <!-- ОТЧЁТЫ -->
+    <div id="reports" class="tab-content active">
+      <h2 class="section-title">Доходы и расходы</h2>
+      <div class="placeholder-box">📊 Графики и аналитика появятся здесь</div>
+    </div>
+
+    <!-- ДДС -->
+    <div id="cfd" class="tab-content">
+      <h2 class="section-title">Движение денежных средств</h2>
+      <div class="placeholder-box">📋 Таблица потоков ДДС</div>
+    </div>
+
+    <!-- КАЛЕНДАРЬ -->
+    <div id="calendar" class="tab-content">
+      <div class="calendar-layout">
+        <div class="calendar-block">
+          <div class="block-header">📅 Календарь</div>
+          <p style="color: var(--text-muted); margin-top: 20px; text-align: center;">Сетка календаря с плановыми операциями</p>
+        </div>
+        <div class="details-block">
+          <div class="block-header">📋 Детализация дня</div>
+          <p style="color: var(--text-muted); margin-top: 20px; text-align: center;">Выберите день для просмотра операций</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    // Переключение вкладок
+    document.addEventListener('DOMContentLoaded', () => {
+      const tabs = document.querySelectorAll('.nav-tab');
+      const contents = document.querySelectorAll('.tab-content');
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          // Убираем активность у всех
+          tabs.forEach(t => t.classList.remove('active'));
+          contents.forEach(c => c.classList.remove('active'));
+
+          // Активируем выбранную
+          tab.classList.add('active');
+          const targetId = tab.getAttribute('data-target');
+          document.getElementById(targetId).classList.add('active');
+
+          // Скроллим к вкладкам на мобильном для удобства
+          if (window.innerWidth < 768) {
+            document.querySelector('.nav-tabs').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
