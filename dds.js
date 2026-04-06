@@ -17,10 +17,14 @@ export function renderDDS(){
     state.D.plan.forEach(p=>{
       const alloc=Math.round(totalInc*p.pct/100);
       if(p.type==='income'){
+        const transfers=ops.filter(o=>o.type==='transfer'&&o.planId===p.id).reduce((s,o)=>s+o.amount,0);
+        const tLeft=alloc-transfers;
+        const tPct=alloc>0?Math.min(Math.round(transfers/alloc*100),100):0;
         ih+=`<div class="plan-card inc" style="margin-bottom:8px">
           <div class="plan-card-name inc">${p.label.toUpperCase()} (${p.pct}%)</div>
-          <div class="plan-card-val inc">${fmt(alloc)}</div>
-          <div class="plan-card-bar"><div class="plan-card-fill" style="width:100%"></div></div>
+          <div class="plan-card-val inc">${fmt(transfers)} / ${fmt(alloc)}</div>
+          <div class="plan-card-bar"><div class="plan-card-fill${tPct>=100?' over':''}" style="width:${tPct}%"></div></div>
+          <div class="plan-card-status ${tLeft<=0?'ok':'bad'}">${tLeft<=0?'отложено: '+fmt(transfers):'осталось: '+fmt(tLeft)}</div>
         </div>`;
       }else{
         const cats=state.D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
