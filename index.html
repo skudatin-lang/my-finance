@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Мои финансы</title>
 <style>
 :root{
@@ -29,16 +29,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
   #app-screen{height:auto;min-height:100vh;}
 
   /* Топбар: бренд + кнопки в одну строку, вкладки отдельной строкой снизу */
-  .topbar{flex-wrap:wrap;height:auto;padding:8px 10px 0;gap:0;}
+  .topbar{flex-wrap:wrap;height:auto;padding:8px 10px 0;gap:0;position:relative;z-index:10;}
   .topbar-brand{order:1;flex:1;padding-bottom:8px;}
-  .topbar-right{order:2;flex-shrink:0;padding-bottom:8px;gap:2px;}
+  .topbar-right{order:2;flex-shrink:0;padding-bottom:8px;gap:2px;display:flex;align-items:center;}
   .tbtn{padding:5px 7px;font-size:10px;}
   .tbtn.add{padding:5px 9px;}
 
-  /* Вкладки — отдельная строка на всю ширину */
-  .topbar-nav{order:3;width:100%;border-top:1px solid rgba(255,255,255,.1);display:flex!important;}
-  .tnav-btn{flex:1;padding:9px 4px;font-size:11px;border-bottom:none;border-top:3px solid transparent;}
-  .tnav-btn.active{border-top:3px solid var(--amber-light);border-bottom:none;}
+  /* Вкладки — отдельная строка на всю ширину, ВИДИМАЯ */
+  .topbar-nav{order:3;width:100%;border-top:1px solid rgba(255,255,255,.15);display:flex!important;background:var(--topbar);margin-top:4px;padding:0;}
+  .tnav-btn{flex:1;padding:10px 4px;font-size:11px;border-bottom:none;border-top:3px solid transparent;background:transparent;color:#C9A96E;}
+  .tnav-btn.active{border-top:3px solid var(--amber-light);border-bottom:none;background:rgba(255,255,255,.05);color:#fff;}
 
   .screen{flex-direction:column!important;overflow:visible!important;}
   .screen.active{display:flex;}
@@ -484,7 +484,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
       <div class="dds-right">
         <div class="panel" style="height:100%">
           <div class="panel-head">ВСЕ ОПЕРАЦИИ</div>
-          <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"></table></div></div>
+          <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"><tr></div></div>
         </div>
       </div>
     </div>
