@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Мои финансы</title>
 <style>
 :root{
@@ -16,59 +16,19 @@
   --scroll-thumb:#BA7517;--scroll-track:#EDD9A3;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
+body{font-family:Georgia,'Times New Roman',serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
 /* SCROLLBAR */
 ::-webkit-scrollbar{width:6px;}
 ::-webkit-scrollbar-track{background:var(--scroll-track);border-radius:3px;}
 ::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border-radius:3px;}
 
-/* MOBILE */
-@media(max-width:700px){
-  body{overflow:auto;}
-  #app-screen{height:auto;min-height:100vh;}
-
-  /* Топбар: бренд + кнопки в одну строку, вкладки отдельной строкой снизу */
-  .topbar{flex-wrap:wrap;height:auto;padding:8px 10px 0;gap:0;position:relative;z-index:10;}
-  .topbar-brand{order:1;flex:1;padding-bottom:8px;}
-  .topbar-right{order:2;flex-shrink:0;padding-bottom:8px;gap:2px;display:flex;align-items:center;}
-  .tbtn{padding:5px 7px;font-size:10px;}
-  .tbtn.add{padding:5px 9px;}
-
-  /* Вкладки — отдельная строка на всю ширину, ВИДИМАЯ */
-  .topbar-nav{order:3;width:100%;border-top:1px solid rgba(255,255,255,.15);display:flex!important;background:var(--topbar);margin-top:4px;padding:0;}
-  .tnav-btn{flex:1;padding:10px 4px;font-size:11px;border-bottom:none;border-top:3px solid transparent;background:transparent;color:#C9A96E;}
-  .tnav-btn.active{border-top:3px solid var(--amber-light);border-bottom:none;background:rgba(255,255,255,.05);color:#fff;}
-
-  .screen{flex-direction:column!important;overflow:visible!important;}
-  .screen.active{display:flex;}
-  #screen-reports{flex-direction:column!important;}
-  .rep-left{width:100%!important;border-right:none!important;border-bottom:2px solid var(--border2);}
-  .rep-right{width:100%!important;}
-  .rep-right > div:first-child{height:auto!important;flex-direction:column!important;}
-  .panel{height:auto!important;}
-  .panel-body{max-height:300px;overflow-y:auto;}
-  #screen-dds{flex-direction:column!important;}
-  .dds-wrap{flex-direction:column!important;overflow:visible!important;}
-  .dds-left{width:100%!important;}
-  .dds-right{overflow:visible!important;}
-  .dds-right .panel{height:auto!important;}
-  #screen-calendar .cal-wrap{flex-direction:column!important;overflow:visible!important;}
-  #screen-calendar .cal-left,.cal-right{width:100%!important;flex-direction:column;}
-  #screen-settings{flex-direction:column!important;overflow-y:auto!important;}
-  #screen-settings .s-panel{width:100%!important;max-width:100%!important;}
-  .plan-grid{grid-template-columns:1fr 1fr;}
-  .metrics-grid{grid-template-columns:1fr 1fr;}
-  .bal-grid{grid-template-columns:1fr 1fr;}
-  .rep-right-top{flex-direction:column;}
-}
-
 /* AUTH */
 #auth-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--bg);text-align:center;padding:32px;}
 .auth-logo{width:80px;height:80px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:32px;color:#fff;font-weight:700;border:3px solid var(--amber-dark);}
 .auth-title{font-size:28px;font-weight:700;color:var(--topbar);margin-bottom:8px;letter-spacing:1px;}
 .auth-sub{font-size:14px;color:var(--text2);margin-bottom:36px;}
-.google-btn{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:14px 28px;font-size:15px;color:var(--text);cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+.google-btn{display:flex;align-items:center;gap:12px;background:var(--card);border:2px solid var(--border);border-radius:10px;padding:14px 28px;font-size:15px;color:var(--text);cursor:pointer;font-family:Georgia,serif;}
 .google-btn:hover{background:var(--amber-light);}
 #loading-screen{display:none;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:14px;}
 .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:spin .8s linear infinite;}
@@ -82,11 +42,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .topbar-brand{padding:0 20px;display:flex;align-items:center;flex-shrink:0;}
 .topbar-title{font-size:13px;font-weight:700;color:#fff;letter-spacing:1.5px;}
 .topbar-nav{display:flex;flex:1;justify-content:center;}
-.tnav-btn{background:transparent;border:none;color:#C9A96E;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;border-bottom:3px solid transparent;}
+.tnav-btn{background:transparent;border:none;color:#C9A96E;padding:0 28px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:1px;font-family:Georgia,serif;border-bottom:3px solid transparent;}
 .tnav-btn:hover{color:#fff;background:rgba(255,255,255,.06);}
 .tnav-btn.active{background:var(--amber);color:#fff;border-bottom:3px solid var(--amber-dark);}
 .topbar-right{display:flex;align-items:center;gap:0;flex-shrink:0;}
-.tbtn{background:rgba(255,255,255,.08);border:none;border-left:1px solid rgba(255,255,255,.1);color:#C9A96E;padding:0 16px;height:100%;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+.tbtn{background:rgba(255,255,255,.08);border:none;border-left:1px solid rgba(255,255,255,.1);color:#C9A96E;padding:0 16px;height:100%;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px;font-family:Georgia,serif;}
 .tbtn:hover{background:rgba(255,255,255,.15);color:#fff;}
 .tbtn.add{background:var(--amber);color:#fff;font-size:12px;}
 .tbtn.add:hover{background:var(--amber-dark);}
@@ -115,7 +75,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .pm-arrow{background:var(--amber);border:none;color:#fff;width:22px;height:22px;border-radius:4px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .pm-label{font-size:13px;font-weight:700;color:var(--topbar);letter-spacing:.5px;flex:1;text-align:center;}
 .profile-btns{display:flex;gap:8px;}
-.pbtn{flex:1;background:var(--topbar);color:#C9A96E;border:none;border-radius:6px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+.pbtn{flex:1;background:var(--topbar);color:#C9A96E;border:none;border-radius:6px;padding:8px 0;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px;font-family:Georgia,serif;}
 .pbtn:hover{background:var(--amber-dark);color:#fff;}
 .pbtn.new-op{background:var(--amber);color:#fff;font-size:12px;}
 .pbtn.new-op:hover{background:var(--amber-dark);}
@@ -146,7 +106,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 
 /* CAT PANEL */
 .cat-tabs{display:flex;gap:0;margin-bottom:10px;border-radius:6px;overflow:hidden;border:1.5px solid var(--amber);}
-.cat-tab{flex:1;padding:7px;background:transparent;border:none;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.6px;color:var(--amber);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+.cat-tab{flex:1;padding:7px;background:transparent;border:none;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.6px;color:var(--amber);font-family:Georgia,serif;}
 .cat-tab.active{background:var(--amber);color:#fff;}
 .cat-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);}
 .cat-row:last-child{border-bottom:none;}
@@ -270,7 +230,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .s-row:last-child{border-bottom:none;}
 .s-name{font-size:13px;font-weight:700;color:var(--topbar);}
 .s-meta{font-size:10px;color:var(--text2);margin-top:2px;}
-.sbtn{padding:5px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;border:1.5px solid;}
+.sbtn{padding:5px 10px;border-radius:5px;font-size:11px;font-weight:700;cursor:pointer;font-family:Georgia,serif;border:1.5px solid;}
 .sbtn.amber{background:var(--amber-light);border-color:var(--amber);color:var(--amber-dark);}
 .sbtn.red{background:var(--red-bg);border-color:var(--red);color:var(--red);}
 .sbtn.blue{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);}
@@ -290,20 +250,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);}
 .fg{margin-bottom:12px;}
 .fg label{font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;display:block;margin-bottom:4px;}
-.fi{width:100%;padding:9px 12px;border:1.5px solid var(--border2);border-radius:7px;font-size:14px;background:#fff;color:var(--topbar);outline:none;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+.fi{width:100%;padding:9px 12px;border:1.5px solid var(--border2);border-radius:7px;font-size:14px;background:#fff;color:var(--topbar);outline:none;font-family:Georgia,serif;}
 .fi:focus{border-color:var(--amber);}
 select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23BA7517' d='M5 6L0 0h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:30px;}
 .type-toggle{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
-.type-btn{flex:1;min-width:60px;padding:8px 4px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer;text-align:center;font-weight:700;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
+.type-btn{flex:1;min-width:60px;padding:8px 4px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);color:var(--text2);font-size:12px;cursor:pointer;text-align:center;font-weight:700;font-family:Georgia,serif;}
 .type-btn.ai{background:var(--green-bg);border-color:var(--green);color:var(--green-dark);}
 .type-btn.ae{background:var(--orange-bg);border-color:var(--orange);color:var(--orange-dark);}
 .type-btn.at{background:var(--amber-light);border-color:var(--amber);color:var(--amber-dark);}
 .type-btn.api{background:var(--blue-bg);border-color:var(--blue);color:var(--blue);}
 .type-btn.ape{background:var(--orange-bg);border-color:var(--blue);color:var(--blue);}
-.btn-primary{width:100%;padding:11px;background:var(--amber);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;letter-spacing:.5px;}
+.btn-primary{width:100%;padding:11px;background:var(--amber);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:Georgia,serif;letter-spacing:.5px;}
 .btn-primary:hover{background:var(--amber-dark);}
-.btn-sec{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-size:13px;cursor:pointer;margin-top:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;}
-.btn-danger{width:100%;padding:10px;background:var(--red-bg);color:var(--red);border:1.5px solid var(--red);border-radius:8px;font-size:13px;cursor:pointer;margin-top:8px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;font-weight:700;}
+.btn-sec{width:100%;padding:10px;background:transparent;color:var(--text2);border:1.5px solid var(--border2);border-radius:8px;font-size:13px;cursor:pointer;margin-top:8px;font-family:Georgia,serif;}
+.btn-danger{width:100%;padding:10px;background:var(--red-bg);color:var(--red);border:1.5px solid var(--red);border-radius:8px;font-size:13px;cursor:pointer;margin-top:8px;font-family:Georgia,serif;font-weight:700;}
 .rf{display:flex;gap:10px;}
 .rf .fg{flex:1;}
 .btns-row{display:flex;gap:8px;margin-bottom:8px;}
@@ -371,8 +331,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
         <div class="panel-head">БАЛАНС</div>
         <div class="panel-body" style="overflow:visible">
           <div class="bal-grid">
-            <!-- Row 1: Общий + За месяц -->
-            <div class="bal-item">
+            <div class="bal-item" style="grid-column:1/-1">
               <div class="bal-lbl">ОБЩИЙ</div>
               <div class="bal-val lg" id="r-total-bal">₽ 0</div>
             </div>
@@ -380,18 +339,16 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
               <div class="bal-lbl">ЗА МЕСЯЦ</div>
               <div class="bal-val" id="r-month-bal">0</div>
             </div>
-            <!-- Row 2: За год -->
-            <div class="bal-item full">
+            <div class="bal-item">
               <div class="bal-lbl">ЗА ГОД</div>
               <div class="bal-val" id="r-year-bal">0</div>
             </div>
-            <!-- Row 3: Доход + Расход -->
             <div class="bal-item green">
-              <div class="bal-lbl">ДОХОД ЗА МЕСЯЦ</div>
+              <div class="bal-lbl">ДОХОД</div>
               <div class="bal-val sm pos" id="r-month-inc">₽ 0</div>
             </div>
             <div class="bal-item red">
-              <div class="bal-lbl">РАСХОД ЗА МЕСЯЦ</div>
+              <div class="bal-lbl">РАСХОД</div>
               <div class="bal-val sm neg" id="r-month-exp">₽ 0</div>
             </div>
           </div>
@@ -484,7 +441,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
       <div class="dds-right">
         <div class="panel" style="height:100%">
           <div class="panel-head">ВСЕ ОПЕРАЦИИ</div>
-          <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"><tr></div></div>
+          <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"></table></div></div>
         </div>
       </div>
     </div>
