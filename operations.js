@@ -13,7 +13,8 @@ export function openModal(id,isNew,deps){
   $('op-date').value=today();
   setType('income');
   const opts=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-  $('op-wallet').innerHTML=opts;$('op-wallet2').innerHTML=opts;
+  $('op-wallet').innerHTML=opts;
+  $('op-wallet2').innerHTML=opts; // ← ИСПРАВЛЕНО: заполняем второй селект
   $('op-amount').value='';$('op-note').value='';
 }
 
@@ -37,7 +38,7 @@ export function setType(type){
   $('cat-label').textContent=isPlan?'НАЗВАНИЕ / КАТЕГОРИЯ':'КАТЕГОРИЯ';
 
   if(isTr){
-    // Пункт 3: все статьи финплана (и доходы и расходы) доступны при переводе
+    // Все статьи финплана (и доходы и расходы) доступны при переводе
     $('op-transfer-cat').innerHTML='<option value="">— не указывать —</option>'+
       state.D.plan.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
     return;
@@ -63,11 +64,13 @@ export function saveOperation(onDone){
     }else if(type==='expense'){
       const w=state.D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;
     }else if(type==='transfer'){
-      op.wallet=$('op-wallet').value;op.walletTo=$('op-wallet2').value;
+      op.wallet=$('op-wallet').value;
+      op.walletTo=$('op-wallet2').value;
       op.planId=$('op-transfer-cat').value||'';
       const wf=state.D.wallets.find(w=>w.id===op.wallet);
       const wt=state.D.wallets.find(w=>w.id===op.walletTo);
-      if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;
+      if(wf)wf.balance-=amount;
+      if(wt)wt.balance+=amount;
     }
   }
   state.D.operations.push(op);
