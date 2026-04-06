@@ -11,10 +11,12 @@ export function openModal(id,isNew,deps){
   }
   $(id).classList.add('open');
   $('op-date').value=today();
-  setType('income');
+  setType('income'); // Сброс типа при открытии
+  
   const opts=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
   $('op-wallet').innerHTML=opts;
-  $('op-wallet2').innerHTML=opts; // ← ИСПРАВЛЕНО: заполняем второй селект
+  $('op-wallet2').innerHTML=opts; // Заполняем второй селект теми же кошельками
+  
   $('op-amount').value='';$('op-note').value='';
 }
 
@@ -64,13 +66,35 @@ export function saveOperation(onDone){
     }else if(type==='expense'){
       const w=state.D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;
     }else if(type==='transfer'){
-      op.wallet=$('op-wallet').value;
-      op.walletTo=$('op-wallet2').value;
-      op.planId=$('op-transfer-cat').value||'';
-      const wf=state.D.wallets.find(w=>w.id===op.wallet);
-      const wt=state.D.wallets.find(w=>w.id===op.walletTo);
-      if(wf)wf.balance-=amount;
-      if(wt)wt.balance+=amount;
+      // ВАЖНО: оба кошелька должны быть выбраны
+      const fromWallet = $('op-wallet').value;
+      const toWallet = $('op-wallet2').value;
+      
+      if(!fromWallet || !toWallet){
+        alert('Выберите оба кошелька (откуда и куда)');
+        return;
+      }
+      
+      if(fromWallet === toWallet){
+        alert('Нельзя переводить самому себе');
+        return;
+      }
+      
+      op.wallet = fromWallet;      // откуда списываем
+      op.walletTo = toWallet;      // куда зачисляем
+      op.planId = $('op-transfer-cat').value || '';
+      
+      const wf = state.D.wallets.find(w=>w.id===op.wallet);
+      const wt = state.D.wallets.find(w=>w.id===op.walletTo);
+      
+      if(!wf || !wt){
+        alert('Ошибка: кошелёк не найден');
+        return;
+      }
+      
+      // Списание с одного, зачисление на другой
+      wf.balance -= amount;
+      wt.balance += amount;
     }
   }
   state.D.operations.push(op);
