@@ -29,11 +29,17 @@ export function setType(type){
   });
   const isPlan=isPlanned(type),isTr=type==='transfer';
   $('planned-notice').style.display=isPlan?'':'none';
-  $('wallet-group').style.display=(isTr||isPlan)?'none':'';
+  $('wallet-group').style.display=isPlan?'none':'';
   $('wallet2-group').style.display=isTr?'':'none';
+  // Если перевод — убедимся что оба кошелька заполнены
+  if(isTr){
+    const opts=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+    if(!$('op-wallet').innerHTML)$('op-wallet').innerHTML=opts;
+    if(!$('op-wallet2').innerHTML)$('op-wallet2').innerHTML=opts;
+  }
   $('transfer-cat-group').style.display=isTr?'':'none';
   $('cat-group').style.display=isTr?'none':'';
-  $('wallet-label').textContent=isTr?'КОШЕЛЁК (ОТКУДА)':'КОШЕЛЁК';
+  $('wallet-label').textContent=isTr?'ОТКУДА':'КОШЕЛЁК';
   $('cat-label').textContent=isPlan?'НАЗВАНИЕ / КАТЕГОРИЯ':'КАТЕГОРИЯ';
 
   if(isTr){
@@ -44,7 +50,13 @@ export function setType(type){
   }
   let cats=[];
   if(type==='income')cats=state.D.incomeCats;
-  else if(type==='expense')cats=state.D.expenseCats.map(c=>c.name);
+  else if(type==='expense'){
+    // Все категории расходов + названия статей плана типа income (Бизнес, Накопления)
+    // чтобы можно было пометить расход как "Бизнес" и он учёлся в нужной статье
+    const expCats=state.D.expenseCats.map(c=>c.name);
+    const planIncomeLabels=state.D.plan.filter(p=>p.type==='income').map(p=>p.label);
+    cats=[...expCats,...planIncomeLabels.filter(l=>!expCats.includes(l))];
+  }
   else if(isPlan)cats=[...new Set([...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)])];
   $('op-cat').innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
