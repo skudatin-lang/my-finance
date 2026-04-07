@@ -39,19 +39,27 @@ export function renderReports(){
     rp.innerHTML=state.D.plan.map(p=>{
       const alloc=Math.round(mInc*p.pct/100);
       if(p.type==='income'){
+        // Для статей дохода показываем: отложено из последнего поступления vs реально отложено
+        // Реально отложено = переводы с planId === p.id за этот месяц
+        const transfers=factOps.filter(o=>o.type==='transfer'&&o.planId===p.id).reduce((s,o)=>s+o.amount,0);
+        const left=alloc-transfers;
+        const pct=alloc>0?Math.min(Math.round(transfers/alloc*100),100):0;
         return`<div class="plan-card inc">
           <div class="plan-card-name inc">${p.label.toUpperCase()}</div>
-          <div class="plan-card-val inc">${fmt(alloc)}</div>
-          <div class="plan-card-bar"><div class="plan-card-fill" style="width:100%"></div></div>
+          <div class="plan-card-val inc">${fmt(transfers)} / ${fmt(alloc)}</div>
+          <div class="plan-card-bar"><div class="plan-card-fill${pct>=100?' over':''}" style="width:${Math.max(pct,0)}%"></div></div>
+          <div class="plan-card-status ${left<=0?'ok':'bad'}">${left<=0?'отложено: '+fmt(transfers):'осталось отложить: '+fmt(left)}</div>
         </div>`;
       }else{
+        const cats=state.D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
         const spent=planSpent(p,factOps);
         const left=alloc-spent,pct=alloc>0?Math.min(Math.round(spent/alloc*100),100):0;
         return`<div class="plan-card exp">
           <div class="plan-card-name exp">${p.label.toUpperCase()}</div>
-          <div class="plan-card-val exp">${fmt(spent)}</div>
+          <div style="font-size:9px;color:var(--orange-dark);text-align:center;margin-bottom:3px">${cats.length?cats.join(', '):'—'}</div>
+          <div class="plan-card-val exp">${fmt(spent)} / ${fmt(alloc)}</div>
           <div class="plan-card-bar"><div class="plan-card-fill exp${pct>=100?' over':''}" style="width:${pct}%"></div></div>
-          <div class="plan-card-status ${left>=0?'ok':'bad'}">${left>=0?'ост: '+fmt(left):'перер: '+fmt(-left)}</div>
+          <div class="plan-card-status ${left>=0?'ok':'bad'}">${left>=0?'остаток: '+fmt(left):'перерасход: '+fmt(-left)}</div>
         </div>`;
       }
     }).join('');

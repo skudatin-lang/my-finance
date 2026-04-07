@@ -311,3 +311,35 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .bal-grid{grid-template-columns:1fr 1fr;}
   .cal-summary{grid-template-columns:1fr 1fr;}
 }
+
+/* ── DASHBOARD ── */
+#screen-dashboard{flex-direction:column;overflow-y:auto;}
+.dash-wrap{flex:1;display:flex;gap:var(--gap);padding:var(--gap);overflow:hidden;}
+.dash-left{width:320px;flex-shrink:0;display:flex;flex-direction:column;gap:var(--gap);overflow-y:auto;}
+.dash-right{flex:1;display:flex;flex-direction:column;gap:var(--gap);overflow:hidden;}
+.dash-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px;}
+.dash-kpi{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:10px 12px;}
+.dash-kpi-lbl{font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.7px;text-transform:uppercase;margin-bottom:4px;}
+.dash-kpi-val{font-size:18px;font-weight:700;color:var(--topbar);}
+.dash-kpi-val.pos{color:var(--green-dark);}
+.dash-kpi-val.neg{color:var(--red);}
+.dash-progress-wrap{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:0;}
+.dash-progress-bar{background:var(--g50);border-radius:4px;height:6px;margin-top:6px;}
+.dash-progress-fill{height:6px;border-radius:4px;background:var(--amber);}
+.chart-wrap{flex:1;min-height:0;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;display:flex;flex-direction:column;}
+.chart-wrap canvas{flex:1;min-height:0;}
+
+/* ── ANALYTICS ── */
+#screen-analytics{flex-direction:row;flex-wrap:wrap;gap:var(--gap);padding:var(--gap);overflow-y:auto;align-content:flex-start;}
+
+/* ── GOALS / RECURRING ── */
+#screen-extras{flex-direction:row;flex-wrap:wrap;gap:var(--gap);padding:var(--gap);overflow-y:auto;align-content:flex-start;}
+.extras-col{flex:1;min-width:300px;display:flex;flex-direction:column;gap:var(--gap);}
+
+/* ── MOBILE ADDITIONS ── */
+@media(max-width:700px){
+  .dash-wrap,.dash-left,.dash-right{flex-direction:column!important;overflow:visible!important;height:auto!important;width:100%!important;}
+  .dash-kpi-grid{grid-template-columns:1fr 1fr;}
+  #screen-analytics,#screen-extras{flex-direction:column!important;height:auto!important;overflow:visible!important;}
+  .extras-col{min-width:0!important;}
+}

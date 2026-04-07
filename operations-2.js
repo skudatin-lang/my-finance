@@ -29,11 +29,11 @@ export function setType(type){
   });
   const isPlan=isPlanned(type),isTr=type==='transfer';
   $('planned-notice').style.display=isPlan?'':'none';
-  $('wallet-group').style.display=(isTr||isPlan)?'none':'';
+  $('wallet-group').style.display=isPlan?'none':'';
   $('wallet2-group').style.display=isTr?'':'none';
   $('transfer-cat-group').style.display=isTr?'':'none';
   $('cat-group').style.display=isTr?'none':'';
-  $('wallet-label').textContent=isTr?'КОШЕЛЁК (ОТКУДА)':'КОШЕЛЁК';
+  $('wallet-label').textContent=isTr?'ОТКУДА':'КОШЕЛЁК';
   $('cat-label').textContent=isPlan?'НАЗВАНИЕ / КАТЕГОРИЯ':'КАТЕГОРИЯ';
 
   if(isTr){
