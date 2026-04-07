@@ -35,6 +35,9 @@
       <button class="tnav-btn" id="tnav-calendar" onclick="window.showScreen('calendar')">КАЛЕНДАРЬ</button>
       <button class="tnav-btn" id="tnav-analytics" onclick="window.showScreen('analytics')">АНАЛИТИКА</button>
       <button class="tnav-btn" id="tnav-extras" onclick="window.showScreen('extras')">ЦЕЛИ</button>
+      <button class="tnav-btn" id="tnav-loans" onclick="window.showScreen('loans')">КРЕДИТЫ</button>
+      <button class="tnav-btn" id="tnav-templates" onclick="window.showScreen('templates')">ШАБЛОНЫ</button>
+      <button class="tnav-btn" id="tnav-health" onclick="window.showScreen('health')">ЗДОРОВЬЕ</button>
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
@@ -350,6 +353,66 @@
     </div>
   </div>
 
+
+  <!-- ── HEALTH ── -->
+  <div id="screen-health" class="screen">
+    <div style="max-width:900px;margin:0 auto;width:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)">
+        <div style="font-size:18px;font-weight:700;color:var(--topbar)">Финансовое здоровье</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">ИНДЕКС ФИНАНСОВОГО ЗДОРОВЬЯ</div>
+        <div class="panel-body"><div id="health-content"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LOANS ── -->
+  <div id="screen-loans" class="screen">
+    <div class="loans-wrap">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:14px;font-weight:700;color:var(--topbar)">Займы и кредиты</div>
+          <button class="sbtn amber" onclick="window.openAddLoan()">+ Добавить</button>
+        </div>
+        <div id="loans-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">СВОДКА ПО ДОЛГАМ</div>
+        <div class="panel-body"><div id="loans-summary"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── TEMPLATES ── -->
+  <div id="screen-templates" class="screen">
+    <div class="templates-wrap">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div style="font-size:14px;font-weight:700;color:var(--topbar)">Шаблоны операций</div>
+          <button class="sbtn amber" onclick="window.openAddTemplate()">+ Создать шаблон</button>
+        </div>
+        <div id="templates-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">ГРУППОВАЯ ОПЕРАЦИЯ</div>
+        <div class="panel-body">
+          <div class="notice blue">Добавь несколько позиций одной записью — например, поход в магазин</div>
+          <div class="fg"><label>ОПИСАНИЕ</label><input class="fi" id="bulk-name" value="Групповая операция"></div>
+          <div class="rf">
+            <div class="fg"><label>ТИП</label><select class="fi" id="bulk-type"><option value="expense">Расход</option><option value="income">Доход</option></select></div>
+            <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="bulk-wallet"></select></div>
+          </div>
+          <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="bulk-date"></div>
+          <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;letter-spacing:.5px">ПОЗИЦИИ</div>
+          <div id="bulk-items"></div>
+          <button class="btn-sec" style="margin-top:4px" onclick="window.addBulkItem()">+ Добавить позицию</button>
+          <button class="btn-primary" style="margin-top:10px" onclick="window.saveBulkOp()">Сохранить все позиции</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- end app-screen -->
 
 <!-- ── MODALS ── -->
@@ -429,6 +492,9 @@ import{renderDashboard}from'./dashboard.js';
 import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
 import{renderGoals}from'./goals.js';
 import{renderRecurring,applyRecurring}from'./recurring.js';
+import{renderHealth}from'./health.js';
+import{renderLoans}from'./loans.js';
+import{renderTemplates}from'./templates.js';
 
 const $=id=>document.getElementById(id);
 
@@ -441,6 +507,40 @@ function refreshCurrent(){
   else if(cur==='settings')renderSettings();
   else if(cur==='analytics'){renderAnalytics();renderLimits();}
   else if(cur==='extras'){renderGoals();renderRecurring();}
+  else if(cur==='loans'){renderLoans();renderLoansSummary();}
+  else if(cur==='templates'){renderTemplates();initBulk();}
+  else if(cur==='health')renderHealth();
+}
+
+function renderLoansSummary(){
+  const el=document.getElementById('loans-summary');if(!el||!state.D)return;
+  const loans=state.D.loans||[];
+  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  const totalDebt=loans.reduce((s,l)=>{
+    const mr=l.rate/100/12,n=l.months;
+    const pmt=mr>0?Math.round(l.amount*mr*Math.pow(1+mr,n)/(Math.pow(1+mr,n)-1)):Math.round(l.amount/n);
+    const totalPay=pmt*n;
+    return s+totalPay;
+  },0);
+  const totalPrincipal=loans.reduce((s,l)=>s+l.amount,0);
+  const totalInterest=totalDebt-totalPrincipal;
+  const totalWalletDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
+  el.innerHTML=`<div class="bal-grid">
+    <div class="bal-item full red"><div class="bal-lbl">ВСЕГО ЗАДОЛЖЕННОСТЬ (кошельки)</div><div class="bal-val neg">${fmt(totalWalletDebt)}</div></div>
+    <div class="bal-item"><div class="bal-lbl">СУММА ЗАЙМОВ</div><div class="bal-val sm">${fmt(totalPrincipal)}</div></div>
+    <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА ИТОГО</div><div class="bal-val sm neg">${fmt(totalInterest)}</div></div>
+  </div>
+  ${loans.length===0?'<div style="color:var(--text2);font-size:13px;padding:12px 0">Добавьте займы для расчёта переплаты</div>':''}`;
+}
+
+function initBulk(){
+  if(!state.D)return;
+  const bw=document.getElementById('bulk-wallet');
+  if(bw)bw.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  const bd=document.getElementById('bulk-date');
+  if(bd&&!bd.value)bd.value=new Date().toISOString().split('T')[0];
+  const bi=document.getElementById('bulk-items');
+  if(bi&&!bi.children.length)window.addBulkItem&&window.addBulkItem();
 }
 
 window.showScreen=name=>{
@@ -605,6 +705,47 @@ $('loading-screen').style.display='flex';
     <input type="hidden" id="lim-idx" value="-1">
     <button class="btn-primary" onclick="window.saveLimit()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-limit').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+
+<!-- MODAL: loan -->
+<div class="modal-overlay" id="modal-loan">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">ЗАЙМ / КРЕДИТ</span><button class="modal-close" onclick="document.getElementById('modal-loan').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="loan-name" placeholder="Ипотека, автокредит..."></div>
+    <div class="rf">
+      <div class="fg"><label>СУММА ЗАЙМА</label><input class="fi" type="number" id="loan-amount" placeholder="0"></div>
+      <div class="fg"><label>СТАВКА % ГОД.</label><input class="fi" type="number" id="loan-rate" placeholder="0" step="0.1"></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>СРОК (МЕС.)</label><input class="fi" type="number" id="loan-months" placeholder="12"></div>
+      <div class="fg"><label>ДЕНЬ ПЛАТЕЖА</label><input class="fi" type="number" id="loan-payday" min="1" max="28" value="1"></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>ДАТА НАЧАЛА</label><input class="fi" type="date" id="loan-start"></div>
+      <div class="fg"><label>КОШЕЛЁК-ДОЛГ</label><select class="fi" id="loan-wallet"></select></div>
+    </div>
+    <input type="hidden" id="loan-idx" value="-1">
+    <button class="btn-primary" onclick="window.saveLoan()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-loan').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: template -->
+<div class="modal-overlay" id="modal-template">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">ШАБЛОН ОПЕРАЦИИ</span><button class="modal-close" onclick="document.getElementById('modal-template').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ ШАБЛОНА</label><input class="fi" id="tpl-name" placeholder="Кофе, обед..."></div>
+    <div class="rf">
+      <div class="fg"><label>ТИП</label><select class="fi" id="tpl-type" onchange="window.onTplTypeChange(this.value)"><option value="expense">Расход</option><option value="income">Доход</option></select></div>
+      <div class="fg"><label>СУММА</label><input class="fi" type="number" id="tpl-amount" placeholder="0"></div>
+    </div>
+    <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="tpl-cat"></select></div>
+    <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="tpl-wallet"></select></div>
+    <input type="hidden" id="tpl-idx" value="-1">
+    <button class="btn-primary" onclick="window.saveTemplate()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-template').classList.remove('open')">Отмена</button>
   </div>
 </div>
 

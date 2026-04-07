@@ -345,3 +345,20 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .chart-wrap{height:auto!important;min-height:0!important;}
   .chart-wrap canvas{height:220px!important;max-height:220px!important;}
 }
+
+/* ── HEALTH ── */
+#screen-health{flex-direction:column;overflow-y:auto;padding:var(--gap);}
+.health-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);max-width:900px;margin:0 auto;width:100%;}
+
+/* ── LOANS ── */
+#screen-loans{flex-direction:column;overflow-y:auto;padding:var(--gap);}
+.loans-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+
+/* ── TEMPLATES ── */
+#screen-templates{flex-direction:column;overflow-y:auto;padding:var(--gap);}
+.templates-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+
+@media(max-width:700px){
+  .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}
+  #screen-health,#screen-loans,#screen-templates{overflow:visible!important;height:auto!important;}
+}
