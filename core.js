@@ -113,8 +113,12 @@ export async function loadData(uid){
 // ── Plan spending helper ───────────────────────────
 export function planSpent(p,ops){
   const cats=state.D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
+  // Для статей типа income (Бизнес, Накопления) — также считаем расходы,
+  // где category === название статьи плана
+  const planLabel=p.label;
   return ops.filter(o=>
     (o.type==='expense'&&cats.includes(o.category))||
+    (o.type==='expense'&&o.category===planLabel)||
     (o.type==='transfer'&&o.planId===p.id)
   ).reduce((s,o)=>s+o.amount,0);
 }

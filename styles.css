@@ -342,4 +342,6 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .dash-kpi-grid{grid-template-columns:1fr 1fr;}
   #screen-analytics,#screen-extras{flex-direction:column!important;height:auto!important;overflow:visible!important;}
   .extras-col{min-width:0!important;}
+  .chart-wrap{height:auto!important;min-height:0!important;}
+  .chart-wrap canvas{height:220px!important;max-height:220px!important;}
 }

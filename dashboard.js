@@ -53,6 +53,10 @@ function renderCashflowChart(){
   }
   if(chartInstance){chartInstance.destroy();chartInstance=null;}
   if(typeof Chart==='undefined')return;
+  // Fix height for mobile
+  const isMobile=window.innerWidth<=700;
+  canvas.style.height=(isMobile?'220px':'100%');
+  canvas.style.maxHeight=(isMobile?'220px':'none');
   chartInstance=new Chart(ctx,{
     type:'bar',
     data:{
@@ -63,7 +67,9 @@ function renderCashflowChart(){
       ]
     },
     options:{
-      responsive:true,maintainAspectRatio:false,
+      responsive:true,
+      maintainAspectRatio:isMobile,
+      aspectRatio:isMobile?2:undefined,
       plugins:{legend:{position:'top',labels:{font:{size:11},color:'#7A5C30'}},tooltip:{callbacks:{label:ctx=>'₽ '+Math.round(ctx.raw).toLocaleString('ru-RU')}}},
       scales:{
         x:{ticks:{color:'#7A5C30',font:{size:11}},grid:{display:false}},
