@@ -119,7 +119,7 @@ export function planSpent(p,ops){
   return ops.filter(o=>
     (o.type==='expense'&&cats.includes(o.category))||
     (o.type==='expense'&&o.category===planLabel)||
-    (o.type==='transfer'&&o.planId===p.id)
+    (o.type==='transfer'&&(o.planId===p.id||o.planLabel===planLabel))
   ).reduce((s,o)=>s+o.amount,0);
 }
 

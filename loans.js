@@ -34,7 +34,7 @@ export function renderLoans(){
         <div>
           <div style="font-size:15px;font-weight:700;color:var(--topbar)">${loan.name} ${isCard?'<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:2px 7px;border-radius:5px;margin-left:5px">КРЕДИТКА</span>':''}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px">
-            ${isCard?`Ставка ${loan.rate}% · мин. платёж ${loan.minPayPct}% · платёж ~${fmt(loan.payment||0)}/мес`:
+            ${isCard?`Ставка ${loan.rate}% · мин. ${loan.minPayPct||8}% (мин ${fmt(loan.minPayFixed||600)}) · платёж ~${fmt(loan.payment||0)}/мес`:
             `${loan.rate}% год. · ${loan.months} мес. · с ${fmtD(loan.startDate)}`}
             ${wallet?' · кошелёк: '+wallet.name:''}
           </div>
@@ -98,21 +98,28 @@ function calcSchedule(loan){
 }
 
 function calcCardSchedule(loan){
-  // Кредитка: минимальный платёж = % от долга, погашение до нуля
+  // Кредитка: мин платёж = max(minPayPct% от долга, minPayFixed)
+  // Беспроцентный период: если оплачиваешь полный долг — % не начисляются
   const mr=loan.rate/100/12;
-  const minPct=(loan.minPayPct||5)/100;
-  const rows=[];let bal=loan.amount;
+  const minPct=(loan.minPayPct||8)/100;
+  const minFixed=loan.minPayFixed||600;
+  const graceDays=loan.graceDays||0;
+  const rows=[];
+  let bal=loan.amount;
   const now=new Date();
-  const payDay=loan.payDay||1;
-  for(let i=0;i<360&&bal>1;i++){
+  const payDay=loan.payDay||25;
+  for(let i=0;i<360&&bal>0.5;i++){
     const d=new Date(now.getFullYear(),now.getMonth()+i+1,payDay);
     const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay).padStart(2,'0');
-    const interest=Math.round(bal*mr);
-    const minPay=Math.max(Math.round(bal*minPct),500);// мин 500р
-    const pay=Math.max(loan.payment||minPay,interest+1);
+    // Если задан льготный период и это первый месяц — % не начисляются
+    const interest=graceDays>0&&i===0?0:Math.round(bal*mr);
+    const minPay=Math.max(Math.round(bal*minPct),minFixed);
+    // Пользователь платит больше минималки если задан payment
+    const pay=Math.min(Math.max(loan.payment||minPay,minPay),bal+interest);
     const principal=Math.min(pay-interest,bal);
     bal=Math.max(bal-principal,0);
-    rows.push({date:ds,total:pay,principal,interest,balance:bal});
+    rows.push({date:ds,total:Math.round(pay),principal:Math.round(principal),interest:Math.round(interest),balance:Math.round(bal)});
+    if(bal<1)break;
   }
   return rows;
 }
@@ -193,7 +200,9 @@ window.saveLoan=function(){
   let calcPayment=payment;
   if(!calcPayment){
     if(isCard){
-      calcPayment=Math.max(Math.round(amount*($('loan-minpay').value||5)/100),500);
+      const mPct=parseFloat($('loan-minpay').value||8)/100;
+      const mFixed=parseFloat($('loan-minfixed')?.value||600);
+      calcPayment=Math.max(Math.round(amount*mPct),mFixed);
     }else if(months>0){
       calcPayment=mr>0?Math.round(amount*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1)):Math.round(amount/months);
     }
@@ -203,9 +212,11 @@ window.saveLoan=function(){
     loanType,name:$('loan-name').value.trim(),
     amount,rate,months:isCard?0:months,
     startDate:$('loan-start').value,
-    payDay:parseInt($('loan-payday').value)||1,
+    payDay:parseInt($('loan-payday').value)||25,
     payment:calcPayment,
-    minPayPct:isCard?parseFloat($('loan-minpay').value||5):undefined,
+    minPayPct:isCard?parseFloat($('loan-minpay').value||8):undefined,
+    minPayFixed:isCard?parseFloat($('loan-minfixed')?.value||600):undefined,
+    graceDays:isCard?parseInt($('loan-grace')?.value||55):undefined,
     walletId:$('loan-wallet').value||null
   };
   if(idx>=0)state.D.loans[idx]=loan;else state.D.loans.push(loan);

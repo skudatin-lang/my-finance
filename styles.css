@@ -269,8 +269,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .topbar{flex-wrap:wrap;height:auto;padding:0;}
   .topbar-brand{order:1;flex:1;padding:10px 14px;}
   .topbar-right{order:2;flex-shrink:0;height:44px;}
-  .topbar-nav{order:3;width:100%;justify-content:stretch;border-top:1px solid rgba(255,255,255,.12);}
-  .tnav-btn{flex:1;height:40px;padding:0 4px;font-size:11px;border-bottom:none;border-top:3px solid transparent;}
+  .topbar-nav{order:3;width:100%;justify-content:flex-start;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
+  .topbar-nav::-webkit-scrollbar{display:none;}
+  .tnav-btn{flex:0 0 auto;height:40px;padding:0 14px;font-size:11px;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;}
   .tnav-btn.active{background:var(--amber);border-top:3px solid var(--amber-dark);border-bottom:none;}
   .tbtn{padding:0 10px;font-size:10px;height:44px;}
 
@@ -326,7 +327,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dash-progress-wrap{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:10px 14px;margin-bottom:0;}
 .dash-progress-bar{background:var(--g50);border-radius:4px;height:6px;margin-top:6px;}
 .dash-progress-fill{height:6px;border-radius:4px;background:var(--amber);}
-.chart-wrap{flex:1;min-height:0;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;display:flex;flex-direction:column;}
+.chart-wrap{flex:1;min-height:0;max-height:280px;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;display:flex;flex-direction:column;}
 .chart-wrap canvas{flex:1;min-height:0;}
 
 /* ── ANALYTICS ── */
@@ -361,4 +362,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 @media(max-width:700px){
   .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}
   #screen-health,#screen-loans,#screen-templates{overflow:visible!important;height:auto!important;}
+  /* P6: wallets full width */
+  .rep-right-top{flex-direction:column!important;}
+  .rep-right-top .panel:first-child{width:100%!important;}
 }

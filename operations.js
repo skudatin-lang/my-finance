@@ -76,7 +76,10 @@ export function saveOperation(onDone){
       const w=state.D.wallets.find(w=>w.id===op.wallet);if(w)w.balance-=amount;
     }else if(type==='transfer'){
       op.wallet=$('op-wallet').value;op.walletTo=$('op-wallet2').value;
-      op.planId=$('op-transfer-cat').value||'';
+      const selPlanId=$('op-transfer-cat').value||'';
+      op.planId=selPlanId;
+      // Also save plan label for display
+      if(selPlanId){const pl=state.D.plan.find(p=>p.id===selPlanId);op.planLabel=pl?pl.label:'';}
       const wf=state.D.wallets.find(w=>w.id===op.wallet);
       const wt=state.D.wallets.find(w=>w.id===op.walletTo);
       if(wf)wf.balance-=amount;if(wt)wt.balance+=amount;

@@ -2,8 +2,36 @@ import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched}from'
 
 let chartInstance=null;
 
+const WIDGETS=[
+  {id:'kpi',label:'Ключевые метрики'},
+  {id:'alerts',label:'Алерты и предупреждения'},
+  {id:'quick',label:'Быстрые операции / шаблоны'},
+  {id:'goals',label:'Цели'},
+  {id:'debts',label:'Кредиты и долги'},
+  {id:'health',label:'Финансовое здоровье'},
+  {id:'top3',label:'Топ-3 расходов'},
+  {id:'chart',label:'График cashflow'},
+];
+
+function getWidgetVis(){
+  if(!state.D.dashWidgets)state.D.dashWidgets={kpi:true,alerts:true,quick:true,goals:true,debts:true,health:true,top3:true,chart:true};
+  return state.D.dashWidgets;
+}
+
+function showWidget(id){
+  const el=document.getElementById('dash-widget-'+id);
+  if(el)el.style.display='';
+}
+function hideWidget(id){
+  const el=document.getElementById('dash-widget-'+id);
+  if(el)el.style.display='none';
+}
+
 export function renderDashboard(){
   if(!state.D)return;
+  // Apply widget visibility
+  const vis=getWidgetVis();
+  WIDGETS.forEach(w=>{vis[w.id]!==false?showWidget(w.id):hideWidget(w.id);});
   const now=new Date();
   const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
   const dayOfMonth=now.getDate();
@@ -327,3 +355,25 @@ function renderHealthScore(){
     <div style="text-align:right;margin-top:4px"><a href="#" onclick="window.showScreen('health');return false" style="font-size:11px;color:var(--amber);text-decoration:none;font-weight:700">Подробнее →</a></div>
   `;
 }
+
+window.openWidgetSettings=function(){
+  if(!state.D)return;
+  const vis=getWidgetVis();
+  document.getElementById('widget-checkboxes').innerHTML=WIDGETS.map(w=>`
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--topbar)">
+      <input type="checkbox" ${vis[w.id]!==false?'checked':''} id="wchk-${w.id}" style="accent-color:var(--amber);width:16px;height:16px">
+      ${w.label}
+    </label>`).join('');
+  document.getElementById('modal-widgets').classList.add('open');
+};
+
+window.saveWidgetSettings=function(){
+  if(!state.D.dashWidgets)state.D.dashWidgets={};
+  WIDGETS.forEach(w=>{
+    const el=document.getElementById('wchk-'+w.id);
+    if(el)state.D.dashWidgets[w.id]=el.checked;
+  });
+  sched();
+  document.getElementById('modal-widgets').classList.remove('open');
+  renderDashboard();
+};
