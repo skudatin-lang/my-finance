@@ -158,11 +158,13 @@
       <div class="cal-top-row">
         <div class="cal-grid-wrap" style="flex:1">
           <div class="cal-summary">
-            <div class="cs-item"><div class="cs-lbl">ФАКТ ДОХОД</div><div class="cs-val pos" id="cs-fi">₽0</div></div>
-            <div class="cs-item"><div class="cs-lbl">ФАКТ РАСХОД</div><div class="cs-val neg" id="cs-fo">₽0</div></div>
-            <div class="cs-item blue"><div class="cs-lbl">ПЛАН ДОХОД</div><div class="cs-val blue" id="cs-pi">₽0</div></div>
-            <div class="cs-item blue"><div class="cs-lbl">ПЛАН РАСХОД</div><div class="cs-val neg" id="cs-po">₽0</div></div>
+            <div class="cs-item" onclick="window.showCalSummary('fact-inc')" style="cursor:pointer" title="Нажми для детализации"><div class="cs-lbl">ФАКТ ДОХОД ▾</div><div class="cs-val pos" id="cs-fi">₽0</div></div>
+            <div class="cs-item" onclick="window.showCalSummary('fact-exp')" style="cursor:pointer" title="Нажми для детализации"><div class="cs-lbl">ФАКТ РАСХОД ▾</div><div class="cs-val neg" id="cs-fo">₽0</div></div>
+            <div class="cs-item blue" onclick="window.showCalSummary('plan-inc')" style="cursor:pointer" title="Нажми для детализации"><div class="cs-lbl">ПЛАН ДОХОД ▾</div><div class="cs-val blue" id="cs-pi">₽0</div></div>
+            <div class="cs-item blue" onclick="window.showCalSummary('plan-exp')" style="cursor:pointer" title="Нажми для детализации"><div class="cs-lbl">ПЛАН РАСХОД ▾</div><div class="cs-val neg" id="cs-po">₽0</div></div>
           </div>
+          <!-- Summary detail dropdown -->
+          <div id="cal-summary-detail" style="display:none;background:var(--card);border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:12px;max-height:200px;overflow-y:auto"></div>
           <div class="cal-grid" id="cal-grid"></div>
           <div class="cal-legend">
             <span><span style="display:inline-block;width:10px;height:10px;background:var(--amber-light);border:1px solid var(--border);border-radius:2px;margin-right:3px"></span>Факт</span>

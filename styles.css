@@ -173,7 +173,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .dds-tbl tr.total td{font-weight:700;background:var(--amber-light);}
 
 /* ── CALENDAR ── */
-.cal-wrap{flex:1;display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;}
+.cal-wrap{flex:1;display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;min-height:0;}
+#screen-calendar{flex-direction:column;}
 .cal-top-row{display:flex;gap:var(--gap);}
 .cal-grid-wrap{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;flex:1;}
 .cal-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px;}

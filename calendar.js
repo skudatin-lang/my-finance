@@ -81,3 +81,84 @@ export function showCalDay(ds){
   }
   el.innerHTML=html;
 }
+
+// ── Summary detail on click ─────────────────────────────────────
+window.showCalSummary=function(type){
+  const el=document.getElementById('cal-summary-detail');
+  if(!el||!state.D)return;
+
+  // Toggle if same type clicked again
+  if(el.dataset.type===type&&el.style.display!=='none'){
+    el.style.display='none'; el.dataset.type=''; return;
+  }
+  el.dataset.type=type;
+  el.style.display='block';
+
+  const now=new Date(new Date().getFullYear(),new Date().getMonth()+state.calOff,1);
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const allM=state.D.operations.filter(o=>o.date&&o.date.startsWith(ym));
+
+  let ops=[], title='', colorCls='';
+  if(type==='fact-inc'){
+    ops=allM.filter(o=>o.type==='income');
+    title='Фактические доходы'; colorCls='pos';
+  }else if(type==='fact-exp'){
+    ops=allM.filter(o=>o.type==='expense');
+    title='Фактические расходы'; colorCls='neg';
+  }else if(type==='plan-inc'){
+    ops=allM.filter(o=>o.type==='planned_income');
+    title='Плановые доходы'; colorCls='blue';
+  }else if(type==='plan-exp'){
+    // Deduplicate recurring
+    const all=allM.filter(o=>o.type==='planned_expense');
+    const seen=new Set();
+    ops=all.filter(o=>{
+      if(!o.recurringId)return true;
+      if(seen.has(o.recurringId))return false;
+      seen.add(o.recurringId);return true;
+    });
+    title='Плановые расходы'; colorCls='neg';
+  }
+
+  if(!ops.length){
+    el.innerHTML=`<div style="color:var(--text2);font-size:12px;padding:4px 0">Нет операций</div>`;
+    return;
+  }
+
+  // Group by category
+  const groups={};
+  ops.forEach(o=>{
+    const cat=o.category||o.note||'—';
+    if(!groups[cat])groups[cat]={total:0,count:0,items:[]};
+    groups[cat].total+=o.amount;
+    groups[cat].count++;
+    groups[cat].items.push(o);
+  });
+
+  const total=ops.reduce((s,o)=>s+o.amount,0);
+  const wName=id=>{const w=state.D.wallets.find(w=>w.id===id);return w?w.name:'';};
+  const fmtD=ds=>{if(!ds)return'';const[y,m,d]=ds.split('-');return d+'.'+m;};
+
+  let html=`<div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px;display:flex;justify-content:space-between">
+    <span>${title}</span>
+    <span style="color:var(--topbar)">Итого: ₽ ${Math.round(total).toLocaleString('ru-RU')}</span>
+  </div>`;
+
+  // By category
+  Object.entries(groups).sort((a,b)=>b[1].total-a[1].total).forEach(([cat,g])=>{
+    html+=`<div style="padding:5px 0;border-bottom:.5px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;font-weight:700;color:var(--topbar)">${cat}</span>
+        <span style="font-size:12px;font-weight:700;color:var(--${colorCls==='pos'?'green-dark':colorCls==='neg'?'red':'blue'})">
+          ₽ ${Math.round(g.total).toLocaleString('ru-RU')}
+        </span>
+      </div>
+      ${g.items.map(o=>`<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;justify-content:space-between">
+        <span>${wName(o.wallet||'')}${o.note?' · '+o.note:''} · ${fmtD(o.date)}</span>
+        <span>₽ ${Math.round(o.amount).toLocaleString('ru-RU')}</span>
+      </div>`).join('')}
+    </div>`;
+  });
+
+  el.innerHTML=html;
+};
