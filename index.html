@@ -288,7 +288,15 @@
           <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
           <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
         </div>
-        <div class="panel" style="flex:1;min-height:100px">
+        <div class="panel" style="flex-shrink:0">
+          <div class="panel-head">КРЕДИТЫ И ДОЛГИ</div>
+          <div class="panel-body"><div id="dash-debts"></div></div>
+        </div>
+        <div class="panel" style="flex-shrink:0">
+          <div class="panel-head">ФИНАНСОВОЕ ЗДОРОВЬЕ</div>
+          <div class="panel-body"><div id="dash-health-score"></div></div>
+        </div>
+        <div class="panel" style="flex:1;min-height:80px">
           <div class="panel-head">ЦЕЛИ</div>
           <div class="panel-body"><div id="dash-goals"></div></div>
         </div>
@@ -493,7 +501,7 @@ import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
 import{renderGoals}from'./goals.js';
 import{renderRecurring,applyRecurring}from'./recurring.js';
 import{renderHealth}from'./health.js';
-import{renderLoans}from'./loans.js';
+import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
 
 const $=id=>document.getElementById(id);
@@ -713,19 +721,35 @@ $('loading-screen').style.display='flex';
 <div class="modal-overlay" id="modal-loan">
   <div class="modal">
     <div class="modal-hdr"><span class="modal-title">ЗАЙМ / КРЕДИТ</span><button class="modal-close" onclick="document.getElementById('modal-loan').classList.remove('open')">&#10005;</button></div>
-    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="loan-name" placeholder="Ипотека, автокредит..."></div>
     <div class="rf">
-      <div class="fg"><label>СУММА ЗАЙМА</label><input class="fi" type="number" id="loan-amount" placeholder="0"></div>
+      <div class="fg"><label>ТИП</label>
+        <select class="fi" id="loan-type" onchange="window.toggleLoanType(this.value)">
+          <option value="credit">Кредит / ипотека</option>
+          <option value="card">Кредитная карта</option>
+        </select>
+      </div>
+      <div class="fg"><label>КОШЕЛЁК-ДОЛГ (автозаполнение)</label>
+        <select class="fi" id="loan-wallet" onchange="window.onLoanWalletChange(this.value)"></select>
+      </div>
+    </div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="loan-name" placeholder="Ипотека, Тинькофф кредитка..."></div>
+    <div class="rf">
+      <div class="fg"><label>СУММА ДОЛГА</label><input class="fi" type="number" id="loan-amount" placeholder="0"></div>
       <div class="fg"><label>СТАВКА % ГОД.</label><input class="fi" type="number" id="loan-rate" placeholder="0" step="0.1"></div>
     </div>
-    <div class="rf">
-      <div class="fg"><label>СРОК (МЕС.)</label><input class="fi" type="number" id="loan-months" placeholder="12"></div>
-      <div class="fg"><label>ДЕНЬ ПЛАТЕЖА</label><input class="fi" type="number" id="loan-payday" min="1" max="28" value="1"></div>
+    <div id="loan-credit-fields">
+      <div class="rf">
+        <div class="fg"><label>СРОК (МЕС.)</label><input class="fi" type="number" id="loan-months" placeholder="12"></div>
+        <div class="fg"><label>ДАТА НАЧАЛА</label><input class="fi" type="date" id="loan-start"></div>
+      </div>
     </div>
-    <div class="rf">
-      <div class="fg"><label>ДАТА НАЧАЛА</label><input class="fi" type="date" id="loan-start"></div>
-      <div class="fg"><label>КОШЕЛЁК-ДОЛГ</label><select class="fi" id="loan-wallet"></select></div>
+    <div id="loan-card-fields" style="display:none">
+      <div class="rf">
+        <div class="fg"><label>МИН. ПЛАТЁЖ %</label><input class="fi" type="number" id="loan-minpay" value="5" step="0.5" placeholder="5"></div>
+        <div class="fg"><label>МОЙ ПЛАТЁЖ/МЕС</label><input class="fi" type="number" id="loan-payment" placeholder="авто"></div>
+      </div>
     </div>
+    <div class="fg"><label>ДЕНЬ ПЛАТЕЖА</label><input class="fi" type="number" id="loan-payday" min="1" max="28" value="1"></div>
     <input type="hidden" id="loan-idx" value="-1">
     <button class="btn-primary" onclick="window.saveLoan()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-loan').classList.remove('open')">Отмена</button>

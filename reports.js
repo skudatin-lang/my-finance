@@ -39,16 +39,17 @@ export function renderReports(){
     rp.innerHTML=state.D.plan.map(p=>{
       const alloc=Math.round(mInc*p.pct/100);
       if(p.type==='income'){
-        // Для статей дохода показываем: отложено из последнего поступления vs реально отложено
-        // Реально отложено = переводы с planId === p.id за этот месяц
+        // Учитываем и переводы с planId, и расходы с category===p.label (напр. "Бизнес")
         const transfers=factOps.filter(o=>o.type==='transfer'&&o.planId===p.id).reduce((s,o)=>s+o.amount,0);
-        const left=alloc-transfers;
-        const pct=alloc>0?Math.min(Math.round(transfers/alloc*100),100):0;
+        const expenses=factOps.filter(o=>o.type==='expense'&&o.category===p.label).reduce((s,o)=>s+o.amount,0);
+        const used=transfers+expenses;
+        const left=alloc-used;
+        const pct=alloc>0?Math.min(Math.round(used/alloc*100),100):0;
         return`<div class="plan-card inc">
           <div class="plan-card-name inc">${p.label.toUpperCase()}</div>
-          <div class="plan-card-val inc">${fmt(transfers)} / ${fmt(alloc)}</div>
+          <div class="plan-card-val inc">${fmt(used)} / ${fmt(alloc)}</div>
           <div class="plan-card-bar"><div class="plan-card-fill${pct>=100?' over':''}" style="width:${Math.max(pct,0)}%"></div></div>
-          <div class="plan-card-status ${left<=0?'ok':'bad'}">${left<=0?'отложено: '+fmt(transfers):'осталось отложить: '+fmt(left)}</div>
+          <div class="plan-card-status ${left<=0?'ok':'bad'}">${left<=0?'использовано: '+fmt(used):'осталось: '+fmt(left)}</div>
         </div>`;
       }else{
         const cats=state.D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
