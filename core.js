@@ -113,13 +113,18 @@ export async function loadData(uid){
 // ── Plan spending helper ───────────────────────────
 export function planSpent(p,ops){
   const cats=state.D.expenseCats.filter(c=>c.planId===p.id).map(c=>c.name);
-  // Для статей типа income (Бизнес, Накопления) — также считаем расходы,
-  // где category === название статьи плана
   const planLabel=p.label;
+  // Кошельки привязанные к этой статье плана (например "т-банк Капитал" → "Накопления")
+  const linkedWalletIds=state.D.wallets.filter(w=>w.planId===p.id).map(w=>w.id);
   return ops.filter(o=>
+    // Расход с категорией из этой статьи
     (o.type==='expense'&&cats.includes(o.category))||
+    // Расход с категорией = название статьи (напр. "Бизнес")
     (o.type==='expense'&&(o.category===planLabel||o.planId===p.id))||
-    (o.type==='transfer'&&(o.planId===p.id||o.planLabel===planLabel))
+    // Перевод с явной привязкой (planId или planLabel)
+    (o.type==='transfer'&&(o.planId===p.id||o.planLabel===planLabel))||
+    // Перевод НА кошелёк привязанный к этой статье — ключевое новое правило
+    (o.type==='transfer'&&linkedWalletIds.includes(o.walletTo))
   ).reduce((s,o)=>s+o.amount,0);
 }
 

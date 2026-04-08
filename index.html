@@ -469,6 +469,13 @@
     <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ КОШЕЛЁК</span><button class="modal-close" onclick="window.closeModal('modal-wallet')">&#10005;</button></div>
     <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ew-name"></div>
     <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредиток — отрицательное число</div></div>
+    <div class="fg">
+      <label>СТАТЬЯ ФИНПЛАНА (для накоплений)</label>
+      <select class="fi" id="ew-plan">
+        <option value="">— не привязывать —</option>
+      </select>
+      <div style="font-size:11px;color:var(--blue);background:var(--blue-bg);padding:6px 8px;border-radius:6px;margin-top:5px">Все переводы на этот кошелёк будут автоматически учитываться в выбранной статье финплана</div>
+    </div>
     <input type="hidden" id="ew-idx">
     <button class="btn-primary" onclick="window.saveWalletEdit()">Сохранить</button>
     <button class="btn-sec" onclick="window.closeModal('modal-wallet')">Отмена</button>

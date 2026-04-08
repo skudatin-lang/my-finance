@@ -2,10 +2,16 @@ import{$,fmt,state,planById,sched,exportData,importData,clearAllOps}from'./core.
 
 export function renderSettings(){
   if(!state.D)return;
-  $('wallets-settings').innerHTML=state.D.wallets.map((w,i)=>`<div class="s-row">
-    <div><div class="s-name">${w.name}${w.balance<0?'<span class="w-badge" style="margin-left:5px">долг</span>':''}</div><div class="s-meta">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}</div></div>
-    <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
-  </div>`).join('');
+  $('wallets-settings').innerHTML=state.D.wallets.map((w,i)=>{
+    const linkedPlan=state.D.plan.find(p=>p.id===w.planId);
+    return`<div class="s-row">
+      <div>
+        <div class="s-name">${w.name}${w.balance<0?'<span class="w-badge" style="margin-left:5px">долг</span>':''}</div>
+        <div class="s-meta">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+linkedPlan.label+'</span>':''}</div>
+      </div>
+      <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
+    </div>`;
+  }).join('');
 
   $('plan-settings').innerHTML=state.D.plan.map((p,i)=>`<div class="pct-row">
     <label>${p.label} <span style="font-size:10px;color:var(--text2)">(${p.type==='income'?'откл.':'расход'})</span></label>
@@ -58,12 +64,20 @@ export function delWallet(i){
 export function openEditWallet(i){
   const w=state.D.wallets[i];
   $('ew-name').value=w.name;$('ew-bal').value=w.balance;$('ew-idx').value=i;
+  // Fill plan selector
+  const planSel=$('ew-plan');
+  if(planSel){
+    planSel.innerHTML='<option value="">— не привязывать —</option>'+
+      state.D.plan.map(p=>`<option value="${p.id}"${p.id===w.planId?' selected':''}>${p.label} (${p.type==='income'?'откладываем':'расход'})</option>`).join('');
+  }
   document.getElementById('modal-wallet').classList.add('open');
 }
 export function saveWalletEdit(){
   const i=+$('ew-idx').value;
   state.D.wallets[i].name=$('ew-name').value.trim()||state.D.wallets[i].name;
   state.D.wallets[i].balance=parseFloat($('ew-bal').value)||0;
+  const planSel=$('ew-plan');
+  if(planSel)state.D.wallets[i].planId=planSel.value||null;
   sched();document.getElementById('modal-wallet').classList.remove('open');renderSettings();
 }
 export function addIncomeCat(){

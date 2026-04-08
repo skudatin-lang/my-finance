@@ -17,9 +17,13 @@ export function renderDDS(){
     state.D.plan.forEach(p=>{
       const alloc=Math.round(totalInc*p.pct/100);
       if(p.type==='income'){
-        // Match transfers by planId (old ops) or planLabel (new ops)
-        const transfers=ops.filter(o=>o.type==='transfer'&&(o.planId===p.id||o.planLabel===p.label)).reduce((s,o)=>s+o.amount,0);
-        // Match expenses by category name OR by planId saved on expense
+        // Кошельки привязанные к этой статье (напр. "т-банк Капитал" → "Накопления")
+        const linkedWIds=state.D.wallets.filter(w=>w.planId===p.id).map(w=>w.id);
+        // Переводы: явная привязка (planId/planLabel) ИЛИ перевод на привязанный кошелёк
+        const transfers=ops.filter(o=>o.type==='transfer'&&(
+          o.planId===p.id||o.planLabel===p.label||linkedWIds.includes(o.walletTo)
+        )).reduce((s,o)=>s+o.amount,0);
+        // Расходы с категорией = название статьи
         const expenses=ops.filter(o=>o.type==='expense'&&(o.category===p.label||o.planId===p.id)).reduce((s,o)=>s+o.amount,0);
         const used=transfers+expenses;
         const tLeft=alloc-used;
