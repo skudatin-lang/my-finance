@@ -3,19 +3,25 @@ import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched}from'
 let chartInstance=null;
 
 const WIDGETS=[
-  {id:'kpi',label:'Ключевые метрики'},
-  {id:'alerts',label:'Алерты и предупреждения'},
-  {id:'quick',label:'Быстрые операции / шаблоны'},
-  {id:'goals',label:'Цели'},
-  {id:'debts',label:'Кредиты и долги'},
-  {id:'health',label:'Финансовое здоровье'},
-  {id:'top3',label:'Топ-3 расходов'},
-  {id:'chart',label:'График cashflow'},
+  {id:'plan',label:'Финансовый план',right:true},
+  {id:'limits',label:'Лимиты по категориям',right:true},
+  {id:'forecast',label:'Прогноз на конец года',right:true},
+  {id:'anomalies',label:'Аномальные траты',right:true},
+  {id:'today',label:'Сегодня (баланс дня)',right:true},
+  {id:'catdetail',label:'Расходы по категориям',right:true},
+  {id:'debts',label:'Кредиты и долги',right:true},
+  {id:'health',label:'Финансовое здоровье',right:true},
+  {id:'goals',label:'Цели',right:true},
+  {id:'chart',label:'График cashflow',right:true},
 ];
+// Left column widgets are always visible (not configurable)
 
 function getWidgetVis(){
-  if(!state.D.dashWidgets)state.D.dashWidgets={kpi:true,alerts:true,quick:true,goals:true,debts:true,health:true,top3:true,chart:true};
-  return state.D.dashWidgets;
+  if(!state.D.dashWidgets)state.D.dashWidgets={plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
+  // Ensure new widgets default to true
+  const dw=state.D.dashWidgets;
+  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
+  return dw;
 }
 
 function showWidget(id){
@@ -66,6 +72,12 @@ export function renderDashboard(){
   renderGoalsDash();
   renderDebtsDash();
   renderHealthScore();
+  renderPlanDash(factOps,mInc);
+  renderLimitsDash(factOps);
+  renderForecastDash();
+  renderAnomaliesDash(factOps);
+  renderTodayDash();
+  renderCatDetailDash(factOps);
 }
 
 function renderCashflowChart(){
@@ -359,11 +371,14 @@ function renderHealthScore(){
 window.openWidgetSettings=function(){
   if(!state.D)return;
   const vis=getWidgetVis();
-  document.getElementById('widget-checkboxes').innerHTML=WIDGETS.map(w=>`
-    <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--topbar)">
-      <input type="checkbox" ${vis[w.id]!==false?'checked':''} id="wchk-${w.id}" style="accent-color:var(--amber);width:16px;height:16px">
-      ${w.label}
-    </label>`).join('');
+  const rightWidgets=WIDGETS.filter(w=>w.right);
+  document.getElementById('widget-checkboxes').innerHTML=
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Выберите виджеты для правой колонки дашборда:</div>'+
+    rightWidgets.map(w=>`
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--topbar)">
+        <input type="checkbox" ${vis[w.id]!==false?'checked':''} id="wchk-${w.id}" style="accent-color:var(--amber);width:16px;height:16px">
+        ${w.label}
+      </label>`).join('');
   document.getElementById('modal-widgets').classList.add('open');
 };
 
@@ -377,3 +392,140 @@ window.saveWidgetSettings=function(){
   document.getElementById('modal-widgets').classList.remove('open');
   renderDashboard();
 };
+
+// ── New right-column widget render functions ─────────────────────
+
+function renderPlanDash(factOps,mInc){
+  const el=document.getElementById('dash-plan');if(!el||!state.D)return;
+  if(!mInc){el.innerHTML='<div style="color:var(--text2);font-size:12px">Добавьте доходы за этот месяц</div>';return;}
+  const rows=state.D.plan.slice(0,5).map(p=>{
+    const alloc=Math.round(mInc*p.pct/100);
+    const spent=planSpent(p,factOps);
+    const pct=alloc>0?Math.min(Math.round(spent/alloc*100),100):0;
+    const over=spent>alloc;
+    const color=p.type==='income'?'var(--green)':over?'var(--red)':'var(--orange)';
+    return`<div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+        <span style="font-weight:600;color:var(--topbar)">${p.label}</span>
+        <span style="color:${color}">${fmt(spent)} / ${fmt(alloc)}</span>
+      </div>
+      <div style="background:var(--g50);border-radius:3px;height:4px">
+        <div style="height:4px;border-radius:3px;background:${color};width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+  el.innerHTML=rows+(state.D.plan.length>5?`<div style="font-size:10px;color:var(--text2);margin-top:4px">и ещё ${state.D.plan.length-5} статей →</div>`:'');
+}
+
+function renderLimitsDash(factOps){
+  const el=document.getElementById('dash-limits');if(!el||!state.D)return;
+  const limits=state.D.categoryLimits||[];
+  if(!limits.length){el.innerHTML='<div style="color:var(--text2);font-size:12px">Нет лимитов. Настройте в Аналитике →</div>';return;}
+  const now=new Date();const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!isPlanned(o.type)&&o.date&&o.date.startsWith(ym));
+  el.innerHTML=limits.map(lim=>{
+    const spent=mOps.filter(o=>o.type==='expense'&&o.category===lim.cat).reduce((s,o)=>s+o.amount,0);
+    const pct=Math.min(Math.round(spent/lim.limit*100),100);
+    const color=pct>=100?'var(--red)':pct>=80?'var(--orange)':'var(--amber)';
+    return`<div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+        <span style="font-weight:600;color:var(--topbar)">${lim.cat}</span>
+        <span style="color:${color}">${pct}% · ${fmt(spent)} / ${fmt(lim.limit)}</span>
+      </div>
+      <div style="background:var(--g50);border-radius:3px;height:4px">
+        <div style="height:4px;border-radius:3px;background:${color};width:${pct}%"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderForecastDash(){
+  const el=document.getElementById('dash-forecast');if(!el||!state.D)return;
+  const now=new Date();
+  let sInc=0,sExp=0,cnt=0;
+  for(let i=1;i<=3;i++){
+    const ops=getMOps(-i).filter(o=>!isPlanned(o.type));
+    const inc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+    const exp=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+    if(inc>0||exp>0){sInc+=inc;sExp+=exp;cnt++;}
+  }
+  if(!cnt){el.innerHTML='<div style="color:var(--text2);font-size:12px">Недостаточно данных</div>';return;}
+  const avg=(sInc-sExp)/cnt;
+  const monthsLeft=12-now.getMonth()-1;
+  const yr=now.getFullYear();
+  const yrOps=state.D.operations.filter(o=>!isPlanned(o.type)&&o.date&&o.date.startsWith(String(yr)));
+  const yrBal=yrOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0)-yrOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const proj=yrBal+avg*monthsLeft;
+  const color=proj>=0?'var(--green-dark)':'var(--red)';
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
+    <div><div style="font-size:11px;color:var(--text2)">За год накоплено</div><div style="font-size:14px;font-weight:700;color:var(--topbar)">${fmt(yrBal)}</div></div>
+    <div style="text-align:right"><div style="font-size:11px;color:var(--text2)">Прогноз к декабрю</div><div style="font-size:14px;font-weight:700;color:${color}">${proj<0?'−':''}${fmt(proj)}</div></div>
+  </div>
+  <div style="font-size:10px;color:var(--text2);margin-top:5px">Ср. баланс/мес: ${avg>=0?'+':''}${fmt(Math.round(avg))} · осталось ${monthsLeft} мес.</div>`;
+}
+
+function renderAnomaliesDash(factOps){
+  const el=document.getElementById('dash-anomalies');if(!el||!state.D)return;
+  const now=new Date();
+  const anomalies=[];
+  state.D.expenseCats.forEach(cat=>{
+    const monthly=[];
+    for(let i=1;i<=4;i++){
+      const ops=getMOps(-i).filter(o=>!isPlanned(o.type));
+      monthly.push(ops.filter(o=>o.type==='expense'&&o.category===cat.name).reduce((s,o)=>s+o.amount,0));
+    }
+    const filled=monthly.filter(v=>v>0);
+    if(filled.length<2)return;
+    const mean=filled.reduce((s,v)=>s+v,0)/filled.length;
+    const std=Math.sqrt(filled.reduce((s,v)=>s+(v-mean)**2,0)/filled.length);
+    const cur=factOps.filter(o=>o.type==='expense'&&o.category===cat.name).reduce((s,o)=>s+o.amount,0);
+    if(std>0&&cur>mean+1.5*std){
+      anomalies.push({cat:cat.name,cur,mean:Math.round(mean),pct:Math.round((cur-mean)/mean*100)});
+    }
+  });
+  if(!anomalies.length){el.innerHTML='<div style="color:var(--green-dark);font-size:12px">✓ Аномальных трат нет</div>';return;}
+  el.innerHTML=anomalies.sort((a,b)=>b.pct-a.pct).slice(0,3).map(a=>
+    `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:.5px solid var(--border);font-size:12px">
+      <span style="color:var(--topbar);font-weight:600">${a.cat}</span>
+      <span style="color:var(--red)">+${a.pct}% vs среднего</span>
+    </div>`
+  ).join('');
+}
+
+function renderTodayDash(){
+  const el=document.getElementById('dash-today');if(!el||!state.D)return;
+  const ds=new Date().toISOString().split('T')[0];
+  const ops=state.D.operations.filter(o=>o.date===ds&&!isPlanned(o.type));
+  const inc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const exp=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const bal=inc-exp;
+  if(!ops.length){el.innerHTML='<div style="color:var(--text2);font-size:12px">Сегодня операций нет</div>';return;}
+  el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+    <div><div style="font-size:9px;color:var(--text2);font-weight:700">ДОХОД</div><div style="font-size:14px;font-weight:700;color:var(--green-dark)">${fmt(inc)}</div></div>
+    <div><div style="font-size:9px;color:var(--text2);font-weight:700">РАСХОД</div><div style="font-size:14px;font-weight:700;color:var(--red)">${fmt(exp)}</div></div>
+    <div><div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div><div style="font-size:14px;font-weight:700;color:${bal>=0?'var(--green-dark)':'var(--red)'}">${bal<0?'−':''}${fmt(bal)}</div></div>
+  </div>
+  ${ops.slice(0,3).map(o=>`<div style="font-size:11px;color:var(--text2);padding:3px 0;border-top:.5px solid var(--border);margin-top:5px">${o.category||'—'} · ${o.type==='income'?'+':'−'}${fmt(o.amount)}</div>`).join('')}
+  ${ops.length>3?`<div style="font-size:10px;color:var(--text2)">+${ops.length-3} операций</div>`:''}`;
+}
+
+function renderCatDetailDash(factOps){
+  const el=document.getElementById('dash-catdetail');if(!el||!state.D)return;
+  const cats={};
+  factOps.filter(o=>o.type==='expense').forEach(o=>{
+    const c=o.category||'—';
+    cats[c]=(cats[c]||0)+o.amount;
+  });
+  const rows=Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  if(!rows.length){el.innerHTML='<div style="color:var(--text2);font-size:12px">Нет расходов за этот месяц</div>';return;}
+  const max=rows[0][1];
+  el.innerHTML=rows.map(([cat,amt])=>`<div style="margin-bottom:6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
+      <span style="color:var(--topbar);font-weight:600">${cat}</span>
+      <span style="color:var(--orange-dark)">− ${fmt(amt)}</span>
+    </div>
+    <div style="background:var(--g50);border-radius:3px;height:3px">
+      <div style="height:3px;border-radius:3px;background:var(--orange);width:${Math.round(amt/max*100)}%"></div>
+    </div>
+  </div>`).join('');
+}

@@ -68,4 +68,33 @@ export function renderDDS(){
   html+=`<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
   html+=`<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc-totalExp>=0?'pos':'neg'}" style="text-align:right">${fmtS(totalInc-totalExp)}</td></tr></tbody>`;
   table.innerHTML=html;
+  renderDDSChart();
+}
+
+function renderDDSChart(){
+  const canvas=document.getElementById('dds-chart');
+  if(!canvas||typeof Chart==='undefined')return;
+  const now=new Date();
+  const labels=[],incData=[],expData=[];
+  for(let i=5;i>=0;i--){
+    const dt=new Date(now.getFullYear(),now.getMonth()-i,1);
+    labels.push(MONTHS[dt.getMonth()].slice(0,3));
+    const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+    const ops=state.D.operations.filter(o=>!isPlanned(o.type)&&o.date&&o.date.startsWith(ym));
+    incData.push(ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0));
+    expData.push(ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0));
+  }
+  if(canvas._chartInst){canvas._chartInst.destroy();}
+  canvas._chartInst=new Chart(canvas.getContext('2d'),{
+    type:'bar',
+    data:{labels,datasets:[
+      {label:'Доходы',data:incData,backgroundColor:'rgba(74,124,63,0.7)',borderColor:'#4A7C3F',borderWidth:1,borderRadius:3},
+      {label:'Расходы',data:expData,backgroundColor:'rgba(194,91,26,0.7)',borderColor:'#C25B1A',borderWidth:1,borderRadius:3}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'top',labels:{font:{size:11},color:'#7A5C30'}},
+        tooltip:{callbacks:{label:ctx=>'₽ '+Math.round(ctx.raw).toLocaleString('ru-RU')}}},
+      scales:{x:{ticks:{color:'#7A5C30',font:{size:10}},grid:{display:false}},
+        y:{ticks:{color:'#7A5C30',font:{size:10},callback:v=>'₽'+Math.round(v/1000)+'k'},grid:{color:'rgba(212,180,131,0.3)'}}}}
+  });
 }

@@ -137,10 +137,14 @@
           <div class="panel-body"><div id="dds-plan-exp"></div></div>
         </div>
       </div>
-      <div class="dds-right">
-        <div class="panel" style="height:100%">
+      <div class="dds-right" style="display:flex;flex-direction:column;gap:var(--gap)">
+        <div class="panel" style="flex:1;min-height:0">
           <div class="panel-head">ВСЕ ОПЕРАЦИИ</div>
           <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"></table></div></div>
+        </div>
+        <div class="chart-wrap" style="flex-shrink:0;height:220px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.7px;margin-bottom:10px">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ</div>
+          <canvas id="dds-chart"></canvas>
         </div>
       </div>
     </div>
@@ -282,22 +286,76 @@
         </div></div>
       </div>
       <div class="dash-right">
-        <div id="dash-widget-debts"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">КРЕДИТЫ И ДОЛГИ</div>
-          <div class="panel-body"><div id="dash-debts"></div></div>
-        </div></div>
-        <div id="dash-widget-health"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">ФИНАНСОВОЕ ЗДОРОВЬЕ</div>
-          <div class="panel-body"><div id="dash-health-score"></div></div>
-        </div></div>
-        <div id="dash-widget-goals"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">ЦЕЛИ</div>
-          <div class="panel-body"><div id="dash-goals"></div></div>
-        </div></div>
-        <div id="dash-widget-chart"><div class="chart-wrap" style="flex:1;min-height:200px">
-          <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.7px;margin-bottom:10px">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ</div>
-          <canvas id="dash-chart"></canvas>
-        </div></div>
+
+        <div id="dash-widget-plan" onclick="window.showScreen('dds')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ФИНАНСОВЫЙ ПЛАН<span style="font-size:10px;opacity:.7;font-weight:400">→ ДДС</span></div>
+            <div class="panel-body"><div id="dash-plan"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-limits" onclick="window.showScreen('analytics')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ЛИМИТЫ<span style="font-size:10px;opacity:.7;font-weight:400">→ АНАЛИТИКА</span></div>
+            <div class="panel-body"><div id="dash-limits"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-forecast" onclick="window.showScreen('analytics')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ПРОГНОЗ НА КОНЕЦ ГОДА<span style="font-size:10px;opacity:.7;font-weight:400">→ АНАЛИТИКА</span></div>
+            <div class="panel-body"><div id="dash-forecast"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-anomalies" onclick="window.showScreen('analytics')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">АНОМАЛЬНЫЕ ТРАТЫ<span style="font-size:10px;opacity:.7;font-weight:400">→ АНАЛИТИКА</span></div>
+            <div class="panel-body"><div id="dash-anomalies"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-today" onclick="window.showScreen('calendar')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">СЕГОДНЯ<span style="font-size:10px;opacity:.7;font-weight:400">→ КАЛЕНДАРЬ</span></div>
+            <div class="panel-body"><div id="dash-today"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">РАСХОДЫ ПО КАТЕГОРИЯМ<span style="font-size:10px;opacity:.7;font-weight:400">→ ОТЧЁТЫ</span></div>
+            <div class="panel-body"><div id="dash-catdetail"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-debts" onclick="window.showScreen('loans')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">КРЕДИТЫ И ДОЛГИ<span style="font-size:10px;opacity:.7;font-weight:400">→ КРЕДИТЫ</span></div>
+            <div class="panel-body"><div id="dash-debts"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-health" onclick="window.showScreen('health')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ФИНАНСОВОЕ ЗДОРОВЬЕ<span style="font-size:10px;opacity:.7;font-weight:400">→ ЗДОРОВЬЕ</span></div>
+            <div class="panel-body"><div id="dash-health-score"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-goals" onclick="window.showScreen('extras')" style="cursor:pointer">
+          <div class="panel" style="flex-shrink:0">
+            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ЦЕЛИ<span style="font-size:10px;opacity:.7;font-weight:400">→ ЦЕЛИ</span></div>
+            <div class="panel-body"><div id="dash-goals"></div></div>
+          </div>
+        </div>
+
+        <div id="dash-widget-chart" onclick="window.showScreen('dds')" style="cursor:pointer">
+          <div class="chart-wrap" style="flex:1;min-height:200px">
+            <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.7px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ<span style="font-size:10px;opacity:.7;font-weight:400">→ ДДС</span></div>
+            <canvas id="dash-chart"></canvas>
+          </div>
+        </div>
       </div>
     </div>
   </div>
