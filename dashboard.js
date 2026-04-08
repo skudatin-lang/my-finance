@@ -330,41 +330,80 @@ function renderDebtsDash(){
 
 function renderHealthScore(){
   const el=$('dash-health-score');if(!el||!state.D)return;
-  let totalExp=0,totalInc=0;
-  for(let i=1;i<=3;i++){
+  // Используем ту же логику что и вкладка "Здоровье"
+  // Средние за непустые месяцы
+  let totalExp=0,totalInc=0,filledMonths=0;
+  for(let i=0;i<=3;i++){
     const ops=getMOps(-i).filter(o=>!isPlanned(o.type));
-    totalExp+=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
-    totalInc+=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+    const mExp=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+    const mInc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+    if(mInc>0||mExp>0){totalExp+=mExp;totalInc+=mInc;filledMonths++;}
   }
-  const avgExp=totalExp/3,avgInc=totalInc/3;
+  const avgExp=filledMonths>0?totalExp/filledMonths:0;
+  const avgInc=filledMonths>0?totalInc/filledMonths:0;
   const hs=state.D.healthSettings||{emergencyWalletIds:[]};
   const emergencyWallets=hs.emergencyWalletIds.length>0
     ?state.D.wallets.filter(w=>hs.emergencyWalletIds.includes(w.id)&&w.balance>0)
     :state.D.wallets.filter(w=>w.balance>0);
   const totalSavings=emergencyWallets.reduce((s,w)=>s+w.balance,0);
   const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
-  const emergencyMonths=avgExp>0?totalSavings/avgExp:0;
-  const savingsRate=avgInc>0?(avgInc-avgExp)/avgInc*100:0;
-  const dtiPct=avgInc>0?Math.min(totalDebt/avgInc*100/12,100):0;
-  const score=Math.round(
-    (Math.min(emergencyMonths/6,1)*100*0.25)+
-    (Math.min(Math.max(savingsRate,0)/20,1)*100*0.25)+
-    (Math.max(1-dtiPct/30,0)*100*0.25)+
-    (50*0.25) // base
-  );
+  // Норма сбережений — реальные переводы на накопительные кошельки
+  const curOps=getMOps(0).filter(o=>!isPlanned(o.type));
+  const curInc=curOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const savingsPlanIds=state.D.plan.filter(p=>p.type==='income').map(p=>p.id);
+  const savingsWalletIds=state.D.wallets.filter(w=>savingsPlanIds.includes(w.planId)).map(w=>w.id);
+  const actualSaved=curOps.filter(o=>
+    o.type==='transfer'&&(savingsWalletIds.includes(o.walletTo)||savingsPlanIds.includes(o.planId)||
+    state.D.plan.filter(p=>p.type==='income').some(p=>p.label===o.planLabel))
+  ).reduce((s,o)=>s+o.amount,0);
+  const savingsRate=curInc>0?Math.round(actualSaved/curInc*100):0;
+  const emergencyMonths=avgExp>0?Math.round(totalSavings/avgExp*10)/10:0;
+  // Долговая нагрузка
+  const creditPlan=state.D.plan.find(p=>p.label.toLowerCase().includes('кредит'));
+  const creditSpent=creditPlan?planSpent(creditPlan,curOps):Math.round(totalDebt*0.03);
+  const dtiPct=avgInc>0?Math.round(creditSpent/avgInc*100):0;
+  // Обязательные расходы
+  const curExp=curOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const obligPlanIds=state.D.plan.filter(p=>p.type==='expense'&&
+    (p.label.toLowerCase().includes('постоянн')||p.label.toLowerCase().includes('кредит'))
+  ).map(p=>p.id);
+  const obligCats=state.D.expenseCats.filter(c=>obligPlanIds.includes(c.planId)).map(c=>c.name);
+  const obligExp=curOps.filter(o=>o.type==='expense'&&obligCats.includes(o.category)).reduce((s,o)=>s+o.amount,0);
+  const obligRatio=curExp>0?Math.round(obligExp/curExp*100):0;
+  const investable=Math.max(Math.round(avgInc-avgExp-avgInc*0.1),0);
+  // Те же 5 индикаторов что и на вкладке
+  const s1=emergencyMonths>=6?100:emergencyMonths>=3?Math.round(emergencyMonths/6*100):Math.round(emergencyMonths/3*50);
+  const s2=savingsRate>=20?100:savingsRate>=10?Math.round(savingsRate/20*100):Math.max(0,savingsRate*5);
+  const s3=totalDebt===0?100:dtiPct<=10?90:dtiPct<=20?70:dtiPct<=30?50:Math.max(0,30-dtiPct);
+  const s4=obligRatio<=50?100:obligRatio<=70?Math.round((70-obligRatio)/20*50+50):Math.max(0,(100-obligRatio)*2);
+  const s5=avgInc>0?Math.min(100,Math.round(investable/avgInc*100*5)):0;
+  const score=Math.round((s1+s2+s3+s4+s5)/5);
   const color=score>=80?'var(--green)':score>=60?'var(--amber)':'var(--red)';
+  const label=score>=80?'Отлично':score>=60?'Хорошо':score>=40?'Есть над чем работать':'Требует внимания';
   el.innerHTML=`
     <div style="display:flex;align-items:center;gap:12px">
-      <div style="font-size:36px;font-weight:700;color:${color}">${score}</div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:${color}">${score>=80?'Отлично':score>=60?'Хорошо':'Требует внимания'}</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:2px">подушка ${emergencyMonths.toFixed(1)} мес · сбережения ${Math.round(savingsRate)}%</div>
+      <div style="font-size:36px;font-weight:700;color:${color};line-height:1">${score}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:${color}">${label}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:3px">подушка ${emergencyMonths} мес · сбережения ${savingsRate}%</div>
+        <div style="font-size:11px;color:var(--text2)">долг ${dtiPct}% дохода · обяз. ${obligRatio}%</div>
       </div>
     </div>
-    <div style="background:var(--g50);border-radius:4px;height:6px;margin-top:8px">
-      <div style="height:6px;border-radius:4px;background:${color};width:${score}%"></div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:3px;margin-top:8px">
+      ${[['Подушка',s1],['Сбереж.',s2],['Долг',s3],['Обяз.',s4],['Инвест.',s5]].map(([lbl,sc])=>{
+        const c2=sc>=80?'var(--green)':sc>=60?'var(--amber)':'var(--red)';
+        return '<div style="text-align:center">'+
+          '<div style="font-size:9px;color:var(--text2)">'+lbl+'</div>'+
+          '<div style="font-size:12px;font-weight:700;color:'+c2+'">'+sc+'%</div>'+
+        '</div>';
+      }).join('')}
     </div>
-    <div style="text-align:right;margin-top:4px"><a href="#" onclick="window.showScreen('health');return false" style="font-size:11px;color:var(--amber);text-decoration:none;font-weight:700">Подробнее →</a></div>
+    <div style="background:var(--g50);border-radius:4px;height:5px;margin-top:8px">
+      <div style="height:5px;border-radius:4px;background:${color};width:${score}%;transition:width .3s"></div>
+    </div>
+    <div style="text-align:right;margin-top:5px">
+      <a href="#" onclick="window.showScreen('health');return false" style="font-size:11px;color:var(--amber);text-decoration:none;font-weight:700">Подробнее →</a>
+    </div>
   `;
 }
 
