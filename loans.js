@@ -157,7 +157,9 @@ function resetLoanModal(){
   $('loan-idx').value=-1;
   $('loan-name').value='';$('loan-amount').value='';$('loan-rate').value='';
   $('loan-months').value='';$('loan-start').value=today();
-  $('loan-payday').value=1;$('loan-payment').value='';$('loan-minpay').value=5;
+  const pdEl=$('loan-payday');if(pdEl)pdEl.value=1;
+  $('loan-payment').value='';
+  const grEl=$('loan-grace');if(grEl)grEl.value=0;
   $('loan-type').value='credit';toggleLoanType('credit');
   const opts='<option value="">— не привязывать —</option>'+
     state.D.wallets.map(w=>`<option value="${w.id}">${w.name} (${w.balance<0?'долг '+fmt(Math.abs(w.balance)):fmt(w.balance)})</option>`).join('');
