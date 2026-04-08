@@ -24,8 +24,8 @@ export function renderReports(){
   $('r-month-inc').textContent=fmt(mInc);
   $('r-month-exp').textContent=fmt(mExp);
 
-  $('m-inc-cur').textContent=fmt(mInc);
-  $('m-exp-cur').textContent=fmt(mExp);
+  const mic=$('m-inc-cur');if(mic)mic.textContent=fmt(mInc);
+  const mec=$('m-exp-cur');if(mec)mec.textContent=fmt(mExp);
 
   $('r-wallets').innerHTML=state.D.wallets.map(w=>`<div class="wallet-row">
     <div><span class="wname">${w.name}</span>${w.balance<0?'<span class="w-badge">долг</span>':''}</div>
