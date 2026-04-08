@@ -265,7 +265,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 /* ── MOBILE ── */
 @media(max-width:700px){
   body{overflow:auto;height:auto;}
-  #app-screen{height:auto;min-height:100vh;overflow:visible;}
+  #app-screen{height:auto;min-height:100vh;overflow:hidden;}
 
   /* Топбар: бренд + правые кнопки в первой строке, вкладки во второй */
   .topbar{flex-wrap:wrap;height:auto;padding:0;}
@@ -280,9 +280,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .tbtn{padding:0 10px;font-size:10px;height:44px;}
 
   /* Screens stack vertically */
-  .screen{flex-direction:column!important;overflow:hidden!important;height:auto!important;position:relative;}
-  .screen.active{display:flex!important;}
-  .screen:not(.active){display:none!important;}
+  .screen.active{display:flex!important;flex-direction:column;overflow:visible;height:auto;}
+  .screen:not(.active){display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;}
 
   /* Reports */
   #screen-reports{flex-direction:column!important;}
@@ -378,7 +377,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 @media(max-width:700px){
   .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}
-  #screen-health,#screen-loans,#screen-templates{overflow:visible!important;height:auto!important;}
+  #screen-health,#screen-loans,#screen-templates{overflow:visible;height:auto;}
   /* P6: wallets full width */
   .rep-right-top{flex-direction:column!important;}
   .rep-right-top .panel:first-child{width:100%!important;}
