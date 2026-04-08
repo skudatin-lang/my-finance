@@ -286,75 +286,58 @@
         </div></div>
       </div>
       <div class="dash-right">
+        <div class="dash-right-grid">
 
-        <div id="dash-widget-plan" onclick="window.showScreen('dds')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ФИНАНСОВЫЙ ПЛАН<span style="font-size:10px;opacity:.7;font-weight:400">→ ДДС</span></div>
-            <div class="panel-body"><div id="dash-plan"></div></div>
+          <div id="dash-widget-plan" onclick="window.showScreen('dds')" class="dash-card clickable">
+            <div class="dash-card-head">ФИНАНСОВЫЙ ПЛАН <span class="dash-card-link">→ ДДС</span></div>
+            <div class="dash-card-body"><div id="dash-plan"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-limits" onclick="window.showScreen('analytics')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ЛИМИТЫ<span style="font-size:10px;opacity:.7;font-weight:400">→ АНАЛИТИКА</span></div>
-            <div class="panel-body"><div id="dash-limits"></div></div>
+          <div id="dash-widget-debts" onclick="window.showScreen('loans')" class="dash-card clickable">
+            <div class="dash-card-head">КРЕДИТЫ И ДОЛГИ <span class="dash-card-link">→ КРЕДИТЫ</span></div>
+            <div class="dash-card-body"><div id="dash-debts"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-forecast" onclick="window.showScreen('analytics')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ПРОГНОЗ НА КОНЕЦ ГОДА<span style="font-size:10px;opacity:.7;font-weight:400">→ АНАЛИТИКА</span></div>
-            <div class="panel-body"><div id="dash-forecast"></div></div>
+          <div id="dash-widget-today" onclick="window.showScreen('calendar')" class="dash-card clickable">
+            <div class="dash-card-head">СЕГОДНЯ <span class="dash-card-link">→ КАЛЕНДАРЬ</span></div>
+            <div class="dash-card-body"><div id="dash-today"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-anomalies" onclick="window.showScreen('analytics')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">АНОМАЛЬНЫЕ ТРАТЫ<span style="font-size:10px;opacity:.7;font-weight:400">→ АНАЛИТИКА</span></div>
-            <div class="panel-body"><div id="dash-anomalies"></div></div>
+          <div id="dash-widget-health" onclick="window.showScreen('health')" class="dash-card clickable">
+            <div class="dash-card-head">ФИНАНСОВОЕ ЗДОРОВЬЕ <span class="dash-card-link">→ ЗДОРОВЬЕ</span></div>
+            <div class="dash-card-body"><div id="dash-health-score"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-today" onclick="window.showScreen('calendar')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">СЕГОДНЯ<span style="font-size:10px;opacity:.7;font-weight:400">→ КАЛЕНДАРЬ</span></div>
-            <div class="panel-body"><div id="dash-today"></div></div>
+          <div id="dash-widget-goals" onclick="window.showScreen('extras')" class="dash-card clickable">
+            <div class="dash-card-head">ЦЕЛИ <span class="dash-card-link">→ ЦЕЛИ</span></div>
+            <div class="dash-card-body"><div id="dash-goals"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">РАСХОДЫ ПО КАТЕГОРИЯМ<span style="font-size:10px;opacity:.7;font-weight:400">→ ОТЧЁТЫ</span></div>
-            <div class="panel-body"><div id="dash-catdetail"></div></div>
+          <div id="dash-widget-limits" onclick="window.showScreen('analytics')" class="dash-card clickable">
+            <div class="dash-card-head">ЛИМИТЫ <span class="dash-card-link">→ АНАЛИТИКА</span></div>
+            <div class="dash-card-body"><div id="dash-limits"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-debts" onclick="window.showScreen('loans')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">КРЕДИТЫ И ДОЛГИ<span style="font-size:10px;opacity:.7;font-weight:400">→ КРЕДИТЫ</span></div>
-            <div class="panel-body"><div id="dash-debts"></div></div>
+          <div id="dash-widget-forecast" onclick="window.showScreen('analytics')" class="dash-card clickable">
+            <div class="dash-card-head">ПРОГНОЗ НА ГОД <span class="dash-card-link">→ АНАЛИТИКА</span></div>
+            <div class="dash-card-body"><div id="dash-forecast"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-health" onclick="window.showScreen('health')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ФИНАНСОВОЕ ЗДОРОВЬЕ<span style="font-size:10px;opacity:.7;font-weight:400">→ ЗДОРОВЬЕ</span></div>
-            <div class="panel-body"><div id="dash-health-score"></div></div>
+          <div id="dash-widget-anomalies" onclick="window.showScreen('analytics')" class="dash-card clickable">
+            <div class="dash-card-head">АНОМАЛЬНЫЕ ТРАТЫ <span class="dash-card-link">→ АНАЛИТИКА</span></div>
+            <div class="dash-card-body"><div id="dash-anomalies"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-goals" onclick="window.showScreen('extras')" style="cursor:pointer">
-          <div class="panel" style="flex-shrink:0">
-            <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">ЦЕЛИ<span style="font-size:10px;opacity:.7;font-weight:400">→ ЦЕЛИ</span></div>
-            <div class="panel-body"><div id="dash-goals"></div></div>
+          <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" class="dash-card clickable">
+            <div class="dash-card-head">РАСХОДЫ ПО КАТЕГОРИЯМ <span class="dash-card-link">→ ОТЧЁТЫ</span></div>
+            <div class="dash-card-body"><div id="dash-catdetail"></div></div>
           </div>
-        </div>
 
-        <div id="dash-widget-chart" onclick="window.showScreen('dds')" style="cursor:pointer">
-          <div class="chart-wrap" style="flex:1;min-height:200px">
-            <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.7px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ<span style="font-size:10px;opacity:.7;font-weight:400">→ ДДС</span></div>
-            <canvas id="dash-chart"></canvas>
+          <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1">
+            <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
+            <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
           </div>
+
         </div>
       </div>
     </div>

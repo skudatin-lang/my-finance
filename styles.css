@@ -345,6 +345,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 /* ── MOBILE ADDITIONS ── */
 @media(max-width:700px){
   .dash-wrap,.dash-left,.dash-right{flex-direction:column!important;overflow:visible!important;height:auto!important;width:100%!important;}
+  .dash-right-grid{grid-template-columns:1fr!important;}
   .dash-kpi-grid{grid-template-columns:1fr 1fr;}
   #screen-analytics,#screen-extras{flex-direction:column!important;height:auto!important;overflow:visible!important;}
   .extras-col{min-width:0!important;}
@@ -363,6 +364,16 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 /* ── TEMPLATES ── */
 #screen-templates{flex-direction:column;overflow-y:auto;padding:var(--gap);}
 .templates-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
+
+
+/* ── DASH CARDS ── */
+.dash-right-grid{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);align-content:start;}
+.dash-card{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
+.dash-card.clickable{cursor:pointer;transition:border-color .15s;}
+.dash-card.clickable:hover{border-color:var(--amber);}
+.dash-card-head{background:var(--topbar);color:#C9A96E;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;}
+.dash-card-link{font-size:9px;opacity:.7;font-weight:400;letter-spacing:.3px;}
+.dash-card-body{padding:10px 12px;flex:1;overflow:hidden;}
 
 @media(max-width:700px){
   .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}
