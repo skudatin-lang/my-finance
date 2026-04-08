@@ -13,6 +13,7 @@ const WIDGETS=[
   {id:'health',label:'Финансовое здоровье',right:true},
   {id:'goals',label:'Цели',right:true},
   {id:'chart',label:'График cashflow',right:true},
+  {id:'portfolio',label:'Инвестиционный портфель',right:true},
 ];
 // Left column widgets are always visible (not configurable)
 
@@ -20,7 +21,7 @@ function getWidgetVis(){
   if(!state.D.dashWidgets)state.D.dashWidgets={plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
   // Ensure new widgets default to true
   const dw=state.D.dashWidgets;
-  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
+  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
   return dw;
 }
 
@@ -73,6 +74,7 @@ export function renderDashboard(){
   renderDebtsDash();
   renderHealthScore();
   renderPlanDash(factOps,mInc);
+  renderPortfolioDash();
   renderLimitsDash(factOps);
   renderForecastDash();
   renderAnomaliesDash(factOps);
@@ -175,6 +177,12 @@ function renderAlerts(factOps,mInc){
       alerts.push({level:'warn',msg:`«${lim.cat}» — ${pct}% лимита (${fmt(spent)} из ${fmt(lim.limit)})`});
     }
   });
+
+  // Portfolio weekly update alert
+  const portAlert=window._checkPortfolioAlert&&window._checkPortfolioAlert();
+  if(portAlert){
+    alerts.push({level:'info',msg:`📈 ${portAlert} — <a href="#" onclick="window.showScreen('portfolio');return false" style="color:var(--blue);font-weight:700">Обновить →</a>`});
+  }
 
   // Upcoming recurring
   const today2=today();
@@ -404,6 +412,44 @@ function renderHealthScore(){
     <div style="text-align:right;margin-top:5px">
       <a href="#" onclick="window.showScreen('health');return false" style="font-size:11px;color:var(--amber);text-decoration:none;font-weight:700">Подробнее →</a>
     </div>
+  `;
+}
+
+function renderPortfolioDash(){
+  const el=document.getElementById('dash-portfolio');if(!el||!state.D)return;
+  const portfolio=state.D.portfolio||[];
+  if(!portfolio.length){
+  el.innerHTML=`<div style="color:var(--text2);font-size:12px">Нет активов. <a href="#" onclick="window.showScreen('portfolio');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>`;
+    return;
+  }
+  const total=portfolio.reduce((s,a)=>s+a.qty*(a.currentPrice||a.buyPrice),0);
+  const cost=portfolio.reduce((s,a)=>s+a.qty*a.buyPrice,0);
+  const pnl=total-cost;
+  const pnlPct=cost>0?Math.round(pnl/cost*1000)/10:0;
+  const color=pnl>=0?'var(--green-dark)':'var(--red)';
+  // Check if update needed
+  const lastUpd=state.D.portfolioUpdated?.lastUpdate;
+  const daysSince=lastUpd?Math.floor((new Date(today())-new Date(lastUpd))/(1000*60*60*24)):999;
+  el.innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:var(--topbar)">${fmt(Math.round(total))}</div>
+        <div style="font-size:11px;color:var(--text2)">${portfolio.length} активов · вложено ${fmt(Math.round(cost))}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:14px;font-weight:700;color:${color}">${pnl>=0?'+':''}${fmt(Math.round(pnl))}</div>
+        <div style="font-size:11px;color:${color}">${pnlPct>=0?'+':''}${pnlPct}%</div>
+      </div>
+    </div>
+    ${daysSince>=7?`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:5px;padding:5px 8px;font-size:11px;color:var(--blue)">⏰ Обновите цены (${daysSince} дн. назад)</div>`:''}
+    ${portfolio.slice(0,3).map(a=>{
+      const v=a.qty*(a.currentPrice||a.buyPrice);
+      const share=total>0?Math.round(v/total*100):0;
+      return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-top:.5px solid var(--border)">'+
+        '<span style="font-weight:600;color:var(--topbar)">'+a.ticker+'</span>'+
+        '<span style="color:var(--text2)">'+share+'% · '+fmt(Math.round(v))+'</span>'+
+      '</div>';
+    }).join('')}
   `;
 }
 

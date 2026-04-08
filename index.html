@@ -38,6 +38,8 @@
       <button class="tnav-btn" id="tnav-loans" onclick="window.showScreen('loans')">КРЕДИТЫ</button>
       <button class="tnav-btn" id="tnav-templates" onclick="window.showScreen('templates')">ШАБЛОНЫ</button>
       <button class="tnav-btn" id="tnav-health" onclick="window.showScreen('health')">ЗДОРОВЬЕ</button>
+      <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
+      <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
@@ -333,6 +335,11 @@
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
           </div>
 
+          <div id="dash-widget-portfolio" onclick="window.showScreen('portfolio')" class="dash-card clickable">
+            <div class="dash-card-head">ИНВЕСТИЦИИ <span class="dash-card-link">→ ПОРТФЕЛЬ</span></div>
+            <div class="dash-card-body"><div id="dash-portfolio"></div></div>
+          </div>
+
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
             <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
@@ -450,6 +457,62 @@
     </div>
   </div>
 
+
+  <!-- ── PORTFOLIO ── -->
+  <div id="screen-portfolio" class="screen">
+    <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div style="font-size:16px;font-weight:700;color:var(--topbar)">Инвестиционный портфель</div>
+        <button class="sbtn amber" onclick="window.openAddAsset()">+ Добавить актив</button>
+      </div>
+      <div id="portfolio-summary" style="flex-shrink:0"></div>
+      <div class="notice blue" style="flex-shrink:0">Обновляйте текущие цены раз в неделю — нажмите «Цена» рядом с активом. Данные хранятся локально, котировки не подтягиваются автоматически.</div>
+      <div id="portfolio-list"></div>
+    </div>
+  </div>
+
+  <!-- ── IMPORT ── -->
+  <div id="screen-import" class="screen">
+    <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
+      <div style="font-size:16px;font-weight:700;color:var(--topbar);flex-shrink:0">Импорт выписки из банка</div>
+      <div class="panel" style="flex-shrink:0">
+        <div class="panel-head">ШАГ 1 — ЗАГРУЗИТЕ ФАЙЛ</div>
+        <div class="panel-body">
+          <div class="notice amber">Скачайте выписку в Т-банке: История операций → Скачать → CSV</div>
+          <div class="rf">
+            <div class="fg"><label>БАНК</label>
+              <select class="fi" id="import-bank">
+                <option value="tinkoff">Т-Банк (Тинькофф)</option>
+                <option value="sber">Сбербанк</option>
+              </select>
+            </div>
+            <div class="fg"><label>КОШЕЛЁК ДЛЯ ИМПОРТА</label>
+              <select class="fi" id="import-wallet"></select>
+            </div>
+          </div>
+          <button class="btn-primary" style="margin-top:4px" onclick="document.getElementById('csv-file-input').click()">
+            Выбрать CSV файл
+          </button>
+          <input type="file" id="csv-file-input" accept=".csv,.txt" style="display:none" onchange="window.handleCSVFile(event)">
+        </div>
+      </div>
+      <div id="import-preview" style="display:none;flex:1">
+        <div class="panel" style="height:100%">
+          <div class="panel-head" id="import-preview-head">ШАГ 2 — ПРОВЕРЬТЕ ОПЕРАЦИИ</div>
+          <div class="panel-body">
+            <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+              <div id="import-stats" style="font-size:12px;color:var(--text2);flex:1"></div>
+              <button class="sbtn amber" onclick="window.selectAllImport(true)">Выбрать все</button>
+              <button class="sbtn amber" onclick="window.selectAllImport(false)">Снять все</button>
+              <button class="btn-primary" style="padding:8px 16px" onclick="window.confirmImport()">Импортировать выбранные</button>
+            </div>
+            <div id="import-table" style="overflow-x:auto;max-height:400px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- end app-screen -->
 
 <!-- ── MODALS ── -->
@@ -539,6 +602,8 @@ import{renderRecurring,applyRecurring}from'./recurring.js';
 import{renderHealth}from'./health.js';
 import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
+import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
+import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 
 const $=id=>document.getElementById(id);
 
@@ -554,6 +619,8 @@ function refreshCurrent(){
   else if(cur==='loans'){renderLoans();renderLoansSummary();}
   else if(cur==='templates'){renderTemplates();initBulk();}
   else if(cur==='health')renderHealth();
+  else if(cur==='portfolio')renderPortfolio();
+  else if(cur==='import'){initImportScreen();}
 }
 
 
@@ -572,6 +639,86 @@ window.showScreen=name=>{
   document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
   $('screen-'+name).classList.add('active');
   const tb=$('tnav-'+name);if(tb)tb.classList.add('active');
+  refreshCurrent();
+};
+
+// ── Import screen ────────────────────────────────────────────────
+function initImportScreen(){
+  if(!state.D)return;
+  const ws=$('import-wallet');
+  if(ws)ws.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+}
+
+let _csvParsed=[];
+window.handleCSVFile=function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const bank=$('import-bank').value;
+    const parsed=parseCSV(ev.target.result,bank);
+    if(!parsed.length){alert('Операций не найдено. Проверьте формат файла.');return;}
+    _csvParsed=deduplicateOps(parsed);
+    renderImportPreview();
+  };
+  reader.readAsText(file,'UTF-8');
+  e.target.value='';
+};
+
+function renderImportPreview(){
+  const el=$('import-preview');if(!el)return;
+  el.style.display='';
+  const total=_csvParsed.length;
+  const dups=_csvParsed.filter(o=>o.isDuplicate).length;
+  const newOps=total-dups;
+  $('import-stats').innerHTML=`Найдено: ${total} · Новых: <b>${newOps}</b> · Дублей (скрыты): ${dups}`;
+  const table=$('import-table');
+  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
+  if(!fresh.length){table.innerHTML='<div style="color:var(--text2);padding:12px">Все операции уже есть в базе</div>';return;}
+  const userCats=[...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)];
+  table.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:2px solid var(--border2)">
+      <th style="padding:6px;text-align:left;width:30px"><input type="checkbox" checked onchange="window.selectAllImport(this.checked)"></th>
+      <th style="padding:6px;text-align:left">Дата</th>
+      <th style="padding:6px;text-align:left">Описание</th>
+      <th style="padding:6px;text-align:left">Категория</th>
+      <th style="padding:6px;text-align:right">Сумма</th>
+    </tr></thead>
+    <tbody>
+    ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border);${op.type==='income'?'background:rgba(74,124,63,.05)':''}">
+      <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
+      <td style="padding:5px;color:var(--text2)">${op.date.split('-').reverse().join('.')}</td>
+      <td style="padding:5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${op.note}">${op.note||'—'}</td>
+      <td style="padding:5px">
+        <select style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;background:#fff" id="imp-cat-${i}">
+          ${userCats.map(cat=>`<option value="${cat}" ${cat===op.category?'selected':''}>${cat}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:${op.type==='income'?'var(--green-dark)':'var(--orange-dark)'}">
+        ${op.type==='income'?'+':'−'}₽${op.amount.toLocaleString('ru-RU')}
+      </td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+window.selectAllImport=function(v){
+  document.querySelectorAll('[id^="imp-chk-"]').forEach(cb=>cb.checked=v);
+};
+
+window.confirmImport=function(){
+  if(!state.D)return;
+  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
+  fresh.forEach((op,i)=>{
+    const chk=document.getElementById('imp-chk-'+i);
+    const catSel=document.getElementById('imp-cat-'+i);
+    op.skip=!chk?.checked;
+    if(catSel)op.category=catSel.value;
+  });
+  const walletId=$('import-wallet').value;
+  const count=importOps(fresh,walletId);
+  _csvParsed=[];
+  $('import-preview').style.display='none';
+  alert('Импортировано '+count+' операций!');
   refreshCurrent();
 };
 
@@ -674,6 +821,8 @@ initAuth(
     state.walletIdx=0;
     // Apply recurring ops for current month
     applyRecurring();
+    // Expose portfolio alert checker
+    window._checkPortfolioAlert=checkPortfolioAlert;
     renderReports();
   },
   ()=>{
@@ -798,6 +947,26 @@ $('loading-screen').style.display='flex';
     <input type="hidden" id="tpl-idx" value="-1">
     <button class="btn-primary" onclick="window.saveTemplate()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-template').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+
+<!-- MODAL: asset -->
+<div class="modal-overlay" id="modal-asset">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">АКТИВ</span><button class="modal-close" onclick="document.getElementById('modal-asset').classList.remove('open')">&#10005;</button></div>
+    <div class="rf">
+      <div class="fg"><label>ТИКЕР (напр. SBER)</label><input class="fi" id="asset-ticker" placeholder="SBER" style="text-transform:uppercase"></div>
+      <div class="fg"><label>НАЗВАНИЕ (необяз.)</label><input class="fi" id="asset-name" placeholder="Сбербанк"></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>КОЛИЧЕСТВО ШТ.</label><input class="fi" type="number" id="asset-qty" placeholder="10"></div>
+      <div class="fg"><label>ЦЕНА ПОКУПКИ ₽</label><input class="fi" type="number" id="asset-buy" placeholder="0"></div>
+    </div>
+    <div class="fg"><label>ТЕКУЩАЯ ЦЕНА ₽ (необяз.)</label><input class="fi" type="number" id="asset-cur" placeholder="= цене покупки"></div>
+    <input type="hidden" id="asset-idx" value="-1">
+    <button class="btn-primary" onclick="window.saveAsset()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-asset').classList.remove('open')">Отмена</button>
   </div>
 </div>
 
