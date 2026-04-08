@@ -40,6 +40,7 @@
       <button class="tnav-btn" id="tnav-health" onclick="window.showScreen('health')">ЗДОРОВЬЕ</button>
       <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
       <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
+      <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
@@ -340,6 +341,11 @@
             <div class="dash-card-body"><div id="dash-portfolio"></div></div>
           </div>
 
+          <div id="dash-widget-physassets" onclick="window.showScreen('physassets')" class="dash-card clickable">
+            <div class="dash-card-head">ФИЗИЧЕСКИЕ АКТИВЫ <span class="dash-card-link">→ АКТИВЫ</span></div>
+            <div class="dash-card-body"><div id="dash-physassets"></div></div>
+          </div>
+
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
             <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
@@ -513,6 +519,22 @@
     </div>
   </div>
 
+
+  <!-- ── PHYSICAL ASSETS ── -->
+  <div id="screen-physassets" class="screen">
+    <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--topbar)">Физические активы</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Анализ стоимости владения и альтернативной доходности</div>
+        </div>
+        <button class="sbtn amber" onclick="window.openAddPhysAsset()">+ Добавить актив</button>
+      </div>
+      <div id="assets-summary" style="flex-shrink:0"></div>
+      <div id="assets-list"></div>
+    </div>
+  </div>
+
 </div><!-- end app-screen -->
 
 <!-- ── MODALS ── -->
@@ -603,6 +625,7 @@ import{renderHealth}from'./health.js';
 import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
+import{renderAssets,checkAssetsAlert}from'./assets.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 
 const $=id=>document.getElementById(id);
@@ -621,6 +644,7 @@ function refreshCurrent(){
   else if(cur==='health')renderHealth();
   else if(cur==='portfolio')renderPortfolio();
   else if(cur==='import'){initImportScreen();}
+  else if(cur==='physassets')renderAssets();
 }
 
 
@@ -823,6 +847,7 @@ initAuth(
     applyRecurring();
     // Expose portfolio alert checker
     window._checkPortfolioAlert=checkPortfolioAlert;
+    window._checkAssetsAlert=checkAssetsAlert;
     renderReports();
   },
   ()=>{
@@ -967,6 +992,41 @@ $('loading-screen').style.display='flex';
     <input type="hidden" id="asset-idx" value="-1">
     <button class="btn-primary" onclick="window.saveAsset()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-asset').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+
+<!-- MODAL: physical asset -->
+<div class="modal-overlay" id="modal-phys-asset">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">ФИЗИЧЕСКИЙ АКТИВ</span><button class="modal-close" onclick="document.getElementById('modal-phys-asset').classList.remove('open')">&#10005;</button></div>
+    <div class="rf">
+      <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="pa-name" placeholder="Квартира, BMW X5..."></div>
+      <div class="fg"><label>ТИП</label>
+        <select class="fi" id="pa-type">
+          <option value="apartment">🏠 Квартира</option>
+          <option value="car">🚗 Автомобиль</option>
+          <option value="other">💎 Другое</option>
+        </select>
+      </div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>ТЕКУЩАЯ СТОИМОСТЬ ₽</label><input class="fi" type="number" id="pa-value" placeholder="0"></div>
+      <div class="fg"><label>СТОИМОСТЬ МЕСЯЦ НАЗАД ₽</label><input class="fi" type="number" id="pa-prev-value" placeholder="для расчёта роста"></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>СТАВКА АЛЬТЕРНАТИВЫ % (депозит)</label><input class="fi" type="number" id="pa-alt-rate" value="18" step="0.5"></div>
+      <div class="fg"><label>ОЖИД. РОСТ В ГОД % (если нет истории)</label><input class="fi" type="number" id="pa-growth-rate" value="5" step="0.5"></div>
+    </div>
+    <div class="fg" id="pa-rental-wrap"><label>ПОТЕНЦИАЛЬНАЯ АРЕНДА ₽/МЕС (для квартиры)</label><input class="fi" type="number" id="pa-rental" placeholder="0"></div>
+    <div class="fg">
+      <label>КАТЕГОРИИ РАСХОДОВ НА СОДЕРЖАНИЕ</label>
+      <div class="notice blue" style="margin-bottom:8px">Выберите категории связанные с этим активом — система посчитает среднемесячные расходы автоматически</div>
+      <div id="pa-cats" style="max-height:180px;overflow-y:auto;background:var(--bg);border-radius:7px;padding:8px 10px;border:1px solid var(--border)"></div>
+    </div>
+    <input type="hidden" id="pa-idx" value="-1">
+    <button class="btn-primary" onclick="window.savePhysAsset()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-phys-asset').classList.remove('open')">Отмена</button>
   </div>
 </div>
 

@@ -14,6 +14,7 @@ const WIDGETS=[
   {id:'goals',label:'Цели',right:true},
   {id:'chart',label:'График cashflow',right:true},
   {id:'portfolio',label:'Инвестиционный портфель',right:true},
+  {id:'physassets',label:'Физические активы',right:true},
 ];
 // Left column widgets are always visible (not configurable)
 
@@ -21,7 +22,7 @@ function getWidgetVis(){
   if(!state.D.dashWidgets)state.D.dashWidgets={plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
   // Ensure new widgets default to true
   const dw=state.D.dashWidgets;
-  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
+  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
   return dw;
 }
 
@@ -75,6 +76,7 @@ export function renderDashboard(){
   renderHealthScore();
   renderPlanDash(factOps,mInc);
   renderPortfolioDash();
+  renderAssetsDash();
   renderLimitsDash(factOps);
   renderForecastDash();
   renderAnomaliesDash(factOps);
@@ -182,6 +184,11 @@ function renderAlerts(factOps,mInc){
   const portAlert=window._checkPortfolioAlert&&window._checkPortfolioAlert();
   if(portAlert){
     alerts.push({level:'info',msg:`📈 ${portAlert} — <a href="#" onclick="window.showScreen('portfolio');return false" style="color:var(--blue);font-weight:700">Обновить →</a>`});
+  }
+  // Physical assets monthly update alert
+  const assetsAlert=window._checkAssetsAlert&&window._checkAssetsAlert();
+  if(assetsAlert){
+    alerts.push({level:'warn',msg:`🏠 ${assetsAlert} — <a href="#" onclick="window.showScreen('physassets');return false" style="color:var(--blue);font-weight:700">Обновить →</a>`});
   }
 
   // Upcoming recurring
@@ -451,6 +458,42 @@ function renderPortfolioDash(){
       '</div>';
     }).join('')}
   `;
+}
+
+function renderAssetsDash(){
+  const el=document.getElementById('dash-physassets');if(!el||!state.D)return;
+  const assets=state.D.physAssets||[];
+  if(!assets.length){
+    el.innerHTML=`<div style="color:var(--text2);font-size:12px">Нет активов. <a href="#" onclick="window.showScreen('physassets');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>`;
+    return;
+  }
+  const totalValue=assets.reduce((s,a)=>s+a.value,0);
+  let html=`<div style="font-size:14px;font-weight:700;color:var(--topbar);margin-bottom:6px">${fmt(totalValue)}</div>`;
+  html+=assets.map(a=>{
+    // Simple ownership cost
+    let monthly=0;
+    for(let i=0;i<3;i++){
+      const ops=getMOps(-i).filter(o=>!isPlanned(o.type));
+      monthly+=ops.filter(o=>o.type==='expense'&&(a.categories||[]).includes(o.category)).reduce((s,o)=>s+o.amount,0);
+    }
+    monthly=Math.round(monthly/3);
+    const altAnnual=Math.round(a.value*(a.altRate||18)/100);
+    const realAnnual=(a.value-(a.prevValue||a.value))-monthly*12;
+    const better=altAnnual>realAnnual;
+    const daysSince=a.lastUpdated?Math.floor((new Date(today())-new Date(a.lastUpdated))/(1000*60*60*24)):999;
+    return`<div style="padding:5px 0;border-top:.5px solid var(--border);font-size:11px">
+      <div style="display:flex;justify-content:space-between">
+        <span style="font-weight:600;color:var(--topbar)">${a.icon||'🏠'} ${a.name}</span>
+        <span style="color:var(--text2)">${fmt(a.value)}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:2px">
+        <span style="color:var(--text2)">содержание: ${fmt(monthly)}/мес</span>
+        ${better?`<span style="color:var(--orange-dark);font-weight:600">альт. ${fmt(altAnnual)}/год</span>`:`<span style="color:var(--green-dark)">держать выгодно</span>`}
+      </div>
+      ${daysSince>=30?`<div style="color:var(--orange-dark);font-size:10px">⚠ обновите стоимость</div>`:''}
+    </div>`;
+  }).join('');
+  el.innerHTML=html;
 }
 
 window.openWidgetSettings=function(){
