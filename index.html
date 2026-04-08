@@ -84,17 +84,10 @@
           </div>
         </div>
       </div>
-      <!-- Metrics -->
-      <div class="panel">
-        <div class="panel-head">ДОХОДЫ И РАСХОДЫ</div>
-        <div class="panel-body" style="overflow:visible">
-          <div class="metrics-grid">
-            <div class="met-item"><div class="met-lbl">ДОХОД</div><div class="met-sub">ТЕКУЩИЙ</div><div class="met-val pos" id="m-inc-cur">₽ 0</div></div>
-
-            <div class="met-item"><div class="met-lbl">РАСХОД</div><div class="met-sub">ТЕКУЩИЙ</div><div class="met-val neg" id="m-exp-cur">₽ 0</div></div>
-
-          </div>
-        </div>
+      <!-- Wallets in left column -->
+      <div class="panel" style="flex-shrink:0">
+        <div class="panel-head">КОШЕЛЬКИ</div>
+        <div class="panel-body"><div id="r-wallets"></div></div>
       </div>
       <!-- Categories -->
       <div class="panel" style="flex:1;min-height:0">
@@ -110,16 +103,13 @@
     </div>
 
     <div class="rep-right">
-      <!-- Wallets + Plan -->
-      <div class="rep-right-top">
-        <div class="panel" style="width:220px;flex-shrink:0">
-          <div class="panel-head">КОШЕЛЬКИ</div>
-          <div class="panel-body"><div id="r-wallets"></div></div>
-        </div>
+      <!-- Wallet ops only on right -->
+      <div class="rep-right-top" style="display:none">
+        <div style="display:none">
 
       </div>
       <!-- Wallet ops -->
-      <div class="panel rep-right-bot">
+      <div class="panel" style="flex:1;min-height:0">
         <div class="panel-head">ОПЕРАЦИИ ПО КОШЕЛЬКУ ЗА МЕСЯЦ</div>
         <div class="panel-body">
           <div class="wnav">

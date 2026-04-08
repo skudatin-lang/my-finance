@@ -257,8 +257,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 #screen-reports{flex-direction:row;}
 .rep-left{width:330px;flex-shrink:0;display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);border-right:2px solid var(--border2);overflow:hidden;}
 .rep-right{flex:1;display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow:hidden;}
-.rep-right-top{display:flex;gap:var(--gap);flex-shrink:0;height:210px;}
-.rep-right-bot{flex:1;min-height:0;}
+.rep-right-top{display:none!important;}
+
 
 /* ── MOBILE ── */
 @media(max-width:700px){
