@@ -187,6 +187,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
 .cal-dlbl{text-align:center;font-size:10px;color:var(--text2);padding:4px 0;font-weight:700;letter-spacing:.4px;}
 .cal-d{text-align:center;padding:6px 2px;font-size:12px;border-radius:5px;cursor:pointer;font-weight:500;}
+.cal-d.selected{outline:2px solid var(--amber-dark);outline-offset:1px;}
 .cal-d.fact{background:var(--amber-light);color:var(--amber-dark);font-weight:700;border:1px solid var(--border);}
 .cal-d.plan{outline:2px solid var(--blue);}
 .cal-d.both{background:var(--amber-light);font-weight:700;outline:2px solid var(--blue);}
@@ -267,12 +268,13 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
   /* Топбар: бренд + правые кнопки в первой строке, вкладки во второй */
   .topbar{flex-wrap:wrap;height:auto;padding:0;}
-  .topbar-brand{order:1;flex:1;padding:10px 14px;}
-  /* right buttons and nav in same row */
-  .topbar-right{order:2;flex-shrink:0;height:44px;}
-  .topbar-nav{order:2;flex:1;justify-content:flex-start;border-left:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;height:44px;}
+  /* Row 1: brand + right buttons */
+  .topbar-brand{order:1;flex:1;padding:8px 12px;}
+  .topbar-right{order:1;flex-shrink:0;height:44px;}
+  /* Row 2: nav tabs full width */
+  .topbar-nav{order:2;width:100%;flex:none;justify-content:flex-start;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
   .topbar-nav::-webkit-scrollbar{display:none;}
-  .tnav-btn{flex:0 0 auto;height:44px;padding:0 14px;font-size:11px;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;}
+  .tnav-btn{flex:0 0 auto;height:40px;padding:0 14px;font-size:11px;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;}
   .tnav-btn.active{background:var(--amber);border-top:3px solid var(--amber-dark);border-bottom:none;}
   .tbtn{padding:0 10px;font-size:10px;height:44px;}
 

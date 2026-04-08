@@ -12,7 +12,15 @@ export function renderCalendar(){
   $('cs-fi').textContent=fmt(allM.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0));
   $('cs-fo').textContent=fmt(allM.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0));
   $('cs-pi').textContent=fmt(allM.filter(o=>o.type==='planned_income').reduce((s,o)=>s+o.amount,0));
-  $('cs-po').textContent=fmt(allM.filter(o=>o.type==='planned_expense').reduce((s,o)=>s+o.amount,0));
+  // Deduplicate recurring planned ops (keep only one per recurringId per month)
+  const planExp=allM.filter(o=>o.type==='planned_expense');
+  const seenRec=new Set();
+  const dedupPlanExp=planExp.filter(o=>{
+    if(!o.recurringId)return true;
+    if(seenRec.has(o.recurringId))return false;
+    seenRec.add(o.recurringId);return true;
+  });
+  $('cs-po').textContent=fmt(dedupPlanExp.reduce((s,o)=>s+o.amount,0));
 
   const fD=new Set(allM.filter(o=>!isPlanned(o.type)).map(o=>+o.date.split('-')[2]));
   const pD=new Set(allM.filter(o=>isPlanned(o.type)).map(o=>+o.date.split('-')[2]));
@@ -26,11 +34,22 @@ export function renderCalendar(){
     html+=`<div class="cal-d ${cls}" onclick="window.selCalDay('${ds}')">${d}</div>`;
   }
   $('cal-grid').innerHTML=html;
-  showCalDay(state.calDay||todayStr);
+  const selDay=state.calDay||todayStr;
+  showCalDay(selDay);
+  // Mark selected day
+  markSelected(selDay);
+}
+
+function markSelected(ds){
+  document.querySelectorAll('.cal-d.selected').forEach(el=>el.classList.remove('selected'));
+  // Find day by onclick attr
+  const d=document.querySelector(`.cal-d[onclick="window.selCalDay('${ds}')"]`);
+  if(d)d.classList.add('selected');
 }
 
 export function showCalDay(ds){
   state.calDay=ds;
+  markSelected(ds);
   const d=new Date(ds+'T12:00:00');
   $('cal-day-title').textContent=d.toLocaleDateString('ru-RU',{day:'numeric',month:'long',year:'numeric'}).toUpperCase();
   const ops=state.D.operations.filter(o=>o.date===ds);
