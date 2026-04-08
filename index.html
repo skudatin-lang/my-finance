@@ -520,26 +520,6 @@ function refreshCurrent(){
   else if(cur==='health')renderHealth();
 }
 
-function renderLoansSummary(){
-  const el=document.getElementById('loans-summary');if(!el||!state.D)return;
-  const loans=state.D.loans||[];
-  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
-  const totalDebt=loans.reduce((s,l)=>{
-    const mr=l.rate/100/12,n=l.months;
-    const pmt=mr>0?Math.round(l.amount*mr*Math.pow(1+mr,n)/(Math.pow(1+mr,n)-1)):Math.round(l.amount/n);
-    const totalPay=pmt*n;
-    return s+totalPay;
-  },0);
-  const totalPrincipal=loans.reduce((s,l)=>s+l.amount,0);
-  const totalInterest=totalDebt-totalPrincipal;
-  const totalWalletDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
-  el.innerHTML=`<div class="bal-grid">
-    <div class="bal-item full red"><div class="bal-lbl">ВСЕГО ЗАДОЛЖЕННОСТЬ (кошельки)</div><div class="bal-val neg">${fmt(totalWalletDebt)}</div></div>
-    <div class="bal-item"><div class="bal-lbl">СУММА ЗАЙМОВ</div><div class="bal-val sm">${fmt(totalPrincipal)}</div></div>
-    <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА ИТОГО</div><div class="bal-val sm neg">${fmt(totalInterest)}</div></div>
-  </div>
-  ${loans.length===0?'<div style="color:var(--text2);font-size:13px;padding:12px 0">Добавьте займы для расчёта переплаты</div>':''}`;
-}
 
 function initBulk(){
   if(!state.D)return;
