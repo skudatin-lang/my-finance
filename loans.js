@@ -144,9 +144,9 @@ window.editLoan=function(i){
   $('loan-rate').value=l.rate;
   $('loan-months').value=l.months||'';
   $('loan-start').value=l.startDate||today();
-  $('loan-payday').value=l.payDay||1;
+  const pdEl=$('loan-payday');if(pdEl)pdEl.value=l.payDay||25;
   $('loan-payment').value=l.payment||'';
-  $('loan-minpay').value=l.minPayPct||5;
+  const grEl=$('loan-grace');if(grEl)grEl.value=l.graceDays||0;
   const opts='<option value="">— не привязывать —</option>'+
     state.D.wallets.map(w=>`<option value="${w.id}"${w.id===l.walletId?' selected':''}>${w.name} (${w.balance<0?'-':''}${fmt(Math.abs(w.balance))})</option>`).join('');
   $('loan-wallet').innerHTML=opts;
@@ -197,7 +197,7 @@ window.saveLoan=function(){
   let calcPayment=payment;
   if(!calcPayment){
     if(isCard){
-      calcPayment=parseFloat($('loan-payment').value)||0;
+      calcPayment=0; // пользователь вводит вручную
     }else if(months>0){
       calcPayment=mr>0?Math.round(amount*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1)):Math.round(amount/months);
     }
