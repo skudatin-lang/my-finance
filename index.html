@@ -936,19 +936,8 @@ window.calChM=d=>{state.calOff+=d;renderCalendar();};
 window.selCalDay=ds=>showCalDay(ds);
 window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
 window.setCatTab=tab=>setCatTab(tab);
-window.signInGoogle=async function(){
-  // Show iOS hint if this is second attempt
-  const hint=document.getElementById('ios-auth-hint');
-  const btn=document.getElementById('auth-google-btn');
-  if(btn){btn.textContent='⏳ Входим...';btn.disabled=true;}
-  try{
-    await _signInGoogle();
-  }catch(e){
-    if(hint)hint.style.display='';
-    if(btn){btn.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/></svg> Войти через Google';btn.disabled=false;}
-  }
-  // Re-enable button after 3s (redirect case)
-  setTimeout(()=>{if(btn&&!btn.disabled){btn.innerHTML='<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/></svg> Войти через Google';btn.disabled=false;}},5000);
+window.signInGoogle=function(){
+  return _signInGoogle();
 };
 window.doSignOut=doSignOut;
 
