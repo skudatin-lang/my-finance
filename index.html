@@ -302,11 +302,16 @@
     <div class="s-panel" style="width:320px">
       <div class="s-panel-head">УМНЫЙ ВВОД (ЯНДЕКС GPT)</div>
       <div class="s-panel-body">
-        <div class="notice blue">Введите API ключ Яндекс GPT для умного ввода операций. Ключ хранится только на этом устройстве.</div>
+        <div class="notice blue">Ключи хранятся только на этом устройстве в localStorage.</div>
         <div class="fg"><label>API КЛЮЧ</label><input class="fi" id="ai-key-input" type="password" placeholder="AQVN..."></div>
-        <div class="fg"><label>FOLDER ID</label><input class="fi" id="ai-folder-input" placeholder="b1g..."></div>
-        <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Получить в <a href="https://console.yandex.cloud" target="_blank" style="color:var(--amber)">console.yandex.cloud</a> → IAM → API ключи</div>
-        <button class="btn-primary" onclick="window.saveAISettings()">Сохранить</button>
+        <div class="fg"><label>FOLDER ID</label><input class="fi" id="ai-folder-input" placeholder="b1gp4ci8gatrib053sp6"></div>
+        <div class="fg">
+          <label>ПРОКСИ URL (если Safari блокирует)</label>
+          <input class="fi" id="ai-proxy-input" placeholder="https://ваш-worker.workers.dev">
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">Нужен если ИИ выдаёт "Load failed". Инструкция: <a href="https://developers.cloudflare.com/workers/get-started/guide/" target="_blank" style="color:var(--amber)">Cloudflare Workers</a></div>
+        </div>
+        <button class="btn-primary" id="ai-save-btn" onclick="window.saveAISettings()">Сохранить</button>
+        <div style="font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;background:var(--amber-light)" id="ai-save-status"></div>
       </div>
     </div>
     <div class="s-panel" style="width:100%;max-width:500px">

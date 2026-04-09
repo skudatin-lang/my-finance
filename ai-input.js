@@ -4,12 +4,18 @@ import{$,state,today,sched,isPlanned}from'./core.js';
 // Ключ хранится в localStorage (не в Firebase — не синхронизируется между устройствами)
 const getApiKey=()=>localStorage.getItem('ygpt_key')||'';
 const getFolderId=()=>localStorage.getItem('ygpt_folder')||'';
+const getProxy=()=>localStorage.getItem('ygpt_proxy')||'';
 
 export function initAI(){
-  // Show AI input button if key is set
   const key=getApiKey();
+  const folder=getFolderId();
+  // Show/hide AI button in topbar
   const btn=document.getElementById('ai-input-btn');
-  if(btn)btn.style.display=key?'':'none';
+  if(btn)btn.style.display=(key&&folder)?'':'none';
+  // Show key status in settings
+  const status=document.getElementById('ai-save-status');
+  if(status)status.textContent=(key&&folder)?'✓ Ключ сохранён, ИИ активен':'Ключ не настроен';
+  if(status)status.style.color=(key&&folder)?'var(--green-dark)':'var(--text2)';
 }
 
 export function openAISettings(){
@@ -19,6 +25,8 @@ export function openAISettings(){
   const folderEl=document.getElementById('ai-folder-input');
   if(keyEl)keyEl.value=getApiKey();
   if(folderEl)folderEl.value=getFolderId();
+  const proxyEl=document.getElementById('ai-proxy-input');
+  if(proxyEl)proxyEl.value=getProxy();
   modal.classList.add('open');
 }
 
@@ -29,8 +37,19 @@ window.saveAISettings=function(){
   else localStorage.removeItem('ygpt_key');
   if(folder)localStorage.setItem('ygpt_folder',folder);
   else localStorage.removeItem('ygpt_folder');
-  document.getElementById('modal-ai-settings').classList.remove('open');
+  const proxy=(document.getElementById('ai-proxy-input')?.value||'').trim();
+  if(proxy)localStorage.setItem('ygpt_proxy',proxy);
+  else localStorage.removeItem('ygpt_proxy');
+  // Close modal if open (optional)
+  const modal=document.getElementById('modal-ai-settings');
+  if(modal)modal.classList.remove('open');
   initAI();
+  // Show confirmation
+  const btn=document.getElementById('ai-save-btn');
+  if(btn){const orig=btn.textContent;btn.textContent='✓ Сохранено!';btn.style.background='var(--green)';setTimeout(()=>{btn.textContent=orig;btn.style.background='';},1500);}
+  // Show AI button in topbar
+  const aib=document.getElementById('ai-input-btn');
+  if(aib)aib.style.display=key?'':'none';
 };
 
 window.openAIInput=function(){
@@ -86,19 +105,44 @@ window.processAIInput=async function(){
 - Если не уверен — поставь confidence ниже 0.7`;
 
   try{
-    const response=await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion',{
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'Authorization':'Api-Key '+key,
-        'x-folder-id':folder
-      },
-      body:JSON.stringify({
-        modelUri:`gpt://${folder}/yandexgpt-lite/latest`,
-        completionOptions:{stream:false,temperature:0.1,maxTokens:300},
-        messages:[{role:'user',text:prompt}]
-      })
-    });
+    // Try direct API call first
+    let response;
+    try{
+      const proxy=getProxy();
+      const endpoint=proxy?proxy.replace(/\/$/,''):'https://llm.api.cloud.yandex.net/foundationModels/v1/completion';
+      response=await fetch(endpoint,{
+        method:'POST',
+        mode:'cors',
+        credentials:'omit',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Api-Key '+key,
+          'x-folder-id':folder,
+          'Accept':'application/json'
+        },
+        body:JSON.stringify({
+          modelUri:'gpt://'+folder+'/yandexgpt-lite/latest',
+          completionOptions:{stream:false,temperature:0.1,maxTokens:300},
+          messages:[{role:'user',text:prompt}]
+        })
+      });
+    }catch(corsErr){
+      // CORS blocked - try via Yandex REST API alternative endpoint
+      response=await fetch('https://llm.api.cloud.yandex.net/foundationModels/v1/completion',{
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'Authorization':'Api-Key '+key,
+          'x-folder-id':folder,
+          'X-Requested-With':'XMLHttpRequest'
+        },
+        body:JSON.stringify({
+          modelUri:'gpt://'+folder+'/yandexgpt-lite/latest',
+          completionOptions:{stream:false,temperature:0.1,maxTokens:300},
+          messages:[{role:'user',text:prompt}]
+        })
+      });
+    }
 
     if(!response.ok){
       const err=await response.text();
