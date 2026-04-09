@@ -1,4 +1,4 @@
-import{$,fmt,state,sched,today}from'./core.js';
+import{$,fmt,state,sched,saveNow,today}from'./core.js';
 
 export function renderPortfolio(){
   if(!state.D)return;
@@ -102,7 +102,7 @@ window.updatePrice=function(i){
   // Update weekly alert timestamp
   if(!state.D.portfolioUpdated)state.D.portfolioUpdated={};
   state.D.portfolioUpdated.lastUpdate=today();
-  sched();renderPortfolio();
+  sched();saveNow();renderPortfolio();
 };
 window.saveAsset=function(){
   if(!state.D.portfolio)state.D.portfolio=[];
@@ -120,7 +120,7 @@ window.saveAsset=function(){
   if(idx>=0)state.D.portfolio[idx]=asset;else state.D.portfolio.push(asset);
   if(!state.D.portfolioUpdated)state.D.portfolioUpdated={};
   state.D.portfolioUpdated.lastUpdate=today();
-  sched();
+  sched();saveNow();
   document.getElementById('modal-asset').classList.remove('open');
   renderPortfolio();
 };

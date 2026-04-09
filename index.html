@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Финансы">
 <meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="./manifest.json">
 <link rel="apple-touch-icon" href="icon-192.jpeg">
 <title>Мои финансы</title>
 <link rel="stylesheet" href="styles.css">
@@ -473,11 +473,6 @@
             <div class="dash-card-body"><div id="dash-portfolio"></div></div>
           </div>
 
-          <div id="dash-widget-shopping" class="dash-card">
-            <div class="dash-card-head" onclick="window.showScreen('shopping')" style="cursor:pointer">🛒 СПИСОК ПОКУПОК <span class="dash-card-link">→ ПОКУПКИ</span></div>
-            <div class="dash-card-body" style="max-height:220px;overflow-y:auto"><div id="dash-shopping"></div></div>
-          </div>
-
           <div id="dash-widget-physassets" onclick="window.showScreen('physassets')" class="dash-card clickable">
             <div class="dash-card-head">ФИЗИЧЕСКИЕ АКТИВЫ <span class="dash-card-link">→ АКТИВЫ</span></div>
             <div class="dash-card-body"><div id="dash-physassets"></div></div>
@@ -930,9 +925,8 @@ import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
 import{renderAssets,checkAssetsAlert}from'./assets.js';
-import{renderShoppingWidget,renderCalShopList}from'./shopping.js';
-import{initAI,openAISettings,initVoice}from'./ai-input.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
+import{initAI,initVoice,openAISettings}from'./ai-input.js';
 
 const $=id=>document.getElementById(id);
 
@@ -1024,6 +1018,7 @@ window.saveEditOp=saveEditOp;window.deleteOp=deleteOp;
 window.exportData=exportData;window.importData=importData;window.clearAllOps=clearAllOps;
 window.exportCSV=exportCSV;window.exportAllCSV=exportAllCSV;
 window.openAISettings=openAISettings;
+    window.refreshCurrentScreen=refreshCurrent;
 
 // ── Import screen ─────────────────────────────────────────────
 function initImportScreen(){
