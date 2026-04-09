@@ -1,0 +1,36 @@
+{
+  "name": "Мои Финансы",
+  "short_name": "my finance",
+  "description": "Личный финансовый менеджер",
+  "start_url": "https://skudatin-lang.github.io/index.html",
+  "id": "https://skudatin-lang.github.io/",
+  "display": "standalone",
+  "background_color": "#F5EDD6",
+  "theme_color": "#3B2314",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "finance",
+    "productivity"
+  ],
+  "lang": "ru",
+  "scope": "https://skudatin-lang.github.io/"
+}
