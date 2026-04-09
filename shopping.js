@@ -63,10 +63,13 @@ window.addShopItem=function(){
 };
 
 window.toggleShopItem=function(idx){
-  if(!state.D.shoppingList[idx])return;
+  if(!state.D||!state.D.shoppingList[idx])return;
   state.D.shoppingList[idx].done=!state.D.shoppingList[idx].done;
   state.D.shoppingList[idx].doneDate=state.D.shoppingList[idx].done?today():null;
-  sched();renderShoppingList();renderShoppingWidget();
+  sched();
+  renderShoppingList();
+  renderShoppingWidget();
+  renderCalShopList();
 };
 
 window.deleteShopItem=function(idx){
@@ -75,8 +78,9 @@ window.deleteShopItem=function(idx){
 };
 
 window.clearDoneItems=function(){
-  state.D.shoppingList=state.D.shoppingList.filter(i=>!i.done);
-  sched();renderShoppingList();renderShoppingWidget();
+  if(!state.D)return;
+  state.D.shoppingList=(state.D.shoppingList||[]).filter(i=>!i.done);
+  sched();renderShoppingList();renderShoppingWidget();renderCalShopList();
 };
 
 window.dashAddShopItem=function(){
@@ -114,3 +118,61 @@ export function renderShoppingWidget(){
     ${total?`<div style="font-size:11px;color:var(--text2);margin-top:4px;text-align:right">Итого ≈ ₽${total.toLocaleString('ru-RU')}</div>`:''}
   `;
 }
+
+// ── Calendar shopping list ──────────────────────────────────────
+export function renderCalShopList(){
+  const el=document.getElementById('cal-shop-list');
+  if(!el||!state.D)return;
+  if(!state.D.shoppingList)state.D.shoppingList=[];
+
+  const items=state.D.shoppingList;
+  const active=items.filter(i=>!i.done);
+  const done=items.filter(i=>i.done);
+
+  if(!items.length){
+    el.innerHTML='<div style="color:var(--text2);font-size:12px;padding:4px 0">Список пуст — добавьте товары выше</div>';
+    return;
+  }
+
+  const total=active.filter(i=>i.amount).reduce((s,i)=>s+i.amount,0);
+
+  el.innerHTML=`
+    ${total?`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">Итого ≈ ₽${total.toLocaleString('ru-RU')}</div>`:''}
+    ${active.map((item)=>`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:.5px solid var(--border)">
+        <input type="checkbox" onchange="window.toggleShopItem(${items.indexOf(item)})"
+          style="width:18px;height:18px;accent-color:var(--amber);flex-shrink:0;cursor:pointer">
+        <span style="flex:1;font-size:13px;color:var(--topbar)">${item.name}</span>
+        ${item.amount?`<span style="font-size:11px;color:var(--text2)">₽${item.amount.toLocaleString('ru-RU')}</span>`:''}
+      </div>`).join('')}
+    ${done.length?`
+      <div style="margin-top:8px;padding-top:6px;border-top:1px dashed var(--border)">
+        <div style="font-size:10px;color:var(--text2);margin-bottom:4px;font-weight:700">КУПЛЕНО (${done.length})</div>
+        ${done.map((item)=>`
+          <div style="display:flex;align-items:center;gap:8px;padding:4px 0;opacity:.55">
+            <input type="checkbox" checked onchange="window.toggleShopItem(${items.indexOf(item)})"
+              style="width:16px;height:16px;accent-color:var(--amber);cursor:pointer;flex-shrink:0">
+            <span style="font-size:12px;color:var(--topbar);text-decoration:line-through">${item.name}</span>
+            ${item.amount?`<span style="font-size:10px;color:var(--text2)">₽${item.amount.toLocaleString('ru-RU')}</span>`:''}
+          </div>`).join('')}
+      </div>`:''}
+  `;
+}
+
+window.calAddShopItem=function(){
+  const input=document.getElementById('cal-shop-input');
+  const price=document.getElementById('cal-shop-price');
+  const name=input?.value?.trim();
+  if(!name||!state.D)return;
+  if(!state.D.shoppingList)state.D.shoppingList=[];
+  state.D.shoppingList.unshift({
+    id:'sh'+Date.now(),name,
+    amount:parseFloat(price?.value)||0,
+    done:false,addedDate:today()
+  });
+  if(input)input.value='';
+  if(price)price.value='';
+  sched();
+  renderCalShopList();
+  renderShoppingWidget();
+};

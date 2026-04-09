@@ -124,7 +124,7 @@
       <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
       <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
       <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
-      <button class="tnav-btn" id="tnav-shopping" onclick="window.showScreen('shopping')">ПОКУПКИ</button>
+
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
@@ -278,6 +278,23 @@
       </div>
 
 
+
+      <!-- Список покупок в календаре -->
+      <div class="panel" style="flex-shrink:0;margin:0 var(--gap) var(--gap)">
+        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+          🛒 СПИСОК ПОКУПОК
+          <button onclick="window.clearDoneItems()" style="font-size:9px;background:rgba(255,255,255,.15);border:none;color:#C9A96E;padding:2px 8px;border-radius:4px;cursor:pointer;font-weight:600">✓ очистить купленное</button>
+        </div>
+        <div class="panel-body">
+          <div style="display:flex;gap:6px;margin-bottom:8px">
+            <input class="fi" id="cal-shop-input" placeholder="Добавить товар..." style="flex:1;font-size:12px"
+              onkeydown="if(event.key==='Enter')window.calAddShopItem()">
+            <input class="fi" id="cal-shop-price" type="number" placeholder="₽" style="width:72px;font-size:12px">
+            <button class="sbtn amber" onclick="window.calAddShopItem()">+</button>
+          </div>
+          <div id="cal-shop-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -341,7 +358,12 @@
       <div class="s-panel-head">ДАННЫЕ</div>
       <div class="s-panel-body">
         <div class="notice amber">Экспортируй перед обновлением — импортируй в новую версию</div>
-        <div class="btns-row">
+        
+      <div style="padding:12px 16px;border-top:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">КЕШ</div>
+        <button onclick="window.clearSWCache()" style="width:100%;background:var(--red-bg);border:1.5px solid var(--r200);border-radius:8px;padding:10px;color:var(--red);font-weight:700;cursor:pointer;font-size:12px">🔄 Сбросить кеш и перезагрузить</button>
+        <div style="font-size:10px;color:var(--text2);margin-top:5px">Используй если приложение не загружается</div>
+      </div><div class="btns-row">
           <button class="btn-sec" onclick="window.exportData()">Экспорт JSON</button>
           <button class="btn-sec" onclick="document.getElementById('import-input').click()">Импорт JSON</button>
         </div>
@@ -758,7 +780,7 @@ import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
 import{renderAssets,checkAssetsAlert}from'./assets.js';
-import{renderShoppingList,renderShoppingWidget}from'./shopping.js';
+import{renderShoppingList,renderShoppingWidget,renderCalShopList}from'./shopping.js';
 import{initAI,openAISettings,initVoice}from'./ai-input.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 
@@ -769,7 +791,7 @@ function refreshCurrent(){
   if(cur==='dashboard')renderDashboard();
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
-  else if(cur==='calendar'){renderCalendar();renderShoppingList();}
+  else if(cur==='calendar'){renderCalendar();showCalDay&&showCalDay(state.calDay);renderCalShopList();}
   else if(cur==='settings')renderSettings();
   else if(cur==='analytics'){renderAnalytics();renderLimits();}
   else if(cur==='extras'){renderGoals();renderRecurring();}
@@ -1027,11 +1049,10 @@ window.openInSafari=function(){
   setTimeout(()=>{ window.location=url; },500);
 };
 
-// ── Service Worker ───────────────────────────────────────────
+// ── Service Worker: дерегистрация ────────────────────────────
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('/sw.js').catch(()=>{});
-  });
+  navigator.serviceWorker.getRegistrations().then(r=>r.forEach(reg=>reg.unregister()));
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
 }
 
 // ── Onboarding ───────────────────────────────────────────────
@@ -1288,14 +1309,19 @@ function checkOnboarding(){
 </div>
 
 <script>
+// Дерегистрируем все старые Service Workers и чистим кеш
 if('serviceWorker' in navigator){
-  window.addEventListener('load', () => {
-    // Use relative path to work on any hosting including GitHub Pages subdirectory
-    navigator.serviceWorker.register('./sw.js')
-      .then(r => console.log('SW registered:', r.scope))
-      .catch(e => console.log('SW error:', e));
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => { console.log('[SW] Unregistering:', r.scope); r.unregister(); });
   });
+  caches.keys().then(keys => keys.forEach(k => { console.log('[SW] Clearing cache:', k); caches.delete(k); }));
 }
+window.clearSWCache = function(){
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.getRegistrations().then(r=>r.forEach(reg=>reg.unregister()));
+  }
+  caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).then(()=>window.location.reload());
+};
 </script>
 </body>
 </html>
