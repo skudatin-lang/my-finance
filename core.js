@@ -14,6 +14,12 @@ const fbApp=initializeApp({
 export const auth=getAuth(fbApp);
 export const db=getFirestore(fbApp);
 export const prov=new GoogleAuthProvider();
+// Prevent iOS Safari from redirecting to native Google app
+prov.setCustomParameters({
+  prompt:'select_account',
+  // Force web-based flow, don't open native app
+  display:'page'
+});
 
 export const MONTHS=['ЯНВАРЬ','ФЕВРАЛЬ','МАРТ','АПРЕЛЬ','МАЙ','ИЮНЬ','ИЮЛЬ','АВГУСТ','СЕНТЯБРЬ','ОКТЯБРЬ','НОЯБРЬ','ДЕКАБРЬ'];
 
@@ -137,19 +143,29 @@ export function initAuth(onLogin,onLogout){
 }
 
 export async function signInGoogle(){
-  const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const isAndroid=/Android/i.test(navigator.userAgent);
+
   try{
-    if(isMobile){
+    if(isIOS){
+      // iOS Safari: use redirect — but must handle result on next page load
       await signInWithRedirect(auth,prov);
+    }else if(isAndroid){
+      // Android: try popup first, fallback to redirect
+      try{
+        await signInWithPopup(auth,prov);
+      }catch(e2){
+        if(e2.code==='auth/popup-blocked'||e2.code==='auth/popup-closed-by-user'){
+          await signInWithRedirect(auth,prov);
+        }else throw e2;
+      }
     }else{
+      // Desktop: popup
       await signInWithPopup(auth,prov);
     }
   }catch(e){
-    // If popup blocked, fallback to redirect
-    if(e.code==='auth/popup-blocked'||e.code==='auth/popup-closed-by-user'){
-      await signInWithRedirect(auth,prov);
-    }else{
-      alert('Ошибка входа: '+e.message);
+    if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request'){
+      alert('Ошибка входа: '+e.message+' ('+e.code+')');
     }
   }
 }
