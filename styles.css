@@ -33,15 +33,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 #app-screen{display:none;flex-direction:column;height:100vh;}
 
 /* ── TOPBAR ── */
-.topbar{background:var(--topbar);display:flex;flex-wrap:wrap;flex-shrink:0;height:auto;}
-.topbar-brand{padding:0 18px;display:flex;align-items:center;flex-shrink:0;height:44px;order:1;}
+.topbar{background:var(--topbar);display:flex;align-items:stretch;flex-shrink:0;height:48px;}
+.topbar-brand{padding:0 18px;display:flex;align-items:center;flex-shrink:0;}
 .topbar-title{font-size:13px;font-weight:700;color:#fff;letter-spacing:1.5px;}
-.topbar-nav{display:flex;flex:none;width:100%;order:3;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
-.topbar-nav::-webkit-scrollbar{display:none;}
-.tnav-btn{background:transparent;border:none;color:#C9A96E;padding:0 18px;height:40px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px;border-bottom:3px solid transparent;transition:background .15s;white-space:nowrap;flex-shrink:0;}
+.topbar-nav{display:flex;flex:1;justify-content:center;}
+.tnav-btn{background:transparent;border:none;color:#C9A96E;padding:0 26px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:1px;border-bottom:3px solid transparent;transition:background .15s;}
 .tnav-btn:hover{color:#fff;background:rgba(255,255,255,.07);}
 .tnav-btn.active{background:var(--amber);color:#fff;border-bottom:3px solid var(--amber-dark);}
-.topbar-right{display:flex;align-items:center;flex-shrink:0;order:2;margin-left:auto;height:44px;}
+.topbar-right{display:flex;align-items:center;flex-shrink:0;}
 .tbtn{background:rgba(255,255,255,.08);border:none;border-left:1px solid rgba(255,255,255,.1);color:#C9A96E;padding:0 14px;height:100%;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.7px;white-space:nowrap;}
 .tbtn:hover{background:rgba(255,255,255,.16);color:#fff;}
 .tbtn.add{background:var(--amber);color:#fff;}
@@ -265,18 +264,24 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 /* ── MOBILE ── */
 @media(max-width:700px){
-  body{overflow:hidden;height:100vh;}
-  #app-screen{height:calc(100vh - var(--topbar-h, 84px));overflow:hidden;display:flex;flex-direction:column;}
+  body{overflow:auto;height:auto;}
+  #app-screen{height:auto;min-height:100vh;overflow:hidden;}
 
   /* Топбар: бренд + правые кнопки в первой строке, вкладки во второй */
-  /* Mobile: same 2-row layout, just compact */
-  .topbar-brand{padding:6px 12px;}
-  .tnav-btn{padding:0 12px;font-size:10px;}
+  .topbar{flex-wrap:wrap;height:auto;padding:0;}
+  /* Row 1: brand + right buttons */
+  .topbar-brand{order:1;flex:1;padding:8px 12px;}
+  .topbar-right{order:1;flex-shrink:0;height:44px;}
+  /* Row 2: nav tabs full width */
+  .topbar-nav{order:2;width:100%;flex:none;justify-content:flex-start;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex-wrap:nowrap;}
+  .topbar-nav::-webkit-scrollbar{display:none;}
+  .tnav-btn{flex:0 0 auto;height:40px;padding:0 14px;font-size:11px;border-bottom:none;border-top:3px solid transparent;white-space:nowrap;}
+  .tnav-btn.active{background:var(--amber);border-top:3px solid var(--amber-dark);border-bottom:none;}
   .tbtn{padding:0 10px;font-size:10px;height:44px;}
 
   /* Screens stack vertically */
-  .screen.active{display:flex!important;flex-direction:column;overflow-y:auto;overflow-x:hidden;height:auto;min-height:0;}
-  .screen:not(.active){display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;margin:0!important;padding:0!important;border:none!important;}
+  .screen.active{display:flex!important;flex-direction:column;overflow:visible;height:auto;}
+  .screen:not(.active){display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;}
 
   /* Reports */
   #screen-reports{flex-direction:column!important;}
