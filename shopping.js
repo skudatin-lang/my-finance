@@ -51,7 +51,7 @@ window.addShopItem=function(){
   const input=document.getElementById('shop-input');
   const amtInput=document.getElementById('shop-amount');
   const name=input?.value.trim();
-  if(!name)return;
+  if(!name||!state.D)return;
   if(!state.D.shoppingList)state.D.shoppingList=[];
   state.D.shoppingList.unshift({
     id:'sh'+Date.now(),name,
@@ -79,26 +79,38 @@ window.clearDoneItems=function(){
   sched();renderShoppingList();renderShoppingWidget();
 };
 
+window.dashAddShopItem=function(){
+  const input=document.getElementById('dash-shop-input');
+  const name=input?.value?.trim();
+  if(!name||!state.D)return;
+  if(!state.D.shoppingList)state.D.shoppingList=[];
+  state.D.shoppingList.unshift({id:'sh'+Date.now(),name,amount:0,done:false,addedDate:today()});
+  input.value='';
+  sched();renderShoppingWidget();
+};
+
 // ── Dashboard widget ─────────────────────────────────────────────
 export function renderShoppingWidget(){
   const el=document.getElementById('dash-shopping');
   if(!el||!state.D)return;
   const items=state.D.shoppingList||[];
   const active=items.filter(i=>!i.done);
-  if(!active.length){
-    el.innerHTML=`<div style="color:var(--text2);font-size:12px">Список пуст. <a href="#" onclick="window.showScreen('shopping');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>`;
-    return;
-  }
   const total=active.filter(i=>i.amount).reduce((s,i)=>s+i.amount,0);
   el.innerHTML=`
-    <div style="font-size:12px;color:var(--text2);margin-bottom:6px">${active.length} товаров${total?` · ≈ ₽${total.toLocaleString('ru-RU')}`:''}</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="dash-shop-input" class="fi" placeholder="Добавить..." style="flex:1;height:30px;font-size:12px;padding:4px 8px"
+        onkeydown="if(event.key==='Enter')window.dashAddShopItem()">
+      <button onclick="window.dashAddShopItem()" style="background:var(--amber);border:none;color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-weight:700">+</button>
+    </div>
+    ${!active.length?'<div style="color:var(--text2);font-size:12px;text-align:center;padding:4px 0">Список пуст</div>':''}
     ${active.slice(0,4).map(i=>`
       <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:.5px solid var(--border)">
-        <input type="checkbox" onchange="window.toggleShopItem(${items.indexOf(i)});return false"
-          style="accent-color:var(--amber);cursor:pointer;flex-shrink:0">
+        <input type="checkbox" onchange="window.toggleShopItem(${items.indexOf(i)})"
+          style="accent-color:var(--amber);cursor:pointer;flex-shrink:0;width:16px;height:16px">
         <span style="font-size:12px;color:var(--topbar);flex:1">${i.name}</span>
         ${i.amount?`<span style="font-size:11px;color:var(--text2)">₽${i.amount.toLocaleString('ru-RU')}</span>`:''}
       </div>`).join('')}
-    ${active.length>4?`<div style="font-size:10px;color:var(--text2);margin-top:4px">+${active.length-4} ещё →</div>`:''}
+    ${active.length>4?`<div style="font-size:10px;color:var(--amber);margin-top:4px;cursor:pointer" onclick="window.showScreen('shopping')">+${active.length-4} ещё →</div>`:''}
+    ${total?`<div style="font-size:11px;color:var(--text2);margin-top:4px;text-align:right">Итого ≈ ₽${total.toLocaleString('ru-RU')}</div>`:''}
   `;
 }

@@ -36,12 +36,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 .topbar{background:var(--topbar);display:flex;flex-wrap:wrap;flex-shrink:0;height:auto;}
 .topbar-brand{padding:0 18px;display:flex;align-items:center;flex-shrink:0;height:44px;order:1;flex:1;}
 .topbar-title{font-size:13px;font-weight:700;color:#fff;letter-spacing:1.5px;}
-.topbar-nav{display:flex;flex:none;width:100%;order:3;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+.topbar-nav{display:flex;flex:none;width:100%;order:2;border-top:1px solid rgba(255,255,255,.12);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;}
 .topbar-nav::-webkit-scrollbar{display:none;}
 .tnav-btn{background:transparent;border:none;color:#C9A96E;padding:0 18px;height:40px;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px;border-bottom:3px solid transparent;transition:background .15s;white-space:nowrap;flex-shrink:0;}
 .tnav-btn:hover{color:#fff;background:rgba(255,255,255,.07);}
 .tnav-btn.active{background:var(--amber);color:#fff;border-bottom:3px solid var(--amber-dark);}
-.topbar-right{display:flex;align-items:center;flex-shrink:0;order:1;height:44px;}
+.topbar-right{display:flex;align-items:center;flex-shrink:0;order:1;height:44px;margin-left:auto;}
 .tbtn{background:rgba(255,255,255,.08);border:none;border-left:1px solid rgba(255,255,255,.1);color:#C9A96E;padding:0 14px;height:100%;font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.7px;white-space:nowrap;}
 .tbtn:hover{background:rgba(255,255,255,.16);color:#fff;}
 .tbtn.add{background:var(--amber);color:#fff;}
@@ -363,12 +363,13 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 /* ── DASH CARDS ── */
 .dash-right-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-content:start;}
+#dash-widget-shopping{grid-column:span 1;}
 .dash-card{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
 .dash-card.clickable{cursor:pointer;transition:border-color .15s;}
 .dash-card.clickable:hover{border-color:var(--amber);}
 .dash-card-head{background:var(--topbar);color:#C9A96E;font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;}
 .dash-card-link{font-size:9px;opacity:.7;font-weight:400;letter-spacing:.3px;}
-.dash-card-body{padding:10px 12px;flex:1;overflow:hidden;}
+.dash-card-body{padding:10px 12px;flex:1;overflow:hidden;min-height:60px;max-height:200px;}
 
 @media(max-width:700px){
   .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}

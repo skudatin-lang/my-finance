@@ -2,7 +2,7 @@
   "name": "Мои Финансы",
   "short_name": "my finance",
   "description": "Личный финансовый менеджер",
-  "start_url": "/",
+  "start_url": "https://skudatin-lang.github.io/",
   "display": "standalone",
   "background_color": "#F5EDD6",
   "theme_color": "#3B2314",
@@ -31,5 +31,5 @@
     "productivity"
   ],
   "lang": "ru",
-  "scope": "/"
+  "scope": "https://skudatin-lang.github.io/"
 }

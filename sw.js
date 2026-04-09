@@ -1,68 +1,71 @@
-const CACHE = 'myfinance-v4';
+const CACHE = 'myfinance-v5';
+const BASE = self.location.pathname.replace('sw.js','');
+
+// Files to cache
 const ASSETS = [
-  './',
-  './index.html',
-  './styles.css',
-  './core.js',
-  './dashboard.js',
-  './reports.js',
-  './dds.js',
-  './calendar.js',
-  './analytics.js',
-  './goals.js',
-  './recurring.js',
-  './health.js',
-  './loans.js',
-  './templates.js',
-  './portfolio.js',
-  './import-csv.js',
-  './assets.js',
-  './shopping.js',
-  './settings.js',
-  './operations.js',
-  './ai-input.js',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
+  BASE,
+  BASE+'index.html',
+  BASE+'styles.css',
+  BASE+'core.js',
+  BASE+'dashboard.js',
+  BASE+'reports.js',
+  BASE+'dds.js',
+  BASE+'calendar.js',
+  BASE+'analytics.js',
+  BASE+'goals.js',
+  BASE+'recurring.js',
+  BASE+'health.js',
+  BASE+'loans.js',
+  BASE+'templates.js',
+  BASE+'portfolio.js',
+  BASE+'import-csv.js',
+  BASE+'assets.js',
+  BASE+'shopping.js',
+  BASE+'settings.js',
+  BASE+'operations.js',
+  BASE+'ai-input.js',
+  BASE+'manifest.json',
+  BASE+'icon-192.png',
+  BASE+'icon-512.png',
 ];
 
 self.addEventListener('install', e => {
+  self.skipWaiting();
   e.waitUntil(
-    caches.open(CACHE)
-      .then(cache => cache.addAll(ASSETS.map(url => new Request(url, {cache: 'reload'}))))
-      .catch(err => console.log('Cache install error (non-fatal):', err))
-      .then(() => self.skipWaiting())
+    caches.open(CACHE).then(cache =>
+      Promise.allSettled(ASSETS.map(url =>
+        cache.add(new Request(url, {cache:'reload'})).catch(()=>{})
+      ))
+    )
   );
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
-  // Always network for Firebase/Google APIs
-  if (url.includes('firebase') || url.includes('googleapis') || url.includes('google.com')) {
-    e.respondWith(
-      fetch(e.request).catch(() => new Response('Network error', {status: 503}))
-    );
+  // Skip Firebase/Google/external requests
+  if(url.includes('firebaseio.com')||url.includes('googleapis.com')||
+     url.includes('google.com')||url.includes('gstatic.com')||
+     url.includes('yandex')||url.includes('workers.dev')){
     return;
   }
-  // Cache first for static assets, network fallback
   e.respondWith(
     caches.match(e.request).then(cached => {
-      if (cached) return cached;
+      if(cached) return cached;
       return fetch(e.request).then(res => {
-        if (res && res.ok && res.type !== 'opaque') {
+        if(res && res.ok){
           const clone = res.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone)).catch(()=>{});
         }
         return res;
-      }).catch(() => caches.match('./index.html'));
+      }).catch(() => caches.match(BASE+'index.html'));
     })
   );
 });
