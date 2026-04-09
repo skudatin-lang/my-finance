@@ -96,6 +96,13 @@ export function migrate(){
     const p1=D.plan.find(p=>p.id==='p1');if(p1)p1.type='expense';
     D.version=10;
   }
+  // Initialize new fields for all users
+  if(!D.shoppingList)D.shoppingList=[];
+  if(!D.portfolio)D.portfolio=[];
+  if(!D.physAssets)D.physAssets=[];
+  if(!D.portfolioUpdated)D.portfolioUpdated={};
+  if(!D.assetsUpdated)D.assetsUpdated={};
+  if(!D.categoryLimits)D.categoryLimits=[];
 }
 
 export async function saveNow(){
