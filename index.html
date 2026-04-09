@@ -3,22 +3,105 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#BA7517">
+<meta name="theme-color" content="#3D2B1A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Финансы">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.jpeg">
 <title>Мои финансы</title>
 <link rel="stylesheet" href="styles.css">
+<style>
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:.8}}
+</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
+
+<!-- ── ONBOARDING ── -->
+<div id="onboarding-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;overflow-y:auto">
+  <div style="max-width:480px;margin:0 auto;padding:32px 20px 60px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="width:64px;height:64px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;margin:0 auto 16px">₽</div>
+      <div style="font-size:22px;font-weight:700;color:var(--topbar)">Добро пожаловать!</div>
+      <div style="font-size:14px;color:var(--text2);margin-top:6px">Настроим приложение за 3 шага</div>
+    </div>
+
+    <!-- Step indicators -->
+    <div style="display:flex;gap:8px;margin-bottom:28px">
+      <div id="ob-step-1" style="flex:1;height:4px;border-radius:2px;background:var(--amber)"></div>
+      <div id="ob-step-2" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
+      <div id="ob-step-3" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
+    </div>
+
+    <!-- Step 1: Wallets -->
+    <div id="ob-screen-1">
+      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:6px">1. Ваши кошельки</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Добавьте счета и карты. Для кредиток — отрицательный баланс.</div>
+      <div id="ob-wallets-list" style="margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;margin-bottom:20px">
+        <input class="fi" id="ob-wallet-name" placeholder="Название (Карта, Наличные...)" style="flex:1">
+        <input class="fi" id="ob-wallet-bal" type="number" placeholder="Баланс" style="width:110px">
+        <button class="sbtn amber" onclick="window.obAddWallet()">+</button>
+      </div>
+      <button class="btn-primary" onclick="window.obNext(2)">Далее →</button>
+      <button class="btn-sec" onclick="window.obSkip()">Пропустить настройку</button>
+    </div>
+
+    <!-- Step 2: Income -->
+    <div id="ob-screen-2" style="display:none">
+      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:6px">2. Ежемесячный доход</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Укажите примерный доход в месяц — от него будет рассчитываться финансовый план.</div>
+      <div class="fg"><label>МОЙ ДОХОД В МЕСЯЦ ₽</label><input class="fi" type="number" id="ob-income" placeholder="100 000"></div>
+      <div class="notice amber" style="margin-top:8px">Финплан по умолчанию: 35% постоянные расходы, 15% кредиты, 10% накопления, 10% бизнес, 10% з/п жены, 10% переменные, 10% покупки</div>
+      <button class="btn-primary" onclick="window.obNext(3)">Далее →</button>
+      <button class="btn-sec" onclick="window.obNext(1)">← Назад</button>
+    </div>
+
+    <!-- Step 3: First operation -->
+    <div id="ob-screen-3" style="display:none">
+      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:6px">3. Готово!</div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Приложение настроено. Добавьте первую операцию или сразу начните пользоваться.</div>
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:20px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">БЫСТРЫЙ СТАРТ</div>
+        <div style="font-size:12px;color:var(--topbar);line-height:2">
+          ✓ Перейди на <b>Отчёты</b> — там баланс и кошельки<br>
+          ✓ Нажми <b>+ ОПЕРАЦИЯ</b> чтобы добавить доход или расход<br>
+          ✓ <b>ДДС</b> покажет как выполняется финансовый план<br>
+          ✓ <b>Дашборд</b> — главный экран с обзором всего
+        </div>
+      </div>
+      <button class="btn-primary" onclick="window.obFinish()">Начать работу →</button>
+    </div>
+  </div>
+</div>
 
 <!-- ── AUTH ── -->
 <div id="auth-screen">
   <div class="auth-logo">₽</div>
   <div class="auth-title">МОИ ФИНАНСЫ</div>
   <div class="auth-sub">Личный учёт доходов, расходов и финансового плана</div>
-  <button class="google-btn" onclick="window.signInGoogle()">
+
+  <!-- Telegram WebView warning -->
+  <div id="tg-warning" style="display:none;margin-bottom:16px;padding:14px 16px;background:rgba(255,255,255,.15);border-radius:10px;text-align:left;max-width:300px">
+    <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">⚠️ Откройте в Safari</div>
+    <div style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.5;margin-bottom:10px">Вход через Google не работает во встроенном браузере Telegram. Откройте ссылку в Safari.</div>
+    <button onclick="window.openInSafari()" style="width:100%;background:var(--amber);border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">
+      Открыть в Safari →
+    </button>
+  </div>
+
+  <button class="google-btn" id="auth-google-btn" onclick="window.signInGoogle()">
     <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Войти через Google
   </button>
+  <div id="ios-auth-hint" style="display:none;margin-top:14px;padding:12px 16px;background:rgba(255,255,255,.12);border-radius:10px;font-size:12px;color:rgba(255,255,255,.9);line-height:1.6;text-align:left;max-width:280px">
+    <b>Проблема с входом на iPhone?</b><br>
+    Открой сайт в <b>режиме инкогнито</b> Safari → войди там.<br>
+    Или: Настройки iPhone → Safari → Открывать ссылки → В браузере.
+  </div>
 </div>
 <div id="loading-screen"><div class="spinner"></div><div style="font-size:14px;color:var(--text2);margin-top:8px">Загрузка...</div></div>
 
@@ -41,11 +124,14 @@
       <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
       <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
       <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
+      <button class="tnav-btn" id="tnav-shopping" onclick="window.showScreen('shopping')">ПОКУПКИ</button>
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
       <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
+      <button class="tbtn" id="ai-voice-btn" onclick="window.toggleVoiceInput()" style="display:none;background:rgba(186,117,23,.3);border:1.5px solid var(--amber);color:var(--amber)" title="Голосовой ввод">🎤</button>
       <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
+        <button class="tbtn" onclick="window.openAISettings()" title="Настройки ИИ" style="padding:0 10px">🤖</button>
       <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
     </div>
   </div>
@@ -190,6 +276,25 @@
           </div>
         </div>
       </div>
+
+      <!-- Shopping list -->
+      <div style="flex-shrink:0;padding:0 var(--gap) var(--gap)">
+        <div class="panel">
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+            🛒 СПИСОК ПОКУПОК
+            <button onclick="window.clearBoughtItems()" style="font-size:9px;background:rgba(255,255,255,.15);border:none;color:#C9A96E;padding:2px 8px;border-radius:4px;cursor:pointer">✓ очистить купленное</button>
+          </div>
+          <div class="panel-body">
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input class="fi" id="shop-item-input" placeholder="Добавить товар..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')window.addShopItem()">
+              <input class="fi" id="shop-price-input" type="number" placeholder="₽" style="width:72px;font-size:12px">
+              <button class="sbtn amber" onclick="window.addShopItem()">+</button>
+            </div>
+            <div id="shop-list" style="max-height:220px;overflow-y:auto"></div>
+            <div id="shop-total" style="display:none;font-size:12px;font-weight:700;color:var(--topbar);padding-top:6px;border-top:.5px solid var(--border);margin-top:4px;text-align:right"></div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -232,6 +337,21 @@
         <div class="notice blue">Каждая категория привязана к статье финплана</div>
         <div id="expense-cats-list"></div>
         <button class="btn-sec" style="margin-top:8px" onclick="window.openExpCat()">+ Добавить категорию</button>
+      </div>
+    </div>
+    <div class="s-panel" style="width:320px">
+      <div class="s-panel-head">УМНЫЙ ВВОД (ЯНДЕКС GPT)</div>
+      <div class="s-panel-body">
+        <div class="notice blue">Ключи хранятся только на этом устройстве в localStorage.</div>
+        <div class="fg"><label>API КЛЮЧ</label><input class="fi" id="ai-key-input" type="password" placeholder="AQVN..."></div>
+        <div class="fg"><label>FOLDER ID</label><input class="fi" id="ai-folder-input" placeholder="b1gp4ci8gatrib053sp6"></div>
+        <div class="fg">
+          <label>ПРОКСИ URL (если Safari блокирует)</label>
+          <input class="fi" id="ai-proxy-input" placeholder="https://ваш-worker.workers.dev">
+          <div style="font-size:11px;color:var(--text2);margin-top:3px">Нужен если ИИ выдаёт "Load failed". Инструкция: <a href="https://developers.cloudflare.com/workers/get-started/guide/" target="_blank" style="color:var(--amber)">Cloudflare Workers</a></div>
+        </div>
+        <button class="btn-primary" id="ai-save-btn" onclick="window.saveAISettings()">Сохранить</button>
+        <div style="font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;background:var(--amber-light)" id="ai-save-status"></div>
       </div>
     </div>
     <div class="s-panel" style="width:100%;max-width:500px">
@@ -283,6 +403,13 @@
           <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
           <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
         </div></div>
+        <div class="panel" style="flex-shrink:0">
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+            🛒 ПОКУПКИ
+            <a href="#" onclick="window.showScreen('calendar');return false" style="font-size:9px;color:#C9A96E;opacity:.8">→ ВЕСЬ СПИСОК</a>
+          </div>
+          <div class="panel-body"><div id="dash-shopping-quick"></div></div>
+        </div>
         <div id="dash-widget-top3"><div class="panel" style="flex:1;min-height:0">
           <div class="panel-head">ТОП-3 КАТЕГОРИИ РАСХОДОВ</div>
           <div class="panel-body"><div id="dash-top3"></div></div>
@@ -341,9 +468,19 @@
             <div class="dash-card-body"><div id="dash-portfolio"></div></div>
           </div>
 
+          <div id="dash-widget-shopping" onclick="window.showScreen('calendar')" class="dash-card clickable">
+            <div class="dash-card-head">🛒 СПИСОК ПОКУПОК <span class="dash-card-link">→ КАЛЕНДАРЬ</span></div>
+            <div class="dash-card-body"><div id="dash-shopping"></div></div>
+          </div>
+
           <div id="dash-widget-physassets" onclick="window.showScreen('physassets')" class="dash-card clickable">
             <div class="dash-card-head">ФИЗИЧЕСКИЕ АКТИВЫ <span class="dash-card-link">→ АКТИВЫ</span></div>
             <div class="dash-card-body"><div id="dash-physassets"></div></div>
+          </div>
+
+          <div id="dash-widget-shopping" onclick="window.showScreen('shopping')" class="dash-card clickable">
+            <div class="dash-card-head">СПИСОК ПОКУПОК <span class="dash-card-link">→ ПОКУПКИ</span></div>
+            <div class="dash-card-body"><div id="dash-shopping"></div></div>
           </div>
 
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
@@ -353,6 +490,7 @@
 
         </div>
       </div>
+
     </div>
   </div>
 
@@ -535,6 +673,20 @@
     </div>
   </div>
 
+
+  <!-- ── SHOPPING LIST ── -->
+  <div id="screen-shopping" class="screen">
+    <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--topbar)">Список покупок</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Отмечай купленное — оно переходит в «Куплено»</div>
+        </div>
+      </div>
+      <div id="shopping-content"></div>
+    </div>
+  </div>
+
 </div><!-- end app-screen -->
 
 <!-- ── MODALS ── -->
@@ -611,7 +763,7 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched}from'./core.js';
+import{state,initAuth,signInGoogle as _signInGoogle,checkRedirectResult,doSignOut,exportData,importData,clearAllOps,sched,saveNow}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
@@ -626,6 +778,8 @@ import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
 import{renderAssets,checkAssetsAlert}from'./assets.js';
+import{renderShoppingList,renderShoppingWidget}from'./shopping.js';
+import{initAI,openAISettings,initVoice}from'./ai-input.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 
 const $=id=>document.getElementById(id);
@@ -635,7 +789,7 @@ function refreshCurrent(){
   if(cur==='dashboard')renderDashboard();
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
-  else if(cur==='calendar')renderCalendar();
+  else if(cur==='calendar'){renderCalendar();renderShoppingList();}
   else if(cur==='settings')renderSettings();
   else if(cur==='analytics'){renderAnalytics();renderLimits();}
   else if(cur==='extras'){renderGoals();renderRecurring();}
@@ -645,6 +799,7 @@ function refreshCurrent(){
   else if(cur==='portfolio')renderPortfolio();
   else if(cur==='import'){initImportScreen();}
   else if(cur==='physassets')renderAssets();
+  else if(cur==='shopping')renderShoppingList();
 }
 
 
@@ -807,7 +962,9 @@ window.calChM=d=>{state.calOff+=d;renderCalendar();};
 window.selCalDay=ds=>showCalDay(ds);
 window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
 window.setCatTab=tab=>setCatTab(tab);
-window.signInGoogle=signInGoogle;
+window.signInGoogle=function(){
+  return _signInGoogle();
+};
 window.doSignOut=doSignOut;
 
 window.openNewOp=()=>openModal('modal',true);
@@ -831,8 +988,12 @@ window.openEditExpCat=openEditExpCat;
 window.saveExpCat=saveExpCat;
 window.delExpCat=delExpCat;
 window.exportData=exportData;
+window.openAISettings=openAISettings;
 window.importDataFile=e=>importData(e,refreshCurrent);
 window.clearOps=()=>clearAllOps(refreshCurrent);
+
+// Handle redirect result from mobile Google auth
+checkRedirectResult().catch(e=>console.log('redirect:',e));
 
 initAuth(
   user=>{
@@ -848,6 +1009,9 @@ initAuth(
     // Expose portfolio alert checker
     window._checkPortfolioAlert=checkPortfolioAlert;
     window._checkAssetsAlert=checkAssetsAlert;
+    initVoice();
+    renderShoppingWidget();
+    initAI();
     renderReports();
   },
   ()=>{
@@ -859,6 +1023,80 @@ initAuth(
 
 $('auth-screen').style.display='none';
 $('loading-screen').style.display='flex';
+
+// ── Telegram / WebView detection ────────────────────────────
+(function(){
+  const ua=navigator.userAgent||'';
+  const isTG=ua.includes('Telegram')||ua.includes('TelegramBot')||
+    window.TelegramWebviewProxy||window.Telegram;
+  // Also detect generic WebView (not Safari, not Chrome standalone)
+  const isWebView=ua.includes('WebView')||(ua.includes('iPhone')&&!ua.includes('Safari'));
+  const tgWarn=document.getElementById('tg-warning');
+  const authBtn=document.getElementById('auth-google-btn');
+  if((isTG||isWebView)&&tgWarn){
+    tgWarn.style.display='';
+    if(authBtn)authBtn.style.display='none';
+  }
+})();
+
+window.openInSafari=function(){
+  // On iOS, x-safari-url scheme opens in Safari
+  const url=window.location.href;
+  window.location.href='x-safari-https://'+url.replace(/^https?:\/\//,'');
+  // Fallback: try to open via location
+  setTimeout(()=>{ window.location=url; },500);
+};
+
+// ── Service Worker ───────────────────────────────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
+
+// ── Onboarding ───────────────────────────────────────────────
+let _obWallets=[];
+window.obAddWallet=function(){
+  const name=document.getElementById('ob-wallet-name').value.trim();
+  const bal=parseFloat(document.getElementById('ob-wallet-bal').value)||0;
+  if(!name)return;
+  _obWallets.push({id:'w'+Date.now(),name,balance:bal});
+  document.getElementById('ob-wallet-name').value='';
+  document.getElementById('ob-wallet-bal').value='';
+  document.getElementById('ob-wallets-list').innerHTML=_obWallets.map(w=>`
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--border);font-size:13px">
+      <span>${w.name}</span>
+      <span style="color:${w.balance<0?'var(--red)':'var(--topbar)'}">₽${Math.abs(w.balance).toLocaleString('ru-RU')}</span>
+    </div>`).join('');
+};
+window.obNext=function(step){
+  [1,2,3].forEach(s=>{
+    const el=document.getElementById('ob-screen-'+s);
+    if(el)el.style.display=s===step?'':'none';
+    const ind=document.getElementById('ob-step-'+s);
+    if(ind)ind.style.background=s<=step?'var(--amber)':'var(--border)';
+  });
+};
+window.obFinish=function(){
+  if(!state.D)return;
+  if(_obWallets.length>0)state.D.wallets=_obWallets;
+  const income=parseFloat(document.getElementById('ob-income').value)||0;
+  if(income>0)state.D._onboardingIncome=income;
+  state.D._onboarded=true;
+  saveNow();
+  document.getElementById('onboarding-screen').style.display='none';
+  renderReports();
+};
+window.obSkip=function(){
+  if(state.D){state.D._onboarded=true;saveNow();}
+  document.getElementById('onboarding-screen').style.display='none';
+};
+function checkOnboarding(){
+  if(!state.D)return;
+  if(!state.D._onboarded&&!state.D.operations.length&&!state.D.wallets.some(w=>w.balance!==0)){
+    document.getElementById('onboarding-screen').style.display='';
+  }
+}
 </script>
 
 <!-- MODAL: recurring -->
@@ -1030,6 +1268,54 @@ $('loading-screen').style.display='flex';
   </div>
 </div>
 
+<!-- MODAL: AI input -->
+<div class="modal-overlay" id="modal-ai-input">
+  <div class="modal">
+    <div class="modal-hdr">
+      <span class="modal-title">🤖 УМНЫЙ ВВОД</span>
+      <button class="modal-close" onclick="document.getElementById('modal-ai-input').classList.remove('open')">&#10005;</button>
+    </div>
+    <div class="notice blue" style="margin-bottom:10px">Опишите операцию своими словами — ИИ разберёт и создаст запись</div>
+    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--text2)">
+      Примеры: «потратил 500 на продукты с карты», «получил зарплату 80000 на т-банк», «перевёл 5000 на накопления»
+    </div>
+    <div class="fg">
+      <textarea class="fi" id="ai-text-input" placeholder="Опишите операцию..." rows="3" style="resize:none;font-size:15px"></textarea>
+    </div>
+    <button class="btn-primary" id="ai-process-btn" onclick="window.processAIInput()">Разобрать →</button>
+    <div id="ai-result"></div>
+    <button class="btn-primary" id="ai-confirm-btn" onclick="window.confirmAIOp()" style="display:none;margin-top:8px;background:var(--green)">✓ Сохранить операцию</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-ai-input').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+
+<!-- Voice input overlay -->
+<div id="voice-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:20px"></div>
+
+<!-- AI Settings Modal -->
+<div class="modal-overlay" id="modal-ai-settings">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">НАСТРОЙКИ ИИ</span><button class="modal-close" onclick="document.getElementById('modal-ai-settings').classList.remove('open')">&#10005;</button></div>
+    <div class="notice blue">Голосовой ввод работает через Яндекс GPT. Нужны ключи из Яндекс Cloud Console.</div>
+    <div class="fg"><label>API КЛЮЧ (IAM или Api-Key)</label><input class="fi" id="yagpt-key" placeholder="AQVN..."></div>
+    <div class="fg"><label>FOLDER ID</label><input class="fi" id="yagpt-folder" placeholder="b1g..."></div>
+    <div class="fg"><label>URL ПРОКСИ (Cloudflare Worker)</label><input class="fi" id="yagpt-proxy" placeholder="https://your-worker.workers.dev"></div>
+    <div class="notice amber" style="font-size:11px">Прокси нужен для работы из браузера. Задеплойте Worker из инструкции и вставьте URL.</div>
+    <button class="btn-primary" onclick="window.saveAISettings()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-ai-settings').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW error:', e));
+  });
+}
+</script>
 </body>
 </html><div class="dash-right">
         <div id="dash-widget-kpi"><div class="panel" style="flex-shrink:0;overflow:visible">
