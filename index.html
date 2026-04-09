@@ -937,7 +937,7 @@ function refreshCurrent(){
   if(cur==='dashboard')renderDashboard();
   else if(cur==='reports'){renderReports();renderWalletOps();}
   else if(cur==='dds')renderDDS();
-  else if(cur==='calendar'){renderCalendar();showCalDay&&showCalDay(state.calDay);renderCalShopList();}
+  else if(cur==='calendar'){renderCalendar();showCalDay&&showCalDay(state.calDay);renderShoppingList();}
   else if(cur==='settings')renderSettings();
   else if(cur==='analytics')renderAnalytics();
   else if(cur==='extras')renderGoals();
@@ -979,7 +979,6 @@ initAuth(async(user)=>{
     applyRecurring();
     window._checkPortfolioAlert=checkPortfolioAlert;
     window._checkAssetsAlert=checkAssetsAlert;
-    renderShoppingWidget();
     initVoice();
     initAI();
     // Show dashboard by default

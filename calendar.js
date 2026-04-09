@@ -311,3 +311,23 @@ window.clearDoneItems=function(){
   state.D.shoppingList=state.D.shoppingList.filter(i=>!i.done);
   sched();renderShoppingList();
 };
+
+// Expose shopping dash renderer for dashboard.js
+window._renderShoppingDash=function(){
+  const el=document.getElementById('dash-shopping');
+  if(!el||!state.D)return;
+  const items=state.D.shoppingList||[];
+  const pending=items.filter(i=>!i.done);
+  const done=items.filter(i=>i.done).length;
+  if(!items.length){el.innerHTML='<div style="color:var(--text2);font-size:12px">Список пуст</div>';return;}
+  const pct=items.length>0?Math.round(done/items.length*100):0;
+  el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+    <span style="font-size:12px;color:var(--text2)">${done}/${items.length} куплено</span>
+    <span style="font-size:12px;font-weight:700;color:var(--topbar)">${pct}%</span>
+  </div>
+  <div style="background:var(--g50);border-radius:3px;height:4px;margin-bottom:8px">
+    <div style="height:4px;border-radius:3px;background:var(--green);width:${pct}%"></div>
+  </div>
+  ${pending.slice(0,4).map(i=>`<div style="font-size:12px;padding:3px 0;color:var(--topbar);border-top:.5px solid var(--border);display:flex;align-items:center;gap:6px"><span style="color:var(--border2)">○</span>${i.text}${i.qty>1?' × '+i.qty:''}</div>`).join('')}
+  ${pending.length>4?'<div style="font-size:11px;color:var(--text2);padding-top:3px">+' + (pending.length-4) + ' ещё</div>':''}`;
+};

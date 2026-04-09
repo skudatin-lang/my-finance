@@ -1,6 +1,4 @@
 import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched}from'./core.js';
-import{renderShoppingWidget}from'./shopping.js';
-
 let chartInstance=null;
 
 const WIDGETS=[
@@ -81,7 +79,7 @@ export function renderDashboard(){
   renderPlanDash(factOps,mInc);
   renderPortfolioDash();
   renderAssetsDash();
-  renderShoppingWidget();
+  // Shopping widget rendered by calendar.js via renderShoppingList()
   if(window._renderShoppingDash)window._renderShoppingDash();
   renderShoppingQuick();
   renderLimitsDash(factOps);
