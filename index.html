@@ -966,12 +966,12 @@ window.signInGoogle=async function(){
 window.doSignOut=async function(){
   await doSignOut();
   document.getElementById('app-screen').style.display='none';
-  document.getElementById('login-screen').style.display='';
+  document.getElementById('auth-screen').style.display='';
 };
 
 initAuth(async(user)=>{
   if(user){
-    document.getElementById('login-screen').style.display='none';
+    document.getElementById('auth-screen').style.display='none';
     document.getElementById('app-screen').style.display='';
     const av=$('user-avatar');
     if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
@@ -990,7 +990,7 @@ initAuth(async(user)=>{
       if(ob)ob.style.display='';
     }
   }else{
-    document.getElementById('login-screen').style.display='';
+    document.getElementById('auth-screen').style.display='';
     document.getElementById('app-screen').style.display='none';
   }
 });
