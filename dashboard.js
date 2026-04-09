@@ -1,4 +1,5 @@
 import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched}from'./core.js';
+
 let chartInstance=null;
 
 const WIDGETS=[
@@ -13,10 +14,7 @@ const WIDGETS=[
   {id:'goals',label:'Цели',right:true},
   {id:'chart',label:'График cashflow',right:true},
   {id:'portfolio',label:'Инвестиционный портфель',right:true},
-  {id:'shopping',label:'Список покупок',right:true},
   {id:'physassets',label:'Физические активы',right:true},
-  {id:'shopping',label:'Список покупок',right:true},
-  {id:'shopping',label:'Список покупок',right:true},
 ];
 // Left column widgets are always visible (not configurable)
 
@@ -24,7 +22,7 @@ function getWidgetVis(){
   if(!state.D.dashWidgets)state.D.dashWidgets={plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
   // Ensure new widgets default to true
   const dw=state.D.dashWidgets;
-  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets','shopping'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
+  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
   return dw;
 }
 
@@ -79,9 +77,6 @@ export function renderDashboard(){
   renderPlanDash(factOps,mInc);
   renderPortfolioDash();
   renderAssetsDash();
-  // Shopping widget rendered by calendar.js via renderShoppingList()
-  if(window._renderShoppingDash)window._renderShoppingDash();
-  renderShoppingQuick();
   renderLimitsDash(factOps);
   renderForecastDash();
   renderAnomaliesDash(factOps);
@@ -256,40 +251,6 @@ function renderQuickOps(){
   if(!html){el.innerHTML='<div style="color:var(--text2);font-size:12px;grid-column:1/-1">Добавьте шаблоны или операции</div>';return;}
   el.innerHTML=html;
 }
-
-// Shopping quick-add widget in left column (below quick ops)
-export function renderShoppingQuick(){
-  const el=document.getElementById('dash-shopping-quick');if(!el||!state.D)return;
-  const items=(state.D.shoppingList||[]).filter(i=>!i.done);
-  const html=`
-    <div style="display:flex;gap:6px;margin-bottom:6px">
-      <input class="fi" id="dash-shop-input" placeholder="Добавить в список..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')window.dashAddShopItem()">
-      <button class="sbtn amber" onclick="window.dashAddShopItem()">+</button>
-    </div>
-    ${items.length?items.slice(0,4).map((item,i)=>`
-      <div style="display:flex;align-items:center;gap:7px;padding:4px 0;border-bottom:.5px solid var(--border)">
-        <input type="checkbox" onchange="window.toggleShopItem(${state.D.shoppingList.indexOf(item)})" style="accent-color:var(--amber);flex-shrink:0">
-        <span style="flex:1;font-size:12px;color:var(--topbar)">${item.name}</span>
-        ${item.price?`<span style="font-size:11px;color:var(--text2)">₽${item.price.toLocaleString('ru-RU')}</span>`:''}
-      </div>`).join('')+(items.length>4?`<div style="font-size:10px;color:var(--text2);margin-top:3px">ещё ${items.length-4} позиций</div>`:'')
-    :'<div style="color:var(--text2);font-size:11px">Список пуст</div>'}
-  `;
-  el.innerHTML=html;
-}
-
-window.dashAddShopItem=function(){
-  if(!state.D)return;
-  if(!state.D.shoppingList)state.D.shoppingList=[];
-  const inp=document.getElementById('dash-shop-input');
-  const name=(inp?.value||'').trim();
-  if(!name)return;
-  state.D.shoppingList.push({id:'sh'+Date.now(),name,price:0,done:false});
-  if(inp)inp.value='';
-  sched();
-  renderShoppingQuick();
-  if(window._renderShoppingDash)window._renderShoppingDash();
-  renderShoppingQuick();
-};
 
 window.applyTemplateById=function(i){
   if(!state.D.templates||!state.D.templates[i])return;

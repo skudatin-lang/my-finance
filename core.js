@@ -1,5 +1,5 @@
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,signOut as fbOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signOut as fbOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import{getFirestore,doc,getDoc,setDoc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbApp=initializeApp({
@@ -14,12 +14,6 @@ const fbApp=initializeApp({
 export const auth=getAuth(fbApp);
 export const db=getFirestore(fbApp);
 export const prov=new GoogleAuthProvider();
-// Prevent iOS Safari from redirecting to native Google app
-prov.setCustomParameters({
-  prompt:'select_account',
-  // Force web-based flow, don't open native app
-  display:'page'
-});
 
 export const MONTHS=['ЯНВАРЬ','ФЕВРАЛЬ','МАРТ','АПРЕЛЬ','МАЙ','ИЮНЬ','ИЮЛЬ','АВГУСТ','СЕНТЯБРЬ','ОКТЯБРЬ','НОЯБРЬ','ДЕКАБРЬ'];
 
@@ -96,13 +90,6 @@ export function migrate(){
     const p1=D.plan.find(p=>p.id==='p1');if(p1)p1.type='expense';
     D.version=10;
   }
-  // Initialize new fields for all users
-  if(!D.shoppingList)D.shoppingList=[];
-  if(!D.portfolio)D.portfolio=[];
-  if(!D.physAssets)D.physAssets=[];
-  if(!D.portfolioUpdated)D.portfolioUpdated={};
-  if(!D.assetsUpdated)D.assetsUpdated={};
-  if(!D.categoryLimits)D.categoryLimits=[];
 }
 
 export async function saveNow(){
@@ -150,41 +137,7 @@ export function initAuth(onLogin,onLogout){
 }
 
 export async function signInGoogle(){
-  const isIOS=/iPhone|iPad|iPod/i.test(navigator.userAgent);
-  const isAndroid=/Android/i.test(navigator.userAgent);
-
-  try{
-    if(isIOS){
-      // iOS Safari: use redirect — but must handle result on next page load
-      await signInWithRedirect(auth,prov);
-    }else if(isAndroid){
-      // Android: try popup first, fallback to redirect
-      try{
-        await signInWithPopup(auth,prov);
-      }catch(e2){
-        if(e2.code==='auth/popup-blocked'||e2.code==='auth/popup-closed-by-user'){
-          await signInWithRedirect(auth,prov);
-        }else throw e2;
-      }
-    }else{
-      // Desktop: popup
-      await signInWithPopup(auth,prov);
-    }
-  }catch(e){
-    if(e.code!=='auth/popup-closed-by-user'&&e.code!=='auth/cancelled-popup-request'){
-      alert('Ошибка входа: '+e.message+' ('+e.code+')');
-    }
-  }
-}
-
-export async function checkRedirectResult(){
-  try{
-    const result=await getRedirectResult(auth);
-    return result;
-  }catch(e){
-    console.error('Redirect result error:',e);
-    return null;
-  }
+  try{await signInWithPopup(auth,prov);}catch(e){alert('Ошибка: '+e.message);}
 }
 export async function doSignOut(){
   if(!confirm('Выйти?'))return;

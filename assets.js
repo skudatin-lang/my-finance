@@ -1,4 +1,4 @@
-import{$,fmt,state,sched,saveNow,today,getMOps,isPlanned}from'./core.js';
+import{$,fmt,state,sched,today,getMOps,isPlanned}from'./core.js';
 
 export function renderAssets(){
   if(!state.D)return;
@@ -229,7 +229,7 @@ window.savePhysAsset=function(){
   if(idx>=0)state.D.physAssets[idx]=asset;else state.D.physAssets.push(asset);
   if(!state.D.assetsUpdated)state.D.assetsUpdated={};
   state.D.assetsUpdated[asset.id]=today();
-  sched();saveNow();
+  sched();
   document.getElementById('modal-phys-asset').classList.remove('open');
   renderAssets();
 };

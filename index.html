@@ -3,105 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#3D2B1A">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="format-detection" content="telephone=no">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Финансы">
-<meta name="mobile-web-app-capable" content="yes">
-<link rel="manifest" href="./manifest.json">
-<link rel="apple-touch-icon" href="icon-192.jpeg">
+<meta name="theme-color" content="#BA7517">
 <title>Мои финансы</title>
 <link rel="stylesheet" href="styles.css">
-<style>
-@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:.8}}
-</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
-
-<!-- ── ONBOARDING ── -->
-<div id="onboarding-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:500;overflow-y:auto">
-  <div style="max-width:480px;margin:0 auto;padding:32px 20px 60px">
-    <div style="text-align:center;margin-bottom:32px">
-      <div style="width:64px;height:64px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:28px;color:#fff;margin:0 auto 16px">₽</div>
-      <div style="font-size:22px;font-weight:700;color:var(--topbar)">Добро пожаловать!</div>
-      <div style="font-size:14px;color:var(--text2);margin-top:6px">Настроим приложение за 3 шага</div>
-    </div>
-
-    <!-- Step indicators -->
-    <div style="display:flex;gap:8px;margin-bottom:28px">
-      <div id="ob-step-1" style="flex:1;height:4px;border-radius:2px;background:var(--amber)"></div>
-      <div id="ob-step-2" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
-      <div id="ob-step-3" style="flex:1;height:4px;border-radius:2px;background:var(--border)"></div>
-    </div>
-
-    <!-- Step 1: Wallets -->
-    <div id="ob-screen-1">
-      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:6px">1. Ваши кошельки</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Добавьте счета и карты. Для кредиток — отрицательный баланс.</div>
-      <div id="ob-wallets-list" style="margin-bottom:12px"></div>
-      <div style="display:flex;gap:8px;margin-bottom:20px">
-        <input class="fi" id="ob-wallet-name" placeholder="Название (Карта, Наличные...)" style="flex:1">
-        <input class="fi" id="ob-wallet-bal" type="number" placeholder="Баланс" style="width:110px">
-        <button class="sbtn amber" onclick="window.obAddWallet()">+</button>
-      </div>
-      <button class="btn-primary" onclick="window.obNext(2)">Далее →</button>
-      <button class="btn-sec" onclick="window.obSkip()">Пропустить настройку</button>
-    </div>
-
-    <!-- Step 2: Income -->
-    <div id="ob-screen-2" style="display:none">
-      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:6px">2. Ежемесячный доход</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Укажите примерный доход в месяц — от него будет рассчитываться финансовый план.</div>
-      <div class="fg"><label>МОЙ ДОХОД В МЕСЯЦ ₽</label><input class="fi" type="number" id="ob-income" placeholder="100 000"></div>
-      <div class="notice amber" style="margin-top:8px">Финплан по умолчанию: 35% постоянные расходы, 15% кредиты, 10% накопления, 10% бизнес, 10% з/п жены, 10% переменные, 10% покупки</div>
-      <button class="btn-primary" onclick="window.obNext(3)">Далее →</button>
-      <button class="btn-sec" onclick="window.obNext(1)">← Назад</button>
-    </div>
-
-    <!-- Step 3: First operation -->
-    <div id="ob-screen-3" style="display:none">
-      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:6px">3. Готово!</div>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:20px">Приложение настроено. Добавьте первую операцию или сразу начните пользоваться.</div>
-      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:20px">
-        <div style="font-size:12px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">БЫСТРЫЙ СТАРТ</div>
-        <div style="font-size:12px;color:var(--topbar);line-height:2">
-          ✓ Перейди на <b>Отчёты</b> — там баланс и кошельки<br>
-          ✓ Нажми <b>+ ОПЕРАЦИЯ</b> чтобы добавить доход или расход<br>
-          ✓ <b>ДДС</b> покажет как выполняется финансовый план<br>
-          ✓ <b>Дашборд</b> — главный экран с обзором всего
-        </div>
-      </div>
-      <button class="btn-primary" onclick="window.obFinish()">Начать работу →</button>
-    </div>
-  </div>
-</div>
 
 <!-- ── AUTH ── -->
 <div id="auth-screen">
   <div class="auth-logo">₽</div>
   <div class="auth-title">МОИ ФИНАНСЫ</div>
   <div class="auth-sub">Личный учёт доходов, расходов и финансового плана</div>
-
-  <!-- Telegram WebView warning -->
-  <div id="tg-warning" style="display:none;margin-bottom:16px;padding:14px 16px;background:rgba(255,255,255,.15);border-radius:10px;text-align:left;max-width:300px">
-    <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:6px">⚠️ Откройте в Safari</div>
-    <div style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.5;margin-bottom:10px">Вход через Google не работает во встроенном браузере Telegram. Откройте ссылку в Safari.</div>
-    <button onclick="window.openInSafari()" style="width:100%;background:var(--amber);border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:700;color:#fff;cursor:pointer">
-      Открыть в Safari →
-    </button>
-  </div>
-
-  <button class="google-btn" id="auth-google-btn" onclick="window.signInGoogle()">
+  <button class="google-btn" onclick="window.signInGoogle()">
     <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
     Войти через Google
   </button>
-  <div id="ios-auth-hint" style="display:none;margin-top:14px;padding:12px 16px;background:rgba(255,255,255,.12);border-radius:10px;font-size:12px;color:rgba(255,255,255,.9);line-height:1.6;text-align:left;max-width:280px">
-    <b>Проблема с входом на iPhone?</b><br>
-    Открой сайт в <b>режиме инкогнито</b> Safari → войди там.<br>
-    Или: Настройки iPhone → Safari → Открывать ссылки → В браузере.
-  </div>
 </div>
 <div id="loading-screen"><div class="spinner"></div><div style="font-size:14px;color:var(--text2);margin-top:8px">Загрузка...</div></div>
 
@@ -124,14 +41,11 @@
       <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
       <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
       <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
-
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
       <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
-      <button class="tbtn" id="ai-voice-btn" onclick="window.toggleVoiceInput()" style="display:none;background:rgba(186,117,23,.3);border:1.5px solid var(--amber);color:var(--amber)" title="Голосовой ввод">🎤</button>
       <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
-        <button class="tbtn" onclick="window.openAISettings()" title="Настройки ИИ" style="padding:0 10px">🤖</button>
       <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
     </div>
   </div>
@@ -276,25 +190,6 @@
           </div>
         </div>
       </div>
-
-
-
-      <!-- Список покупок в календаре -->
-      <div class="panel" style="flex-shrink:0;margin:0 var(--gap) var(--gap)">
-        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-          🛒 СПИСОК ПОКУПОК
-          <button onclick="window.clearDoneItems()" style="font-size:9px;background:rgba(255,255,255,.15);border:none;color:#C9A96E;padding:2px 8px;border-radius:4px;cursor:pointer;font-weight:600">✓ очистить купленное</button>
-        </div>
-        <div class="panel-body">
-          <div style="display:flex;gap:6px;margin-bottom:8px">
-            <input class="fi" id="cal-shop-input" placeholder="Добавить товар..." style="flex:1;font-size:12px"
-              onkeydown="if(event.key==='Enter')window.calAddShopItem()">
-            <input class="fi" id="cal-shop-price" type="number" placeholder="₽" style="width:72px;font-size:12px">
-            <button class="sbtn amber" onclick="window.calAddShopItem()">+</button>
-          </div>
-          <div id="cal-shop-list"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -339,31 +234,11 @@
         <button class="btn-sec" style="margin-top:8px" onclick="window.openExpCat()">+ Добавить категорию</button>
       </div>
     </div>
-    <div class="s-panel" style="width:320px">
-      <div class="s-panel-head">УМНЫЙ ВВОД (ЯНДЕКС GPT)</div>
-      <div class="s-panel-body">
-        <div class="notice blue">Ключи хранятся только на этом устройстве в localStorage.</div>
-        <div class="fg"><label>API КЛЮЧ</label><input class="fi" id="ai-key-input" type="password" placeholder="AQVN..."></div>
-        <div class="fg"><label>FOLDER ID</label><input class="fi" id="ai-folder-input" placeholder="b1gp4ci8gatrib053sp6"></div>
-        <div class="fg">
-          <label>ПРОКСИ URL (если Safari блокирует)</label>
-          <input class="fi" id="ai-proxy-input" placeholder="https://ваш-worker.workers.dev">
-          <div style="font-size:11px;color:var(--text2);margin-top:3px">Нужен если ИИ выдаёт "Load failed". Инструкция: <a href="https://developers.cloudflare.com/workers/get-started/guide/" target="_blank" style="color:var(--amber)">Cloudflare Workers</a></div>
-        </div>
-        <button class="btn-primary" id="ai-save-btn" onclick="window.saveAISettings()">Сохранить</button>
-        <div style="font-size:12px;margin-top:8px;padding:7px 10px;border-radius:6px;background:var(--amber-light)" id="ai-save-status"></div>
-      </div>
-    </div>
     <div class="s-panel" style="width:100%;max-width:500px">
       <div class="s-panel-head">ДАННЫЕ</div>
       <div class="s-panel-body">
         <div class="notice amber">Экспортируй перед обновлением — импортируй в новую версию</div>
-        
-      <div style="padding:12px 16px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">КЕШ</div>
-        <button onclick="window.clearSWCache()" style="width:100%;background:var(--red-bg);border:1.5px solid var(--r200);border-radius:8px;padding:10px;color:var(--red);font-weight:700;cursor:pointer;font-size:12px">🔄 Сбросить кеш и перезагрузить</button>
-        <div style="font-size:10px;color:var(--text2);margin-top:5px">Используй если приложение не загружается</div>
-      </div><div class="btns-row">
+        <div class="btns-row">
           <button class="btn-sec" onclick="window.exportData()">Экспорт JSON</button>
           <button class="btn-sec" onclick="document.getElementById('import-input').click()">Импорт JSON</button>
         </div>
@@ -408,13 +283,6 @@
           <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
           <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
         </div></div>
-        <div class="panel" style="flex-shrink:0">
-          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-            🛒 ПОКУПКИ
-            <a href="#" onclick="window.showScreen('calendar');return false" style="font-size:9px;color:#C9A96E;opacity:.8">→ ВЕСЬ СПИСОК</a>
-          </div>
-          <div class="panel-body"><div id="dash-shopping-quick"></div></div>
-        </div>
         <div id="dash-widget-top3"><div class="panel" style="flex:1;min-height:0">
           <div class="panel-head">ТОП-3 КАТЕГОРИИ РАСХОДОВ</div>
           <div class="panel-body"><div id="dash-top3"></div></div>
@@ -478,13 +346,6 @@
             <div class="dash-card-body"><div id="dash-physassets"></div></div>
           </div>
 
-          <div id="dash-widget-shopping" onclick="window.showScreen('calendar')" class="dash-card clickable">
-            <div class="dash-card-head">СПИСОК ПОКУПОК <span class="dash-card-link">→ КАЛЕНДАРЬ</span></div>
-            <div class="dash-card-body"><div id="dash-shopping"></div></div>
-          </div>
-
-
-
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
             <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
@@ -492,31 +353,6 @@
 
         </div>
       </div>
-
-      <!-- Shopping list panel -->
-      <div class="panel" style="flex-shrink:0">
-        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-          СПИСОК ПОКУПОК
-          <button onclick="window.openAddShopItem()" style="background:var(--amber);color:#fff;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer">+ Добавить</button>
-        </div>
-        <div class="panel-body">
-          <div id="shop-list-input" style="display:none;margin-bottom:10px">
-            <div style="display:flex;gap:6px">
-              <input class="fi" id="shop-item-text" placeholder="Молоко, хлеб..." style="flex:1;margin:0" onkeydown="if(event.key==='Enter')window.saveShopItem()">
-              <input class="fi" type="number" id="shop-item-qty" placeholder="кол-во" style="width:70px;margin:0">
-              <select class="fi" id="shop-item-cat" style="width:100px;margin:0">
-                <option value="">категория</option>
-              </select>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:6px">
-              <button class="btn-primary" style="padding:6px 14px;font-size:12px" onclick="window.saveShopItem()">Сохранить</button>
-              <button class="btn-sec" style="padding:6px 14px;font-size:12px" onclick="window.closeShopInput()">Отмена</button>
-            </div>
-          </div>
-          <div id="shop-list"></div>
-        </div>
-      </div>
-
     </div>
   </div>
 
@@ -701,6 +537,330 @@
 
 </div><!-- end app-screen -->
 
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">НОВАЯ ОПЕРАЦИЯ</span><button class="modal-close" onclick="window.closeModal('modal')">&#10005;</button></div>
+    <div class="type-toggle">
+      <div class="type-btn ai" id="type-income" onclick="window.setOpType('income')">Доход</div>
+      <div class="type-btn" id="type-expense" onclick="window.setOpType('expense')">Расход</div>
+      <div class="type-btn" id="type-transfer" onclick="window.setOpType('transfer')">Перевод</div>
+      <div class="type-btn" id="type-planned_income" onclick="window.setOpType('planned_income')">План +</div>
+      <div class="type-btn" id="type-planned_expense" onclick="window.setOpType('planned_expense')">План −</div>
+    </div>
+    <div id="planned-notice" class="plan-notice" style="display:none">Плановая операция — видна в календаре, не влияет на баланс</div>
+    <div class="rf">
+      <div class="fg"><label>СУММА</label><input class="fi" type="number" id="op-amount" placeholder="0"></div>
+      <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="op-date"></div>
+    </div>
+    <div class="fg" id="wallet-group"><label id="wallet-label">КОШЕЛЁК</label><select class="fi" id="op-wallet"></select></div>
+    <div class="fg" id="wallet2-group" style="display:none"><label>КОШЕЛЁК НАЗНАЧЕНИЯ</label><select class="fi" id="op-wallet2"></select></div>
+    <div class="fg" id="cat-group"><label id="cat-label">КАТЕГОРИЯ</label><select class="fi" id="op-cat"></select></div>
+    <div class="fg" id="transfer-cat-group" style="display:none">
+      <label>СТАТЬЯ ФИНПЛАНА (необязательно)</label>
+      <select class="fi" id="op-transfer-cat"><option value="">— не указывать —</option></select>
+      <div class="plan-notice" style="margin-top:6px;margin-bottom:0">Перевод можно привязать к статье финплана — учтётся как расход/откладывание без влияния на доход</div>
+    </div>
+    <div class="fg"><label>ЗАМЕТКА (необязательно)</label><input class="fi" id="op-note" placeholder="Описание"></div>
+    <button class="btn-primary" onclick="window.saveOp()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal')">Отмена</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-op">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ ОПЕРАЦИЮ</span><button class="modal-close" onclick="window.closeModal('modal-edit-op')">&#10005;</button></div>
+    <div class="fg"><label>СУММА</label><input class="fi" type="number" id="edit-op-amount"></div>
+    <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="edit-op-date"></div>
+    <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="edit-op-wallet"></select></div>
+    <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="edit-op-cat"></select></div>
+    <div class="fg"><label>ЗАМЕТКА</label><input class="fi" id="edit-op-note"></div>
+    <input type="hidden" id="edit-op-id">
+    <button class="btn-primary" onclick="window.saveEdit()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal-edit-op')">Отмена</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-exp-cat">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="exp-cat-modal-title">КАТЕГОРИЯ РАСХОДОВ</span><button class="modal-close" onclick="window.closeModal('modal-exp-cat')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ec-name" placeholder="Например: Продукты"></div>
+    <div class="fg"><label>СТАТЬЯ ФИНПЛАНА</label><select class="fi" id="ec-plan"></select></div>
+    <input type="hidden" id="ec-idx" value="-1">
+    <button class="btn-primary" onclick="window.saveExpCat()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal-exp-cat')">Отмена</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-wallet">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ КОШЕЛЁК</span><button class="modal-close" onclick="window.closeModal('modal-wallet')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ew-name"></div>
+    <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредиток — отрицательное число</div></div>
+    <div class="fg">
+      <label>СТАТЬЯ ФИНПЛАНА (для накоплений)</label>
+      <select class="fi" id="ew-plan">
+        <option value="">— не привязывать —</option>
+      </select>
+      <div style="font-size:11px;color:var(--blue);background:var(--blue-bg);padding:6px 8px;border-radius:6px;margin-top:5px">Все переводы на этот кошелёк будут автоматически учитываться в выбранной статье финплана</div>
+    </div>
+    <input type="hidden" id="ew-idx">
+    <button class="btn-primary" onclick="window.saveWalletEdit()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal-wallet')">Отмена</button>
+  </div>
+</div>
+
+<script type="module">
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched}from'./core.js';
+import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
+import{renderDDS}from'./dds.js';
+import{renderCalendar,showCalDay}from'./calendar.js';
+import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
+import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
+import{renderDashboard}from'./dashboard.js';
+import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
+import{renderGoals}from'./goals.js';
+import{renderRecurring,applyRecurring}from'./recurring.js';
+import{renderHealth}from'./health.js';
+import{renderLoans,renderLoansSummary}from'./loans.js';
+import{renderTemplates}from'./templates.js';
+import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
+import{renderAssets,checkAssetsAlert}from'./assets.js';
+import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
+
+const $=id=>document.getElementById(id);
+
+function refreshCurrent(){
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  if(cur==='dashboard')renderDashboard();
+  else if(cur==='reports')renderReports();
+  else if(cur==='dds')renderDDS();
+  else if(cur==='calendar')renderCalendar();
+  else if(cur==='settings')renderSettings();
+  else if(cur==='analytics'){renderAnalytics();renderLimits();}
+  else if(cur==='extras'){renderGoals();renderRecurring();}
+  else if(cur==='loans'){renderLoans();renderLoansSummary();}
+  else if(cur==='templates'){renderTemplates();initBulk();}
+  else if(cur==='health')renderHealth();
+  else if(cur==='portfolio')renderPortfolio();
+  else if(cur==='import'){initImportScreen();}
+  else if(cur==='physassets')renderAssets();
+}
+
+
+function initBulk(){
+  if(!state.D)return;
+  const bw=document.getElementById('bulk-wallet');
+  if(bw)bw.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  const bd=document.getElementById('bulk-date');
+  if(bd&&!bd.value)bd.value=new Date().toISOString().split('T')[0];
+  const bi=document.getElementById('bulk-items');
+  if(bi&&!bi.children.length)window.addBulkItem&&window.addBulkItem();
+}
+
+window.showScreen=name=>{
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
+  $('screen-'+name).classList.add('active');
+  const tb=$('tnav-'+name);if(tb)tb.classList.add('active');
+  refreshCurrent();
+};
+
+// ── Import screen ────────────────────────────────────────────────
+function initImportScreen(){
+  if(!state.D)return;
+  const ws=$('import-wallet');
+  if(ws)ws.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+}
+
+let _csvParsed=[];
+window.handleCSVFile=function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const bank=$('import-bank').value;
+    const parsed=parseCSV(ev.target.result,bank);
+    if(!parsed.length){alert('Операций не найдено. Проверьте формат файла.');return;}
+    _csvParsed=deduplicateOps(parsed);
+    renderImportPreview();
+  };
+  reader.readAsText(file,'UTF-8');
+  e.target.value='';
+};
+
+function renderImportPreview(){
+  const el=$('import-preview');if(!el)return;
+  el.style.display='';
+  const total=_csvParsed.length;
+  const dups=_csvParsed.filter(o=>o.isDuplicate).length;
+  const newOps=total-dups;
+  $('import-stats').innerHTML=`Найдено: ${total} · Новых: <b>${newOps}</b> · Дублей (скрыты): ${dups}`;
+  const table=$('import-table');
+  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
+  if(!fresh.length){table.innerHTML='<div style="color:var(--text2);padding:12px">Все операции уже есть в базе</div>';return;}
+  const userCats=[...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)];
+  table.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:2px solid var(--border2)">
+      <th style="padding:6px;text-align:left;width:30px"><input type="checkbox" checked onchange="window.selectAllImport(this.checked)"></th>
+      <th style="padding:6px;text-align:left">Дата</th>
+      <th style="padding:6px;text-align:left">Описание</th>
+      <th style="padding:6px;text-align:left">Категория</th>
+      <th style="padding:6px;text-align:right">Сумма</th>
+    </tr></thead>
+    <tbody>
+    ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border);${op.type==='income'?'background:rgba(74,124,63,.05)':''}">
+      <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
+      <td style="padding:5px;color:var(--text2)">${op.date.split('-').reverse().join('.')}</td>
+      <td style="padding:5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${op.note}">${op.note||'—'}</td>
+      <td style="padding:5px">
+        <select style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;background:#fff" id="imp-cat-${i}">
+          ${userCats.map(cat=>`<option value="${cat}" ${cat===op.category?'selected':''}>${cat}</option>`).join('')}
+        </select>
+      </td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:${op.type==='income'?'var(--green-dark)':'var(--orange-dark)'}">
+        ${op.type==='income'?'+':'−'}₽${op.amount.toLocaleString('ru-RU')}
+      </td>
+    </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+window.selectAllImport=function(v){
+  document.querySelectorAll('[id^="imp-chk-"]').forEach(cb=>cb.checked=v);
+};
+
+window.confirmImport=function(){
+  if(!state.D)return;
+  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
+  fresh.forEach((op,i)=>{
+    const chk=document.getElementById('imp-chk-'+i);
+    const catSel=document.getElementById('imp-cat-'+i);
+    op.skip=!chk?.checked;
+    if(catSel)op.category=catSel.value;
+  });
+  const walletId=$('import-wallet').value;
+  const count=importOps(fresh,walletId);
+  _csvParsed=[];
+  $('import-preview').style.display='none';
+  alert('Импортировано '+count+' операций!');
+  refreshCurrent();
+};
+
+// ── Limits ──────────────────────────────────────────
+function renderLimits(){
+  if(!state.D)return;
+  if(!state.D.categoryLimits)state.D.categoryLimits=[];
+  const el=$('limits-list');if(!el)return;
+  const factOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type));
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=factOps.filter(o=>o.date&&o.date.startsWith(ym));
+  if(!state.D.categoryLimits.length){el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">Нет лимитов</div>';return;}
+  el.innerHTML=state.D.categoryLimits.map((lim,i)=>{
+    const spent=mOps.filter(o=>o.type==='expense'&&o.category===lim.cat).reduce((s,o)=>s+o.amount,0);
+    const pct=Math.min(Math.round(spent/lim.limit*100),100);
+    const over=spent>lim.limit;
+    const warn=pct>=80&&!over;
+    return`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:13px;font-weight:700;color:var(--topbar)">${lim.cat}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:12px;color:${over?'var(--red)':warn?'var(--orange-dark)':'var(--text2)'}">₽${Math.round(spent).toLocaleString('ru-RU')} / ₽${Math.round(lim.limit).toLocaleString('ru-RU')}</span>
+          <button class="sbtn red" onclick="window.deleteLimit(${i})">✕</button>
+        </div>
+      </div>
+      <div style="background:var(--g50);border-radius:3px;height:6px">
+        <div style="height:6px;border-radius:3px;width:${pct}%;background:${over?'var(--red)':warn?'var(--orange)':'var(--amber)'}"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.openAddLimit=()=>{
+  if(!state.D)return;
+  $('lim-cat').innerHTML=state.D.expenseCats.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+  $('lim-amount').value='';$('lim-idx').value=-1;
+  $('modal-limit').classList.add('open');
+};
+window.saveLimit=()=>{
+  if(!state.D.categoryLimits)state.D.categoryLimits=[];
+  const cat=$('lim-cat').value,limit=parseFloat($('lim-amount').value)||0;
+  if(!cat||!limit){alert('Заполните все поля');return;}
+  const idx=+$('lim-idx').value;
+  if(idx>=0)state.D.categoryLimits[idx]={cat,limit};
+  else{
+    const exists=state.D.categoryLimits.findIndex(l=>l.cat===cat);
+    if(exists>=0)state.D.categoryLimits[exists].limit=limit;
+    else state.D.categoryLimits.push({cat,limit});
+  }
+  sched();$('modal-limit').classList.remove('open');renderLimits();
+};
+window.deleteLimit=i=>{state.D.categoryLimits.splice(i,1);sched();renderLimits();};
+
+// ── CSV Export ───────────────────────────────────────
+window.exportCSVCurrent=()=>exportCSV(state.repOff||0);
+window.exportAllCSV=exportAllCSV;
+
+window.chMonth=d=>{state.repOff+=d;renderReports();};
+window.ddsChM=d=>{state.ddsOff+=d;renderDDS();};
+window.calChM=d=>{state.calOff+=d;renderCalendar();};
+window.selCalDay=ds=>showCalDay(ds);
+window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
+window.setCatTab=tab=>setCatTab(tab);
+window.signInGoogle=signInGoogle;
+window.doSignOut=doSignOut;
+
+window.openNewOp=()=>openModal('modal',true);
+window.closeModal=id=>closeModal(id);
+window.setOpType=type=>setType(type);
+window.saveOp=()=>saveOperation(refreshCurrent);
+window.openEditOp=id=>openEditOp(id);
+window.saveEdit=()=>saveEditOp(refreshCurrent);
+window.deleteOp=id=>deleteOp(id,refreshCurrent);
+
+window.updPT=updPT;
+window.savePlanSettings=savePlanSettings;
+window.addWallet=addWallet;
+window.delWallet=delWallet;
+window.openEditWallet=openEditWallet;
+window.saveWalletEdit=saveWalletEdit;
+window.addIncomeCat=addIncomeCat;
+window.delIncomeCat=delIncomeCat;
+window.openExpCat=()=>{$('exp-cat-modal-title').textContent='НОВАЯ КАТЕГОРИЯ РАСХОДОВ';$('ec-name').value='';$('ec-idx').value=-1;fillExpPlanSel('ec-plan');$('modal-exp-cat').classList.add('open');};
+window.openEditExpCat=openEditExpCat;
+window.saveExpCat=saveExpCat;
+window.delExpCat=delExpCat;
+window.exportData=exportData;
+window.importDataFile=e=>importData(e,refreshCurrent);
+window.clearOps=()=>clearAllOps(refreshCurrent);
+
+initAuth(
+  user=>{
+    $('loading-screen').style.display='none';
+    $('auth-screen').style.display='none';
+    $('app-screen').style.display='flex';
+    const av=$('user-avatar');
+    if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
+    $('loading-screen').style.display='none';
+    state.walletIdx=0;
+    // Apply recurring ops for current month
+    applyRecurring();
+    // Expose portfolio alert checker
+    window._checkPortfolioAlert=checkPortfolioAlert;
+    window._checkAssetsAlert=checkAssetsAlert;
+    renderReports();
+  },
+  ()=>{
+    $('app-screen').style.display='none';
+    $('loading-screen').style.display='none';
+    $('auth-screen').style.display='flex';
+  }
+);
+
+$('auth-screen').style.display='none';
+$('loading-screen').style.display='flex';
+</script>
+
 <!-- MODAL: recurring -->
 <div class="modal-overlay" id="modal-recurring">
   <div class="modal">
@@ -870,281 +1030,42 @@
   </div>
 </div>
 
-<!-- MODAL: AI input -->
-<div class="modal-overlay" id="modal-ai-input">
-  <div class="modal">
-    <div class="modal-hdr">
-      <span class="modal-title">🤖 УМНЫЙ ВВОД</span>
-      <button class="modal-close" onclick="document.getElementById('modal-ai-input').classList.remove('open')">&#10005;</button>
-    </div>
-    <div class="notice blue" style="margin-bottom:10px">Опишите операцию своими словами — ИИ разберёт и создаст запись</div>
-    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--text2)">
-      Примеры: «потратил 500 на продукты с карты», «получил зарплату 80000 на т-банк», «перевёл 5000 на накопления»
-    </div>
-    <div class="fg">
-      <textarea class="fi" id="ai-text-input" placeholder="Опишите операцию..." rows="3" style="resize:none;font-size:15px"></textarea>
-    </div>
-    <button class="btn-primary" id="ai-process-btn" onclick="window.processAIInput()">Разобрать →</button>
-    <div id="ai-result"></div>
-    <button class="btn-primary" id="ai-confirm-btn" onclick="window.confirmAIOp()" style="display:none;margin-top:8px;background:var(--green)">✓ Сохранить операцию</button>
-    <button class="btn-sec" onclick="document.getElementById('modal-ai-input').classList.remove('open')">Отмена</button>
-  </div>
-</div>
-
-
-<!-- Voice input overlay -->
-<div id="voice-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:10000;align-items:center;justify-content:center;padding:20px"></div>
-
-<!-- AI Settings Modal -->
-<div class="modal-overlay" id="modal-ai-settings">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-title">НАСТРОЙКИ ИИ</span><button class="modal-close" onclick="document.getElementById('modal-ai-settings').classList.remove('open')">&#10005;</button></div>
-    <div class="notice blue">Голосовой ввод работает через Яндекс GPT. Нужны ключи из Яндекс Cloud Console.</div>
-    <div class="fg"><label>API КЛЮЧ (IAM или Api-Key)</label><input class="fi" id="yagpt-key" placeholder="AQVN..."></div>
-    <div class="fg"><label>FOLDER ID</label><input class="fi" id="yagpt-folder" placeholder="b1g..."></div>
-    <div class="fg"><label>URL ПРОКСИ (Cloudflare Worker)</label><input class="fi" id="yagpt-proxy" placeholder="https://your-worker.workers.dev"></div>
-    <div class="notice amber" style="font-size:11px">Прокси нужен для работы из браузера. Задеплойте Worker из инструкции и вставьте URL.</div>
-    <button class="btn-primary" onclick="window.saveAISettings()">Сохранить</button>
-    <button class="btn-sec" onclick="document.getElementById('modal-ai-settings').classList.remove('open')">Отмена</button>
-  </div>
-</div>
-
-<script type="module">
-import{state,initAuth,signInGoogle as _signInGoogle,doSignOut,exportData,importData,clearAllOps,sched}from'./core.js';
-import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
-import{renderDDS}from'./dds.js';
-import{renderCalendar,showCalDay,renderShoppingList}from'./calendar.js';
-import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
-import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
-import{renderDashboard}from'./dashboard.js';
-import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
-import{renderGoals}from'./goals.js';
-import{renderRecurring,applyRecurring}from'./recurring.js';
-import{renderHealth}from'./health.js';
-import{renderLoans,renderLoansSummary}from'./loans.js';
-import{renderTemplates}from'./templates.js';
-import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
-import{renderAssets,checkAssetsAlert}from'./assets.js';
-import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
-import{initAI,initVoice,openAISettings}from'./ai-input.js';
-
-const $=id=>document.getElementById(id);
-
-// ── Screens ───────────────────────────────────────────────────
-function refreshCurrent(){
-  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
-  if(!cur||!state.D)return;
-  if(cur==='dashboard')renderDashboard();
-  else if(cur==='reports'){renderReports();renderWalletOps();}
-  else if(cur==='dds')renderDDS();
-  else if(cur==='calendar'){renderCalendar();showCalDay&&showCalDay(state.calDay);renderShoppingList();}
-  else if(cur==='settings')renderSettings();
-  else if(cur==='analytics')renderAnalytics();
-  else if(cur==='extras')renderGoals();
-  else if(cur==='health')renderHealth();
-  else if(cur==='loans'){renderLoans();renderLoansSummary();}
-  else if(cur==='templates')renderTemplates();
-  else if(cur==='portfolio')renderPortfolio();
-  else if(cur==='import'){initImportScreen();}
-  else if(cur==='physassets')renderAssets();
-}
-window.refreshCurrent=refreshCurrent;
-
-window.showScreen=function(name){
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
-  const screen=$('screen-'+name);
-  if(screen)screen.classList.add('active');
-  const tb=$('tnav-'+name);if(tb)tb.classList.add('active');
-  refreshCurrent();
-};
-
-// ── Auth ──────────────────────────────────────────────────────
-window.signInGoogle=async function(){
-  try{await _signInGoogle();}catch(e){console.error(e);}
-};
-window.doSignOut=async function(){
-  await doSignOut();
-  document.getElementById('app-screen').style.display='none';
-  document.getElementById('auth-screen').style.display='';
-};
-
-initAuth(async(user)=>{
-  if(user){
-    document.getElementById('auth-screen').style.display='none';
-    document.getElementById('app-screen').style.display='';
-    const av=$('user-avatar');
-    if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
-    await import('./core.js').then(m=>m.loadData(user.uid));
-    applyRecurring();
-    window._checkPortfolioAlert=checkPortfolioAlert;
-    window._checkAssetsAlert=checkAssetsAlert;
-    initVoice();
-    initAI();
-    // Show dashboard by default
-    window.showScreen('dashboard');
-    // Onboarding
-    if(state.D&&!state.D._onboarded&&!state.D.operations?.length){
-      const ob=$('onboarding-screen');
-      if(ob)ob.style.display='';
-    }
-  }else{
-    document.getElementById('auth-screen').style.display='';
-    document.getElementById('app-screen').style.display='none';
-  }
-});
-
-// ── Navigation helpers ────────────────────────────────────────
-window.chMonth=function(d){state.repOff=(state.repOff||0)+d;renderReports();}
-window.chWallet=function(d){
-  state.walletIdx=((state.walletIdx||0)+d+state.D.wallets.length)%state.D.wallets.length;
-  renderWalletOps();
-}
-window.calChM=function(d){state.calOff=(state.calOff||0)+d;renderCalendar();}
-window.selCalDay=function(ds){showCalDay(ds);}
-window.openNewOp=function(){openModal();}
-window.setCatTab=setCatTab;
-window.updPT=updPT;
-window.savePlanSettings=savePlanSettings;
-window.addWallet=addWallet;window.delWallet=delWallet;
-window.openEditWallet=openEditWallet;window.saveWalletEdit=saveWalletEdit;
-window.addIncomeCat=addIncomeCat;window.delIncomeCat=delIncomeCat;
-window.fillExpPlanSel=fillExpPlanSel;
-window.openEditExpCat=openEditExpCat;window.saveExpCat=saveExpCat;window.delExpCat=delExpCat;
-window.openModal=openModal;window.closeModal=closeModal;window.setType=setType;
-window.saveOperation=saveOperation;window.openEditOp=openEditOp;
-window.saveEditOp=saveEditOp;window.deleteOp=deleteOp;
-window.exportData=exportData;window.importData=importData;window.clearAllOps=clearAllOps;
-window.exportCSV=exportCSV;window.exportAllCSV=exportAllCSV;
-window.openAISettings=openAISettings;
-    window.refreshCurrentScreen=refreshCurrent;
-
-// ── Import screen ─────────────────────────────────────────────
-function initImportScreen(){
-  if(!state.D)return;
-  const ws=$('import-wallet');
-  if(ws)ws.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-}
-
-let _csvParsed=[];
-window.handleCSVFile=function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const bank=$('import-bank').value;
-    const parsed=parseCSV(ev.target.result,bank);
-    if(!parsed.length){alert('Операций не найдено. Проверьте формат файла.');return;}
-    _csvParsed=deduplicateOps(parsed);
-    renderImportPreview();
-  };
-  reader.readAsText(file,'UTF-8');
-  e.target.value='';
-};
-
-function renderImportPreview(){
-  const el=$('import-preview');if(!el)return;
-  el.style.display='';
-  const total=_csvParsed.length;
-  const dups=_csvParsed.filter(o=>o.isDuplicate).length;
-  $('import-stats').innerHTML=`Найдено: ${total} · Новых: <b>${total-dups}</b> · Дублей: ${dups}`;
-  const table=$('import-table');
-  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
-  if(!fresh.length){table.innerHTML='<div style="color:var(--text2);padding:12px">Все операции уже есть</div>';return;}
-  const userCats=[...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)];
-  table.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead><tr style="border-bottom:2px solid var(--border2)">
-      <th style="padding:6px;width:30px"><input type="checkbox" checked onchange="window.selectAllImport(this.checked)"></th>
-      <th style="padding:6px;text-align:left">Дата</th>
-      <th style="padding:6px;text-align:left">Описание</th>
-      <th style="padding:6px;text-align:left">Категория</th>
-      <th style="padding:6px;text-align:right">Сумма</th>
-    </tr></thead><tbody>
-    ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border)">
-      <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
-      <td style="padding:5px;color:var(--text2)">${op.date?.split('-').reverse().join('.')}</td>
-      <td style="padding:5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${op.note||'—'}</td>
-      <td style="padding:5px"><select style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px" id="imp-cat-${i}">
-        ${userCats.map(cat=>`<option${cat===op.category?' selected':''}>${cat}</option>`).join('')}
-      </select></td>
-      <td style="padding:5px;text-align:right;font-weight:700;color:${op.type==='income'?'var(--green-dark)':'var(--orange-dark)'}">
-        ${op.type==='income'?'+':'−'}₽${op.amount?.toLocaleString('ru-RU')}
-      </td>
-    </tr>`).join('')}
-    </tbody></table>`;
-}
-
-window.selectAllImport=function(v){
-  document.querySelectorAll('[id^="imp-chk-"]').forEach(cb=>cb.checked=v);
-};
-window.confirmImport=function(){
-  if(!state.D)return;
-  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
-  fresh.forEach((op,i)=>{
-    const chk=document.getElementById('imp-chk-'+i);
-    const catSel=document.getElementById('imp-cat-'+i);
-    op.skip=!chk?.checked;
-    if(catSel)op.category=catSel.value;
-  });
-  const walletId=$('import-wallet').value;
-  const count=importOps(fresh,walletId);
-  _csvParsed=[];
-  $('import-preview').style.display='none';
-  alert('Импортировано '+count+' операций!');
-  refreshCurrent();
-};
-
-// ── Widget settings ───────────────────────────────────────────
-window.openWidgetSettings=function(){
-  if(!state.D)return;
-  const vis=state.D.dashWidgets||{};
-  const WIDGETS=[
-    {id:'plan',label:'Финансовый план'},
-    {id:'limits',label:'Лимиты по категориям'},
-    {id:'forecast',label:'Прогноз на конец года'},
-    {id:'anomalies',label:'Аномальные траты'},
-    {id:'today',label:'Сегодня'},
-    {id:'catdetail',label:'Расходы по категориям'},
-    {id:'debts',label:'Кредиты и долги'},
-    {id:'health',label:'Финансовое здоровье'},
-    {id:'goals',label:'Цели'},
-    {id:'chart',label:'График cashflow'},
-    {id:'portfolio',label:'Инвестиционный портфель'},
-    {id:'physassets',label:'Физические активы'},
-    {id:'shopping',label:'Список покупок'},
-  ];
-  document.getElementById('widget-checkboxes').innerHTML=
-    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Виджеты правой колонки дашборда:</div>'+
-    WIDGETS.map(w=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--topbar)">
-      <input type="checkbox" ${vis[w.id]!==false?'checked':''} id="wchk-${w.id}" style="accent-color:var(--amber);width:16px;height:16px">
-      ${w.label}</label>`).join('');
-  document.getElementById('modal-widgets').classList.add('open');
-};
-window.saveWidgetSettings=function(){
-  if(!state.D.dashWidgets)state.D.dashWidgets={};
-  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets','shopping'].forEach(id=>{
-    const el=document.getElementById('wchk-'+id);
-    if(el)state.D.dashWidgets[id]=el.checked;
-  });
-  sched();
-  document.getElementById('modal-widgets').classList.remove('open');
-  renderDashboard();
-};
-</script>
-
-<script>
-// Дерегистрируем все старые Service Workers и чистим кеш
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(regs => {
-    regs.forEach(r => { console.log('[SW] Unregistering:', r.scope); r.unregister(); });
-  });
-  caches.keys().then(keys => keys.forEach(k => { console.log('[SW] Clearing cache:', k); caches.delete(k); }));
-}
-window.clearSWCache = function(){
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.getRegistrations().then(r=>r.forEach(reg=>reg.unregister()));
-  }
-  caches.keys().then(keys=>Promise.all(keys.map(k=>caches.delete(k)))).then(()=>window.location.reload());
-};
-</script>
 </body>
-</html>
+</html><div class="dash-right">
+        <div id="dash-widget-kpi"><div class="panel" style="flex-shrink:0;overflow:visible">
+          <div class="panel-head">КЛЮЧЕВЫЕ МЕТРИКИ</div>
+          <div class="panel-body" style="overflow:visible">
+            <div class="dash-kpi-grid" style="grid-template-columns:1fr 1fr">
+              <div class="dash-kpi"><div class="dash-kpi-lbl">БАЛАНС МЕСЯЦА</div><div class="dash-kpi-val" id="dash-bal">₽ 0</div></div>
+              <div class="dash-kpi"><div class="dash-kpi-lbl">В ДЕНЬ</div><div class="dash-kpi-val" id="dash-daily">₽ 0</div></div>
+              <div class="dash-kpi"><div class="dash-kpi-lbl">ПРОГНОЗ</div><div class="dash-kpi-val" id="dash-projected">₽ 0</div></div>
+              <div class="dash-kpi"><div class="dash-kpi-lbl">ОСТАЛОСЬ ДНЕЙ</div><div class="dash-kpi-val" id="dash-days-left">0</div></div>
+            </div>
+            <div class="dash-progress-wrap" style="margin-top:8px">
+              <div style="font-size:11px;color:var(--text2)" id="dash-month-label"></div>
+              <div class="dash-progress-bar"><div class="dash-progress-fill" id="dash-month-progress" style="width:0%"></div></div>
+            </div>
+          </div>
+        </div></div>
+        <div id="dash-widget-alerts"><div class="panel" style="flex-shrink:0">
+          <div class="panel-head">АЛЕРТЫ</div>
+          <div class="panel-body"><div id="dash-alerts"></div></div>
+        </div></div>
+        <div id="dash-widget-quick"><div class="panel" style="flex-shrink:0">
+          <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
+          <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
+        </div></div>
+        <div id="dash-widget-debts"><div class="panel" style="flex-shrink:0">
+          <div class="panel-head">КРЕДИТЫ И ДОЛГИ</div>
+          <div class="panel-body"><div id="dash-debts"></div></div>
+        </div></div>
+        <div id="dash-widget-health"><div class="panel" style="flex-shrink:0">
+          <div class="panel-head">ФИНАНСОВОЕ ЗДОРОВЬЕ</div>
+          <div class="panel-body"><div id="dash-health-score"></div></div>
+        </div></div>
+        <div id="dash-widget-goals" style="flex:1;min-height:80px"><div class="panel" style="height:100%">
+          <div class="panel-head">ЦЕЛИ</div>
+          <div class="panel-body"><div id="dash-goals"></div></div>
+        </div></div>
+      </div>
+      
