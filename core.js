@@ -1,5 +1,5 @@
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import{getAuth,GoogleAuthProvider,signInWithPopup,signOut as fbOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import{getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,signOut as fbOut,onAuthStateChanged}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import{getFirestore,doc,getDoc,setDoc}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fbApp=initializeApp({
@@ -137,7 +137,31 @@ export function initAuth(onLogin,onLogout){
 }
 
 export async function signInGoogle(){
-  try{await signInWithPopup(auth,prov);}catch(e){alert('Ошибка: '+e.message);}
+  const isMobile=/iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  try{
+    if(isMobile){
+      await signInWithRedirect(auth,prov);
+    }else{
+      await signInWithPopup(auth,prov);
+    }
+  }catch(e){
+    // If popup blocked, fallback to redirect
+    if(e.code==='auth/popup-blocked'||e.code==='auth/popup-closed-by-user'){
+      await signInWithRedirect(auth,prov);
+    }else{
+      alert('Ошибка входа: '+e.message);
+    }
+  }
+}
+
+export async function checkRedirectResult(){
+  try{
+    const result=await getRedirectResult(auth);
+    return result;
+  }catch(e){
+    console.error('Redirect result error:',e);
+    return null;
+  }
 }
 export async function doSignOut(){
   if(!confirm('Выйти?'))return;

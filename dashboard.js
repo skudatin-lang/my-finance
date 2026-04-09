@@ -14,6 +14,7 @@ const WIDGETS=[
   {id:'goals',label:'Цели',right:true},
   {id:'chart',label:'График cashflow',right:true},
   {id:'portfolio',label:'Инвестиционный портфель',right:true},
+  {id:'shopping',label:'Список покупок',right:true},
   {id:'physassets',label:'Физические активы',right:true},
 ];
 // Left column widgets are always visible (not configurable)
@@ -22,7 +23,7 @@ function getWidgetVis(){
   if(!state.D.dashWidgets)state.D.dashWidgets={plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
   // Ensure new widgets default to true
   const dw=state.D.dashWidgets;
-  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
+  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets','shopping'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
   return dw;
 }
 
@@ -77,6 +78,7 @@ export function renderDashboard(){
   renderPlanDash(factOps,mInc);
   renderPortfolioDash();
   renderAssetsDash();
+  if(window._renderShoppingDash)window._renderShoppingDash();
   renderLimitsDash(factOps);
   renderForecastDash();
   renderAnomaliesDash(factOps);

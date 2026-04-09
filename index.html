@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Финансы">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Мои финансы</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -421,6 +421,11 @@
             <div class="dash-card-body"><div id="dash-portfolio"></div></div>
           </div>
 
+          <div id="dash-widget-shopping" onclick="window.showScreen('calendar')" class="dash-card clickable">
+            <div class="dash-card-head">🛒 СПИСОК ПОКУПОК <span class="dash-card-link">→ КАЛЕНДАРЬ</span></div>
+            <div class="dash-card-body"><div id="dash-shopping"></div></div>
+          </div>
+
           <div id="dash-widget-physassets" onclick="window.showScreen('physassets')" class="dash-card clickable">
             <div class="dash-card-head">ФИЗИЧЕСКИЕ АКТИВЫ <span class="dash-card-link">→ АКТИВЫ</span></div>
             <div class="dash-card-body"><div id="dash-physassets"></div></div>
@@ -431,6 +436,25 @@
             <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
           </div>
 
+        </div>
+      </div>
+
+      <!-- Shopping list row -->
+      <div style="flex-shrink:0;padding:0 var(--gap) var(--gap)">
+        <div class="panel">
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+            🛒 СПИСОК ПОКУПОК
+            <button onclick="window.clearBoughtItems()" style="font-size:9px;background:rgba(255,255,255,.15);border:none;color:#C9A96E;padding:2px 8px;border-radius:4px;cursor:pointer;letter-spacing:.3px">✓ очистить купленное</button>
+          </div>
+          <div class="panel-body">
+            <div style="display:flex;gap:6px;margin-bottom:8px">
+              <input class="fi" id="shop-item-input" placeholder="Добавить товар..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')window.addShopItem()">
+              <input class="fi" id="shop-price-input" type="number" placeholder="₽" style="width:72px;font-size:12px">
+              <button class="sbtn amber" onclick="window.addShopItem()">+</button>
+            </div>
+            <div id="shop-list" style="max-height:200px;overflow-y:auto"></div>
+            <div id="shop-total" style="display:none;font-size:12px;font-weight:700;color:var(--topbar);padding-top:6px;border-top:.5px solid var(--border);margin-top:4px;text-align:right"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -691,10 +715,10 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,saveNow}from'./core.js';
+import{state,initAuth,signInGoogle,checkRedirectResult,doSignOut,exportData,importData,clearAllOps,sched,saveNow}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
-import{renderCalendar,showCalDay}from'./calendar.js';
+import{renderCalendar,showCalDay,renderShoppingList}from'./calendar.js';
 import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
 import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
 import{renderDashboard}from'./dashboard.js';
@@ -716,7 +740,7 @@ function refreshCurrent(){
   if(cur==='dashboard')renderDashboard();
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
-  else if(cur==='calendar')renderCalendar();
+  else if(cur==='calendar'){renderCalendar();renderShoppingList();}
   else if(cur==='settings')renderSettings();
   else if(cur==='analytics'){renderAnalytics();renderLimits();}
   else if(cur==='extras'){renderGoals();renderRecurring();}
@@ -915,6 +939,9 @@ window.exportData=exportData;
 window.openAISettings=openAISettings;
 window.importDataFile=e=>importData(e,refreshCurrent);
 window.clearOps=()=>clearAllOps(refreshCurrent);
+
+// Handle redirect result from mobile Google auth
+checkRedirectResult().catch(e=>console.log('redirect:',e));
 
 initAuth(
   user=>{
