@@ -675,430 +675,7 @@
     </div>
   </div>
 
-
-  <!-- ── SHOPPING LIST ── -->
-  <div id="screen-shopping" class="screen">
-    <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
-        <div>
-          <div style="font-size:16px;font-weight:700;color:var(--topbar)">Список покупок</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px">Отмечай купленное — оно переходит в «Куплено»</div>
-        </div>
-      </div>
-      <div id="shopping-content"></div>
-    </div>
-  </div>
-
 </div><!-- end app-screen -->
-
-<!-- ── MODALS ── -->
-<div class="modal-overlay" id="modal">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-title">НОВАЯ ОПЕРАЦИЯ</span><button class="modal-close" onclick="window.closeModal('modal')">&#10005;</button></div>
-    <div class="type-toggle">
-      <div class="type-btn ai" id="type-income" onclick="window.setOpType('income')">Доход</div>
-      <div class="type-btn" id="type-expense" onclick="window.setOpType('expense')">Расход</div>
-      <div class="type-btn" id="type-transfer" onclick="window.setOpType('transfer')">Перевод</div>
-      <div class="type-btn" id="type-planned_income" onclick="window.setOpType('planned_income')">План +</div>
-      <div class="type-btn" id="type-planned_expense" onclick="window.setOpType('planned_expense')">План −</div>
-    </div>
-    <div id="planned-notice" class="plan-notice" style="display:none">Плановая операция — видна в календаре, не влияет на баланс</div>
-    <div class="rf">
-      <div class="fg"><label>СУММА</label><input class="fi" type="number" id="op-amount" placeholder="0"></div>
-      <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="op-date"></div>
-    </div>
-    <div class="fg" id="wallet-group"><label id="wallet-label">КОШЕЛЁК</label><select class="fi" id="op-wallet"></select></div>
-    <div class="fg" id="wallet2-group" style="display:none"><label>КОШЕЛЁК НАЗНАЧЕНИЯ</label><select class="fi" id="op-wallet2"></select></div>
-    <div class="fg" id="cat-group"><label id="cat-label">КАТЕГОРИЯ</label><select class="fi" id="op-cat"></select></div>
-    <div class="fg" id="transfer-cat-group" style="display:none">
-      <label>СТАТЬЯ ФИНПЛАНА (необязательно)</label>
-      <select class="fi" id="op-transfer-cat"><option value="">— не указывать —</option></select>
-      <div class="plan-notice" style="margin-top:6px;margin-bottom:0">Перевод можно привязать к статье финплана — учтётся как расход/откладывание без влияния на доход</div>
-    </div>
-    <div class="fg"><label>ЗАМЕТКА (необязательно)</label><input class="fi" id="op-note" placeholder="Описание"></div>
-    <button class="btn-primary" onclick="window.saveOp()">Сохранить</button>
-    <button class="btn-sec" onclick="window.closeModal('modal')">Отмена</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-edit-op">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ ОПЕРАЦИЮ</span><button class="modal-close" onclick="window.closeModal('modal-edit-op')">&#10005;</button></div>
-    <div class="fg"><label>СУММА</label><input class="fi" type="number" id="edit-op-amount"></div>
-    <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="edit-op-date"></div>
-    <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="edit-op-wallet"></select></div>
-    <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="edit-op-cat"></select></div>
-    <div class="fg"><label>ЗАМЕТКА</label><input class="fi" id="edit-op-note"></div>
-    <input type="hidden" id="edit-op-id">
-    <button class="btn-primary" onclick="window.saveEdit()">Сохранить</button>
-    <button class="btn-sec" onclick="window.closeModal('modal-edit-op')">Отмена</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-exp-cat">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-title" id="exp-cat-modal-title">КАТЕГОРИЯ РАСХОДОВ</span><button class="modal-close" onclick="window.closeModal('modal-exp-cat')">&#10005;</button></div>
-    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ec-name" placeholder="Например: Продукты"></div>
-    <div class="fg"><label>СТАТЬЯ ФИНПЛАНА</label><select class="fi" id="ec-plan"></select></div>
-    <input type="hidden" id="ec-idx" value="-1">
-    <button class="btn-primary" onclick="window.saveExpCat()">Сохранить</button>
-    <button class="btn-sec" onclick="window.closeModal('modal-exp-cat')">Отмена</button>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-wallet">
-  <div class="modal">
-    <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ КОШЕЛЁК</span><button class="modal-close" onclick="window.closeModal('modal-wallet')">&#10005;</button></div>
-    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ew-name"></div>
-    <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредиток — отрицательное число</div></div>
-    <div class="fg">
-      <label>СТАТЬЯ ФИНПЛАНА (для накоплений)</label>
-      <select class="fi" id="ew-plan">
-        <option value="">— не привязывать —</option>
-      </select>
-      <div style="font-size:11px;color:var(--blue);background:var(--blue-bg);padding:6px 8px;border-radius:6px;margin-top:5px">Все переводы на этот кошелёк будут автоматически учитываться в выбранной статье финплана</div>
-    </div>
-    <input type="hidden" id="ew-idx">
-    <button class="btn-primary" onclick="window.saveWalletEdit()">Сохранить</button>
-    <button class="btn-sec" onclick="window.closeModal('modal-wallet')">Отмена</button>
-  </div>
-</div>
-
-<script type="module">
-import{state,initAuth,signInGoogle as _signInGoogle,checkRedirectResult,doSignOut,exportData,importData,clearAllOps,sched,saveNow}from'./core.js';
-import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
-import{renderDDS}from'./dds.js';
-import{renderCalendar,showCalDay}from'./calendar.js';
-import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
-import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
-import{renderDashboard}from'./dashboard.js';
-import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
-import{renderGoals}from'./goals.js';
-import{renderRecurring,applyRecurring}from'./recurring.js';
-import{renderHealth}from'./health.js';
-import{renderLoans,renderLoansSummary}from'./loans.js';
-import{renderTemplates}from'./templates.js';
-import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
-import{renderAssets,checkAssetsAlert}from'./assets.js';
-import{renderShoppingList,renderShoppingWidget,renderCalShopList}from'./shopping.js';
-import{initAI,openAISettings,initVoice}from'./ai-input.js';
-import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
-
-const $=id=>document.getElementById(id);
-
-function refreshCurrent(){
-  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
-  if(cur==='dashboard')renderDashboard();
-  else if(cur==='reports')renderReports();
-  else if(cur==='dds')renderDDS();
-  else if(cur==='calendar'){renderCalendar();showCalDay&&showCalDay(state.calDay);renderCalShopList();}
-  else if(cur==='settings')renderSettings();
-  else if(cur==='analytics'){renderAnalytics();renderLimits();}
-  else if(cur==='extras'){renderGoals();renderRecurring();}
-  else if(cur==='loans'){renderLoans();renderLoansSummary();}
-  else if(cur==='templates'){renderTemplates();initBulk();}
-  else if(cur==='health')renderHealth();
-  else if(cur==='portfolio')renderPortfolio();
-  else if(cur==='import'){initImportScreen();}
-  else if(cur==='physassets')renderAssets();
-  else if(cur==='shopping')renderShoppingList();
-}
-
-
-function initBulk(){
-  if(!state.D)return;
-  const bw=document.getElementById('bulk-wallet');
-  if(bw)bw.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-  const bd=document.getElementById('bulk-date');
-  if(bd&&!bd.value)bd.value=new Date().toISOString().split('T')[0];
-  const bi=document.getElementById('bulk-items');
-  if(bi&&!bi.children.length)window.addBulkItem&&window.addBulkItem();
-}
-
-window.showScreen=name=>{
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
-  $('screen-'+name).classList.add('active');
-  const tb=$('tnav-'+name);if(tb)tb.classList.add('active');
-  refreshCurrent();
-};
-
-// ── Import screen ────────────────────────────────────────────────
-function initImportScreen(){
-  if(!state.D)return;
-  const ws=$('import-wallet');
-  if(ws)ws.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-}
-
-let _csvParsed=[];
-window.handleCSVFile=function(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const bank=$('import-bank').value;
-    const parsed=parseCSV(ev.target.result,bank);
-    if(!parsed.length){alert('Операций не найдено. Проверьте формат файла.');return;}
-    _csvParsed=deduplicateOps(parsed);
-    renderImportPreview();
-  };
-  reader.readAsText(file,'UTF-8');
-  e.target.value='';
-};
-
-function renderImportPreview(){
-  const el=$('import-preview');if(!el)return;
-  el.style.display='';
-  const total=_csvParsed.length;
-  const dups=_csvParsed.filter(o=>o.isDuplicate).length;
-  const newOps=total-dups;
-  $('import-stats').innerHTML=`Найдено: ${total} · Новых: <b>${newOps}</b> · Дублей (скрыты): ${dups}`;
-  const table=$('import-table');
-  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
-  if(!fresh.length){table.innerHTML='<div style="color:var(--text2);padding:12px">Все операции уже есть в базе</div>';return;}
-  const userCats=[...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)];
-  table.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead><tr style="border-bottom:2px solid var(--border2)">
-      <th style="padding:6px;text-align:left;width:30px"><input type="checkbox" checked onchange="window.selectAllImport(this.checked)"></th>
-      <th style="padding:6px;text-align:left">Дата</th>
-      <th style="padding:6px;text-align:left">Описание</th>
-      <th style="padding:6px;text-align:left">Категория</th>
-      <th style="padding:6px;text-align:right">Сумма</th>
-    </tr></thead>
-    <tbody>
-    ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border);${op.type==='income'?'background:rgba(74,124,63,.05)':''}">
-      <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
-      <td style="padding:5px;color:var(--text2)">${op.date.split('-').reverse().join('.')}</td>
-      <td style="padding:5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${op.note}">${op.note||'—'}</td>
-      <td style="padding:5px">
-        <select style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px;background:#fff" id="imp-cat-${i}">
-          ${userCats.map(cat=>`<option value="${cat}" ${cat===op.category?'selected':''}>${cat}</option>`).join('')}
-        </select>
-      </td>
-      <td style="padding:5px;text-align:right;font-weight:700;color:${op.type==='income'?'var(--green-dark)':'var(--orange-dark)'}">
-        ${op.type==='income'?'+':'−'}₽${op.amount.toLocaleString('ru-RU')}
-      </td>
-    </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
-
-window.selectAllImport=function(v){
-  document.querySelectorAll('[id^="imp-chk-"]').forEach(cb=>cb.checked=v);
-};
-
-window.confirmImport=function(){
-  if(!state.D)return;
-  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
-  fresh.forEach((op,i)=>{
-    const chk=document.getElementById('imp-chk-'+i);
-    const catSel=document.getElementById('imp-cat-'+i);
-    op.skip=!chk?.checked;
-    if(catSel)op.category=catSel.value;
-  });
-  const walletId=$('import-wallet').value;
-  const count=importOps(fresh,walletId);
-  _csvParsed=[];
-  $('import-preview').style.display='none';
-  alert('Импортировано '+count+' операций!');
-  refreshCurrent();
-};
-
-// ── Limits ──────────────────────────────────────────
-function renderLimits(){
-  if(!state.D)return;
-  if(!state.D.categoryLimits)state.D.categoryLimits=[];
-  const el=$('limits-list');if(!el)return;
-  const factOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type));
-  const now=new Date();
-  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const mOps=factOps.filter(o=>o.date&&o.date.startsWith(ym));
-  if(!state.D.categoryLimits.length){el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:6px 0">Нет лимитов</div>';return;}
-  el.innerHTML=state.D.categoryLimits.map((lim,i)=>{
-    const spent=mOps.filter(o=>o.type==='expense'&&o.category===lim.cat).reduce((s,o)=>s+o.amount,0);
-    const pct=Math.min(Math.round(spent/lim.limit*100),100);
-    const over=spent>lim.limit;
-    const warn=pct>=80&&!over;
-    return`<div style="padding:10px 0;border-bottom:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
-        <span style="font-size:13px;font-weight:700;color:var(--topbar)">${lim.cat}</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <span style="font-size:12px;color:${over?'var(--red)':warn?'var(--orange-dark)':'var(--text2)'}">₽${Math.round(spent).toLocaleString('ru-RU')} / ₽${Math.round(lim.limit).toLocaleString('ru-RU')}</span>
-          <button class="sbtn red" onclick="window.deleteLimit(${i})">✕</button>
-        </div>
-      </div>
-      <div style="background:var(--g50);border-radius:3px;height:6px">
-        <div style="height:6px;border-radius:3px;width:${pct}%;background:${over?'var(--red)':warn?'var(--orange)':'var(--amber)'}"></div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-window.openAddLimit=()=>{
-  if(!state.D)return;
-  $('lim-cat').innerHTML=state.D.expenseCats.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-  $('lim-amount').value='';$('lim-idx').value=-1;
-  $('modal-limit').classList.add('open');
-};
-window.saveLimit=()=>{
-  if(!state.D.categoryLimits)state.D.categoryLimits=[];
-  const cat=$('lim-cat').value,limit=parseFloat($('lim-amount').value)||0;
-  if(!cat||!limit){alert('Заполните все поля');return;}
-  const idx=+$('lim-idx').value;
-  if(idx>=0)state.D.categoryLimits[idx]={cat,limit};
-  else{
-    const exists=state.D.categoryLimits.findIndex(l=>l.cat===cat);
-    if(exists>=0)state.D.categoryLimits[exists].limit=limit;
-    else state.D.categoryLimits.push({cat,limit});
-  }
-  sched();$('modal-limit').classList.remove('open');renderLimits();
-};
-window.deleteLimit=i=>{state.D.categoryLimits.splice(i,1);sched();renderLimits();};
-
-// ── CSV Export ───────────────────────────────────────
-window.exportCSVCurrent=()=>exportCSV(state.repOff||0);
-window.exportAllCSV=exportAllCSV;
-
-window.chMonth=d=>{state.repOff+=d;renderReports();};
-window.ddsChM=d=>{state.ddsOff+=d;renderDDS();};
-window.calChM=d=>{state.calOff+=d;renderCalendar();};
-window.selCalDay=ds=>showCalDay(ds);
-window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
-window.setCatTab=tab=>setCatTab(tab);
-window.signInGoogle=function(){
-  return _signInGoogle();
-};
-window.doSignOut=doSignOut;
-
-window.openNewOp=()=>openModal('modal',true);
-window.closeModal=id=>closeModal(id);
-window.setOpType=type=>setType(type);
-window.saveOp=()=>saveOperation(refreshCurrent);
-window.openEditOp=id=>openEditOp(id);
-window.saveEdit=()=>saveEditOp(refreshCurrent);
-window.deleteOp=id=>deleteOp(id,refreshCurrent);
-
-window.updPT=updPT;
-window.savePlanSettings=savePlanSettings;
-window.addWallet=addWallet;
-window.delWallet=delWallet;
-window.openEditWallet=openEditWallet;
-window.saveWalletEdit=saveWalletEdit;
-window.addIncomeCat=addIncomeCat;
-window.delIncomeCat=delIncomeCat;
-window.openExpCat=()=>{$('exp-cat-modal-title').textContent='НОВАЯ КАТЕГОРИЯ РАСХОДОВ';$('ec-name').value='';$('ec-idx').value=-1;fillExpPlanSel('ec-plan');$('modal-exp-cat').classList.add('open');};
-window.openEditExpCat=openEditExpCat;
-window.saveExpCat=saveExpCat;
-window.delExpCat=delExpCat;
-window.exportData=exportData;
-window.openAISettings=openAISettings;
-window.importDataFile=e=>importData(e,refreshCurrent);
-window.clearOps=()=>clearAllOps(refreshCurrent);
-
-// Handle redirect result from mobile Google auth
-checkRedirectResult().catch(e=>console.log('redirect:',e));
-
-initAuth(
-  user=>{
-    $('loading-screen').style.display='none';
-    $('auth-screen').style.display='none';
-    $('app-screen').style.display='flex';
-    const av=$('user-avatar');
-    if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
-    $('loading-screen').style.display='none';
-    state.walletIdx=0;
-    // Apply recurring ops for current month
-    applyRecurring();
-    // Expose portfolio alert checker
-    window._checkPortfolioAlert=checkPortfolioAlert;
-    window._checkAssetsAlert=checkAssetsAlert;
-    initVoice();
-    renderShoppingWidget();
-    initAI();
-    renderReports();
-  },
-  ()=>{
-    $('app-screen').style.display='none';
-    $('loading-screen').style.display='none';
-    $('auth-screen').style.display='flex';
-  }
-);
-
-$('auth-screen').style.display='none';
-$('loading-screen').style.display='flex';
-
-// ── Telegram / WebView detection ────────────────────────────
-(function(){
-  const ua=navigator.userAgent||'';
-  const isTG=ua.includes('Telegram')||ua.includes('TelegramBot')||
-    window.TelegramWebviewProxy||window.Telegram;
-  // Also detect generic WebView (not Safari, not Chrome standalone)
-  const isWebView=ua.includes('WebView')||(ua.includes('iPhone')&&!ua.includes('Safari'));
-  const tgWarn=document.getElementById('tg-warning');
-  const authBtn=document.getElementById('auth-google-btn');
-  if((isTG||isWebView)&&tgWarn){
-    tgWarn.style.display='';
-    if(authBtn)authBtn.style.display='none';
-  }
-})();
-
-window.openInSafari=function(){
-  // On iOS, x-safari-url scheme opens in Safari
-  const url=window.location.href;
-  window.location.href='x-safari-https://'+url.replace(/^https?:\/\//,'');
-  // Fallback: try to open via location
-  setTimeout(()=>{ window.location=url; },500);
-};
-
-// ── Service Worker: дерегистрация ────────────────────────────
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(r=>r.forEach(reg=>reg.unregister()));
-  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
-}
-
-// ── Onboarding ───────────────────────────────────────────────
-let _obWallets=[];
-window.obAddWallet=function(){
-  const name=document.getElementById('ob-wallet-name').value.trim();
-  const bal=parseFloat(document.getElementById('ob-wallet-bal').value)||0;
-  if(!name)return;
-  _obWallets.push({id:'w'+Date.now(),name,balance:bal});
-  document.getElementById('ob-wallet-name').value='';
-  document.getElementById('ob-wallet-bal').value='';
-  document.getElementById('ob-wallets-list').innerHTML=_obWallets.map(w=>`
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--border);font-size:13px">
-      <span>${w.name}</span>
-      <span style="color:${w.balance<0?'var(--red)':'var(--topbar)'}">₽${Math.abs(w.balance).toLocaleString('ru-RU')}</span>
-    </div>`).join('');
-};
-window.obNext=function(step){
-  [1,2,3].forEach(s=>{
-    const el=document.getElementById('ob-screen-'+s);
-    if(el)el.style.display=s===step?'':'none';
-    const ind=document.getElementById('ob-step-'+s);
-    if(ind)ind.style.background=s<=step?'var(--amber)':'var(--border)';
-  });
-};
-window.obFinish=function(){
-  if(!state.D)return;
-  if(_obWallets.length>0)state.D.wallets=_obWallets;
-  const income=parseFloat(document.getElementById('ob-income').value)||0;
-  if(income>0)state.D._onboardingIncome=income;
-  state.D._onboarded=true;
-  saveNow();
-  document.getElementById('onboarding-screen').style.display='none';
-  renderReports();
-};
-window.obSkip=function(){
-  if(state.D){state.D._onboarded=true;saveNow();}
-  document.getElementById('onboarding-screen').style.display='none';
-};
-function checkOnboarding(){
-  if(!state.D)return;
-  if(!state.D._onboarded&&!state.D.operations.length&&!state.D.wallets.some(w=>w.balance!==0)){
-    document.getElementById('onboarding-screen').style.display='';
-  }
-}
-</script>
 
 <!-- MODAL: recurring -->
 <div class="modal-overlay" id="modal-recurring">
@@ -1307,6 +884,229 @@ function checkOnboarding(){
     <button class="btn-sec" onclick="document.getElementById('modal-ai-settings').classList.remove('open')">Отмена</button>
   </div>
 </div>
+
+<script type="module">
+import{state,initAuth,signInGoogle as _signInGoogle,checkRedirectResult,doSignOut,exportData,importData,clearAllOps,sched,saveNow}from'./core.js';
+import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
+import{renderDDS}from'./dds.js';
+import{renderCalendar,showCalDay}from'./calendar.js';
+import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
+import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
+import{renderDashboard}from'./dashboard.js';
+import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
+import{renderGoals}from'./goals.js';
+import{renderRecurring,applyRecurring}from'./recurring.js';
+import{renderHealth}from'./health.js';
+import{renderLoans,renderLoansSummary}from'./loans.js';
+import{renderTemplates}from'./templates.js';
+import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
+import{renderAssets,checkAssetsAlert}from'./assets.js';
+import{renderShoppingWidget,renderCalShopList}from'./shopping.js';
+import{initAI,openAISettings,initVoice}from'./ai-input.js';
+import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
+
+const $=id=>document.getElementById(id);
+
+// ── Screens ───────────────────────────────────────────────────
+function refreshCurrent(){
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  if(!cur||!state.D)return;
+  if(cur==='dashboard')renderDashboard();
+  else if(cur==='reports'){renderReports();renderWalletOps();}
+  else if(cur==='dds')renderDDS();
+  else if(cur==='calendar'){renderCalendar();showCalDay&&showCalDay(state.calDay);renderCalShopList();}
+  else if(cur==='settings')renderSettings();
+  else if(cur==='analytics')renderAnalytics();
+  else if(cur==='extras')renderGoals();
+  else if(cur==='health')renderHealth();
+  else if(cur==='loans'){renderLoans();renderLoansSummary();}
+  else if(cur==='templates')renderTemplates();
+  else if(cur==='portfolio')renderPortfolio();
+  else if(cur==='import'){initImportScreen();}
+  else if(cur==='physassets')renderAssets();
+}
+window.refreshCurrent=refreshCurrent;
+
+window.showScreen=function(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
+  const screen=$('screen-'+name);
+  if(screen)screen.classList.add('active');
+  const tb=$('tnav-'+name);if(tb)tb.classList.add('active');
+  refreshCurrent();
+};
+
+// ── Auth ──────────────────────────────────────────────────────
+window.signInGoogle=async function(){
+  try{await _signInGoogle();}catch(e){console.error(e);}
+};
+window.doSignOut=async function(){
+  await doSignOut();
+  document.getElementById('app-screen').style.display='none';
+  document.getElementById('login-screen').style.display='';
+};
+
+initAuth(async(user)=>{
+  if(user){
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app-screen').style.display='';
+    const av=$('user-avatar');
+    if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
+    await import('./core.js').then(m=>m.loadData(user.uid));
+    applyRecurring();
+    window._checkPortfolioAlert=checkPortfolioAlert;
+    window._checkAssetsAlert=checkAssetsAlert;
+    renderShoppingWidget();
+    initVoice();
+    initAI();
+    // Show dashboard by default
+    window.showScreen('dashboard');
+    // Onboarding
+    if(state.D&&!state.D._onboarded&&!state.D.operations?.length){
+      const ob=$('onboarding-screen');
+      if(ob)ob.style.display='';
+    }
+  }else{
+    document.getElementById('login-screen').style.display='';
+    document.getElementById('app-screen').style.display='none';
+  }
+});
+
+// ── Navigation helpers ────────────────────────────────────────
+window.chMonth=function(d){state.repOff=(state.repOff||0)+d;renderReports();}
+window.chWallet=function(d){
+  state.walletIdx=((state.walletIdx||0)+d+state.D.wallets.length)%state.D.wallets.length;
+  renderWalletOps();
+}
+window.calChM=function(d){state.calOff=(state.calOff||0)+d;renderCalendar();}
+window.selCalDay=function(ds){showCalDay(ds);}
+window.openNewOp=function(){openModal();}
+window.setCatTab=setCatTab;
+window.updPT=updPT;
+window.savePlanSettings=savePlanSettings;
+window.addWallet=addWallet;window.delWallet=delWallet;
+window.openEditWallet=openEditWallet;window.saveWalletEdit=saveWalletEdit;
+window.addIncomeCat=addIncomeCat;window.delIncomeCat=delIncomeCat;
+window.fillExpPlanSel=fillExpPlanSel;
+window.openEditExpCat=openEditExpCat;window.saveExpCat=saveExpCat;window.delExpCat=delExpCat;
+window.openModal=openModal;window.closeModal=closeModal;window.setType=setType;
+window.saveOperation=saveOperation;window.openEditOp=openEditOp;
+window.saveEditOp=saveEditOp;window.deleteOp=deleteOp;
+window.exportData=exportData;window.importData=importData;window.clearAllOps=clearAllOps;
+window.exportCSV=exportCSV;window.exportAllCSV=exportAllCSV;
+window.openAISettings=openAISettings;
+
+// ── Import screen ─────────────────────────────────────────────
+function initImportScreen(){
+  if(!state.D)return;
+  const ws=$('import-wallet');
+  if(ws)ws.innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+}
+
+let _csvParsed=[];
+window.handleCSVFile=function(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const bank=$('import-bank').value;
+    const parsed=parseCSV(ev.target.result,bank);
+    if(!parsed.length){alert('Операций не найдено. Проверьте формат файла.');return;}
+    _csvParsed=deduplicateOps(parsed);
+    renderImportPreview();
+  };
+  reader.readAsText(file,'UTF-8');
+  e.target.value='';
+};
+
+function renderImportPreview(){
+  const el=$('import-preview');if(!el)return;
+  el.style.display='';
+  const total=_csvParsed.length;
+  const dups=_csvParsed.filter(o=>o.isDuplicate).length;
+  $('import-stats').innerHTML=`Найдено: ${total} · Новых: <b>${total-dups}</b> · Дублей: ${dups}`;
+  const table=$('import-table');
+  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
+  if(!fresh.length){table.innerHTML='<div style="color:var(--text2);padding:12px">Все операции уже есть</div>';return;}
+  const userCats=[...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)];
+  table.innerHTML=`<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="border-bottom:2px solid var(--border2)">
+      <th style="padding:6px;width:30px"><input type="checkbox" checked onchange="window.selectAllImport(this.checked)"></th>
+      <th style="padding:6px;text-align:left">Дата</th>
+      <th style="padding:6px;text-align:left">Описание</th>
+      <th style="padding:6px;text-align:left">Категория</th>
+      <th style="padding:6px;text-align:right">Сумма</th>
+    </tr></thead><tbody>
+    ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border)">
+      <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
+      <td style="padding:5px;color:var(--text2)">${op.date?.split('-').reverse().join('.')}</td>
+      <td style="padding:5px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${op.note||'—'}</td>
+      <td style="padding:5px"><select style="font-size:11px;border:1px solid var(--border);border-radius:4px;padding:2px 4px" id="imp-cat-${i}">
+        ${userCats.map(cat=>`<option${cat===op.category?' selected':''}>${cat}</option>`).join('')}
+      </select></td>
+      <td style="padding:5px;text-align:right;font-weight:700;color:${op.type==='income'?'var(--green-dark)':'var(--orange-dark)'}">
+        ${op.type==='income'?'+':'−'}₽${op.amount?.toLocaleString('ru-RU')}
+      </td>
+    </tr>`).join('')}
+    </tbody></table>`;
+}
+
+window.selectAllImport=function(v){
+  document.querySelectorAll('[id^="imp-chk-"]').forEach(cb=>cb.checked=v);
+};
+window.confirmImport=function(){
+  if(!state.D)return;
+  const fresh=_csvParsed.filter(o=>!o.isDuplicate);
+  fresh.forEach((op,i)=>{
+    const chk=document.getElementById('imp-chk-'+i);
+    const catSel=document.getElementById('imp-cat-'+i);
+    op.skip=!chk?.checked;
+    if(catSel)op.category=catSel.value;
+  });
+  const walletId=$('import-wallet').value;
+  const count=importOps(fresh,walletId);
+  _csvParsed=[];
+  $('import-preview').style.display='none';
+  alert('Импортировано '+count+' операций!');
+  refreshCurrent();
+};
+
+// ── Widget settings ───────────────────────────────────────────
+window.openWidgetSettings=function(){
+  if(!state.D)return;
+  const vis=state.D.dashWidgets||{};
+  const WIDGETS=[
+    {id:'plan',label:'Финансовый план'},
+    {id:'limits',label:'Лимиты по категориям'},
+    {id:'forecast',label:'Прогноз на конец года'},
+    {id:'anomalies',label:'Аномальные траты'},
+    {id:'today',label:'Сегодня'},
+    {id:'catdetail',label:'Расходы по категориям'},
+    {id:'debts',label:'Кредиты и долги'},
+    {id:'health',label:'Финансовое здоровье'},
+    {id:'goals',label:'Цели'},
+    {id:'chart',label:'График cashflow'},
+    {id:'portfolio',label:'Инвестиционный портфель'},
+    {id:'physassets',label:'Физические активы'},
+    {id:'shopping',label:'Список покупок'},
+  ];
+  document.getElementById('widget-checkboxes').innerHTML=
+    '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Виджеты правой колонки дашборда:</div>'+
+    WIDGETS.map(w=>`<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--topbar)">
+      <input type="checkbox" ${vis[w.id]!==false?'checked':''} id="wchk-${w.id}" style="accent-color:var(--amber);width:16px;height:16px">
+      ${w.label}</label>`).join('');
+  document.getElementById('modal-widgets').classList.add('open');
+};
+window.saveWidgetSettings=function(){
+  if(!state.D.dashWidgets)state.D.dashWidgets={};
+  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets','shopping'].forEach(id=>{
+    const el=document.getElementById('wchk-'+id);
+    if(el)state.D.dashWidgets[id]=el.checked;
+  });
+  sched();
+  document.getElementById('modal-widgets').classList.remove('open');
+  renderDashboard();
+};
+</script>
 
 <script>
 // Дерегистрируем все старые Service Workers и чистим кеш
