@@ -378,3 +378,36 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .rep-right-top{flex-direction:column!important;}
   .rep-right-top .panel:first-child{width:100%!important;}
 }
+@media(max-width:700px){
+  /* KILLSWITCH: ensure ALL inactive screens have zero footprint */
+  .screen:not(.active),
+  .screen:not(.active) *,
+  #screen-dds:not(.active),
+  #screen-calendar:not(.active),
+  #screen-reports:not(.active),
+  #screen-analytics:not(.active),
+  #screen-settings:not(.active),
+  #screen-extras:not(.active),
+  #screen-loans:not(.active),
+  #screen-templates:not(.active),
+  #screen-health:not(.active),
+  #screen-portfolio:not(.active),
+  #screen-import:not(.active),
+  #screen-physassets:not(.active),
+  #screen-shopping:not(.active){
+    display:none!important;
+    height:0!important;
+    max-height:0!important;
+    min-height:0!important;
+    overflow:hidden!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    margin:0!important;
+    padding:0!important;
+    border:none!important;
+    pointer-events:none!important;
+    position:absolute!important;
+    top:-9999px!important;
+  }
+}
+

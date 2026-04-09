@@ -277,24 +277,7 @@
         </div>
       </div>
 
-      <!-- Shopping list -->
-      <div style="flex-shrink:0;padding:0 var(--gap) var(--gap)">
-        <div class="panel">
-          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-            🛒 СПИСОК ПОКУПОК
-            <button onclick="window.clearBoughtItems()" style="font-size:9px;background:rgba(255,255,255,.15);border:none;color:#C9A96E;padding:2px 8px;border-radius:4px;cursor:pointer">✓ очистить купленное</button>
-          </div>
-          <div class="panel-body">
-            <div style="display:flex;gap:6px;margin-bottom:8px">
-              <input class="fi" id="shop-item-input" placeholder="Добавить товар..." style="flex:1;font-size:12px" onkeydown="if(event.key==='Enter')window.addShopItem()">
-              <input class="fi" id="shop-price-input" type="number" placeholder="₽" style="width:72px;font-size:12px">
-              <button class="sbtn amber" onclick="window.addShopItem()">+</button>
-            </div>
-            <div id="shop-list" style="max-height:220px;overflow-y:auto"></div>
-            <div id="shop-total" style="display:none;font-size:12px;font-weight:700;color:var(--topbar);padding-top:6px;border-top:.5px solid var(--border);margin-top:4px;text-align:right"></div>
-          </div>
-        </div>
-      </div>
+
     </div>
   </div>
 
@@ -478,10 +461,7 @@
             <div class="dash-card-body"><div id="dash-physassets"></div></div>
           </div>
 
-          <div id="dash-widget-shopping" onclick="window.showScreen('shopping')" class="dash-card clickable">
-            <div class="dash-card-head">СПИСОК ПОКУПОК <span class="dash-card-link">→ ПОКУПКИ</span></div>
-            <div class="dash-card-body"><div id="dash-shopping"></div></div>
-          </div>
+
 
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
@@ -1318,41 +1298,4 @@ if('serviceWorker' in navigator){
 }
 </script>
 </body>
-</html><div class="dash-right">
-        <div id="dash-widget-kpi"><div class="panel" style="flex-shrink:0;overflow:visible">
-          <div class="panel-head">КЛЮЧЕВЫЕ МЕТРИКИ</div>
-          <div class="panel-body" style="overflow:visible">
-            <div class="dash-kpi-grid" style="grid-template-columns:1fr 1fr">
-              <div class="dash-kpi"><div class="dash-kpi-lbl">БАЛАНС МЕСЯЦА</div><div class="dash-kpi-val" id="dash-bal">₽ 0</div></div>
-              <div class="dash-kpi"><div class="dash-kpi-lbl">В ДЕНЬ</div><div class="dash-kpi-val" id="dash-daily">₽ 0</div></div>
-              <div class="dash-kpi"><div class="dash-kpi-lbl">ПРОГНОЗ</div><div class="dash-kpi-val" id="dash-projected">₽ 0</div></div>
-              <div class="dash-kpi"><div class="dash-kpi-lbl">ОСТАЛОСЬ ДНЕЙ</div><div class="dash-kpi-val" id="dash-days-left">0</div></div>
-            </div>
-            <div class="dash-progress-wrap" style="margin-top:8px">
-              <div style="font-size:11px;color:var(--text2)" id="dash-month-label"></div>
-              <div class="dash-progress-bar"><div class="dash-progress-fill" id="dash-month-progress" style="width:0%"></div></div>
-            </div>
-          </div>
-        </div></div>
-        <div id="dash-widget-alerts"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">АЛЕРТЫ</div>
-          <div class="panel-body"><div id="dash-alerts"></div></div>
-        </div></div>
-        <div id="dash-widget-quick"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
-          <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
-        </div></div>
-        <div id="dash-widget-debts"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">КРЕДИТЫ И ДОЛГИ</div>
-          <div class="panel-body"><div id="dash-debts"></div></div>
-        </div></div>
-        <div id="dash-widget-health"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">ФИНАНСОВОЕ ЗДОРОВЬЕ</div>
-          <div class="panel-body"><div id="dash-health-score"></div></div>
-        </div></div>
-        <div id="dash-widget-goals" style="flex:1;min-height:80px"><div class="panel" style="height:100%">
-          <div class="panel-head">ЦЕЛИ</div>
-          <div class="panel-body"><div id="dash-goals"></div></div>
-        </div></div>
-      </div>
-      
+</html>
