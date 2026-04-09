@@ -265,8 +265,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 /* ── MOBILE ── */
 @media(max-width:700px){
-  body{overflow:auto;height:auto;}
-  #app-screen{height:auto;min-height:100vh;overflow:hidden;}
+  body{overflow:hidden;height:100vh;}
+  #app-screen{height:calc(100vh - var(--topbar-h, 84px));overflow:hidden;display:flex;flex-direction:column;}
 
   /* Топбар: бренд + правые кнопки в первой строке, вкладки во второй */
   /* Mobile: same 2-row layout, just compact */
@@ -275,8 +275,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .tbtn{padding:0 10px;font-size:10px;height:44px;}
 
   /* Screens stack vertically */
-  .screen.active{display:flex!important;flex-direction:column;overflow:visible;height:auto;}
-  .screen:not(.active){display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;}
+  .screen.active{display:flex!important;flex-direction:column;overflow-y:auto;overflow-x:hidden;height:auto;min-height:0;}
+  .screen:not(.active){display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important;margin:0!important;padding:0!important;border:none!important;}
 
   /* Reports */
   #screen-reports{flex-direction:column!important;}
