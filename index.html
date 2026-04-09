@@ -121,6 +121,7 @@
       <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
       <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
       <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
+      <button class="tnav-btn" id="tnav-shopping" onclick="window.showScreen('shopping')">ПОКУПКИ</button>
     </div>
     <div class="topbar-right">
       <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
@@ -473,6 +474,11 @@
             <div class="dash-card-body"><div id="dash-physassets"></div></div>
           </div>
 
+          <div id="dash-widget-shopping" onclick="window.showScreen('shopping')" class="dash-card clickable">
+            <div class="dash-card-head">СПИСОК ПОКУПОК <span class="dash-card-link">→ ПОКУПКИ</span></div>
+            <div class="dash-card-body"><div id="dash-shopping"></div></div>
+          </div>
+
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
             <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
@@ -663,6 +669,20 @@
     </div>
   </div>
 
+
+  <!-- ── SHOPPING LIST ── -->
+  <div id="screen-shopping" class="screen">
+    <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <div>
+          <div style="font-size:16px;font-weight:700;color:var(--topbar)">Список покупок</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">Отмечай купленное — оно переходит в «Куплено»</div>
+        </div>
+      </div>
+      <div id="shopping-content"></div>
+    </div>
+  </div>
+
 </div><!-- end app-screen -->
 
 <!-- ── MODALS ── -->
@@ -742,10 +762,10 @@
 import{state,initAuth,signInGoogle as _signInGoogle,checkRedirectResult,doSignOut,exportData,importData,clearAllOps,sched,saveNow}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
-import{renderCalendar,showCalDay,renderShoppingList}from'./calendar.js';
+import{renderCalendar,showCalDay}from'./calendar.js';
 import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
 import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
-import{renderDashboard,renderShoppingQuick}from'./dashboard.js';
+import{renderDashboard}from'./dashboard.js';
 import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
 import{renderGoals}from'./goals.js';
 import{renderRecurring,applyRecurring}from'./recurring.js';
@@ -754,6 +774,7 @@ import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
 import{renderAssets,checkAssetsAlert}from'./assets.js';
+import{renderShoppingList,renderShoppingWidget}from'./shopping.js';
 import{initAI,openAISettings}from'./ai-input.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 
@@ -774,6 +795,7 @@ function refreshCurrent(){
   else if(cur==='portfolio')renderPortfolio();
   else if(cur==='import'){initImportScreen();}
   else if(cur==='physassets')renderAssets();
+  else if(cur==='shopping')renderShoppingList();
 }
 
 
@@ -983,6 +1005,7 @@ initAuth(
     // Expose portfolio alert checker
     window._checkPortfolioAlert=checkPortfolioAlert;
     window._checkAssetsAlert=checkAssetsAlert;
+    renderShoppingWidget();
     initAI();
     renderReports();
   },
@@ -1261,6 +1284,16 @@ function checkOnboarding(){
   </div>
 </div>
 
+
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.log('SW error:', e));
+  });
+}
+</script>
 </body>
 </html><div class="dash-right">
         <div id="dash-widget-kpi"><div class="panel" style="flex-shrink:0;overflow:visible">
