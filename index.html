@@ -25,12 +25,22 @@
 <!-- ── APP ── -->
 <div id="app-screen">
 
-  <!-- TOPBAR -->
+  <!-- TOPBAR - перестроен в две строки -->
   <div class="topbar">
-    <div class="topbar-brand"><div class="topbar-title">МОИ ФИНАНСЫ</div></div>
+    <div class="topbar-row">
+      <div class="topbar-brand">
+        <div class="topbar-title">МОИ ФИНАНСЫ</div>
+      </div>
+      <div class="topbar-right">
+        <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
+        <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
+        <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
+        <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
+      </div>
+    </div>
     <div class="topbar-nav">
       <button class="tnav-btn" id="tnav-dashboard" onclick="window.showScreen('dashboard')">ДАШБОРД</button>
-      <button class="tnav-btn active" id="tnav-reports" onclick="window.showScreen('reports')">ОТЧЁТЫ</button>
+      <button class="tnav-btn" id="tnav-reports" onclick="window.showScreen('reports')">ОТЧЁТЫ</button>
       <button class="tnav-btn" id="tnav-dds" onclick="window.showScreen('dds')">ДДС</button>
       <button class="tnav-btn" id="tnav-calendar" onclick="window.showScreen('calendar')">КАЛЕНДАРЬ</button>
       <button class="tnav-btn" id="tnav-analytics" onclick="window.showScreen('analytics')">АНАЛИТИКА</button>
@@ -41,12 +51,6 @@
       <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
       <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
       <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
-    </div>
-    <div class="topbar-right">
-      <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
-      <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
-      <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
-      <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
     </div>
   </div>
 
@@ -252,7 +256,6 @@
     </div>
   </div>
 
-
   <!-- ── DASHBOARD ── -->
   <div id="screen-dashboard" class="screen">
     <div style="display:flex;justify-content:flex-end;padding:8px var(--gap) 0;">
@@ -403,7 +406,6 @@
     </div>
   </div>
 
-
   <!-- ── HEALTH ── -->
   <div id="screen-health" class="screen">
     <div style="max-width:900px;margin:0 auto;width:100%">
@@ -463,7 +465,6 @@
     </div>
   </div>
 
-
   <!-- ── PORTFOLIO ── -->
   <div id="screen-portfolio" class="screen">
     <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
@@ -518,7 +519,6 @@
       </div>
     </div>
   </div>
-
 
   <!-- ── PHYSICAL ASSETS ── -->
   <div id="screen-physassets" class="screen">
@@ -647,7 +647,6 @@ function refreshCurrent(){
   else if(cur==='physassets')renderAssets();
 }
 
-
 function initBulk(){
   if(!state.D)return;
   const bw=document.getElementById('bulk-wallet');
@@ -706,7 +705,7 @@ function renderImportPreview(){
       <th style="padding:6px;text-align:left">Описание</th>
       <th style="padding:6px;text-align:left">Категория</th>
       <th style="padding:6px;text-align:right">Сумма</th>
-    </tr></thead>
+     </tr></thead>
     <tbody>
     ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border);${op.type==='income'?'background:rgba(74,124,63,.05)':''}">
       <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
@@ -722,7 +721,7 @@ function renderImportPreview(){
       </td>
     </tr>`).join('')}
     </tbody>
-  </table>`;
+   </table>`;
 }
 
 window.selectAllImport=function(v){
@@ -906,7 +905,6 @@ $('loading-screen').style.display='flex';
   </div>
 </div>
 
-
 <!-- MODAL: widget settings -->
 <div class="modal-overlay" id="modal-widgets">
   <div class="modal">
@@ -975,7 +973,6 @@ $('loading-screen').style.display='flex';
   </div>
 </div>
 
-
 <!-- MODAL: asset -->
 <div class="modal-overlay" id="modal-asset">
   <div class="modal">
@@ -994,7 +991,6 @@ $('loading-screen').style.display='flex';
     <button class="btn-sec" onclick="document.getElementById('modal-asset').classList.remove('open')">Отмена</button>
   </div>
 </div>
-
 
 <!-- MODAL: physical asset -->
 <div class="modal-overlay" id="modal-phys-asset">
@@ -1031,41 +1027,4 @@ $('loading-screen').style.display='flex';
 </div>
 
 </body>
-</html><div class="dash-right">
-        <div id="dash-widget-kpi"><div class="panel" style="flex-shrink:0;overflow:visible">
-          <div class="panel-head">КЛЮЧЕВЫЕ МЕТРИКИ</div>
-          <div class="panel-body" style="overflow:visible">
-            <div class="dash-kpi-grid" style="grid-template-columns:1fr 1fr">
-              <div class="dash-kpi"><div class="dash-kpi-lbl">БАЛАНС МЕСЯЦА</div><div class="dash-kpi-val" id="dash-bal">₽ 0</div></div>
-              <div class="dash-kpi"><div class="dash-kpi-lbl">В ДЕНЬ</div><div class="dash-kpi-val" id="dash-daily">₽ 0</div></div>
-              <div class="dash-kpi"><div class="dash-kpi-lbl">ПРОГНОЗ</div><div class="dash-kpi-val" id="dash-projected">₽ 0</div></div>
-              <div class="dash-kpi"><div class="dash-kpi-lbl">ОСТАЛОСЬ ДНЕЙ</div><div class="dash-kpi-val" id="dash-days-left">0</div></div>
-            </div>
-            <div class="dash-progress-wrap" style="margin-top:8px">
-              <div style="font-size:11px;color:var(--text2)" id="dash-month-label"></div>
-              <div class="dash-progress-bar"><div class="dash-progress-fill" id="dash-month-progress" style="width:0%"></div></div>
-            </div>
-          </div>
-        </div></div>
-        <div id="dash-widget-alerts"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">АЛЕРТЫ</div>
-          <div class="panel-body"><div id="dash-alerts"></div></div>
-        </div></div>
-        <div id="dash-widget-quick"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
-          <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
-        </div></div>
-        <div id="dash-widget-debts"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">КРЕДИТЫ И ДОЛГИ</div>
-          <div class="panel-body"><div id="dash-debts"></div></div>
-        </div></div>
-        <div id="dash-widget-health"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">ФИНАНСОВОЕ ЗДОРОВЬЕ</div>
-          <div class="panel-body"><div id="dash-health-score"></div></div>
-        </div></div>
-        <div id="dash-widget-goals" style="flex:1;min-height:80px"><div class="panel" style="height:100%">
-          <div class="panel-head">ЦЕЛИ</div>
-          <div class="panel-body"><div id="dash-goals"></div></div>
-        </div></div>
-      </div>
-      
+</html>
