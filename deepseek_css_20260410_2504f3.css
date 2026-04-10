@@ -1,0 +1,125 @@
+/* ── TOPBAR — ДВЕ СТРОКИ ── */
+.topbar {
+  background: var(--topbar);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+/* Первая строка: бренд + правые кнопки */
+.topbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 48px;
+  padding: 0;
+}
+
+.topbar-brand {
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1.5px;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  height: 48px;
+}
+
+/* Вторая строка: навигационные вкладки */
+.topbar-nav {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  background: var(--topbar);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.topbar-nav::-webkit-scrollbar {
+  height: 3px;
+}
+
+.topbar-nav::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.topbar-nav::-webkit-scrollbar-thumb {
+  background: var(--amber);
+  border-radius: 3px;
+}
+
+.tnav-btn {
+  background: transparent;
+  border: none;
+  color: #C9A96E;
+  padding: 0 26px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 1px;
+  border-bottom: 3px solid transparent;
+  transition: background 0.15s;
+  white-space: nowrap;
+  height: 40px;
+}
+
+.tnav-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.tnav-btn.active {
+  background: var(--amber);
+  color: #fff;
+  border-bottom: 3px solid var(--amber-dark);
+}
+
+.tbtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  color: #C9A96E;
+  padding: 0 14px;
+  height: 100%;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.7px;
+  white-space: nowrap;
+}
+
+.tbtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.tbtn.add {
+  background: var(--amber);
+  color: #fff;
+}
+
+.tbtn.add:hover {
+  background: var(--amber-dark);
+}
+
+.user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  margin: 0 10px;
+}
