@@ -32,7 +32,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 /* ── APP SHELL ── */
 #app-screen{display:none;flex-direction:column;height:100vh;}
 
-/* ── TOPBAR — ДВЕ СТРОКИ ── */
+/* ── TOPBAR (ДВЕ СТРОКИ) ── */
 .topbar {
   background: var(--topbar);
   display: flex;
@@ -83,7 +83,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
   scrollbar-width: thin;
 }
 
-/* Скрываем скроллбар в навбаре (опционально) */
 .topbar-nav::-webkit-scrollbar {
   height: 3px;
 }
@@ -373,55 +372,6 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .rep-right{flex:1;display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow:hidden;}
 .rep-right-top{display:none!important;}
 
-
-/* ── MOBILE ── */
-@media(max-width:700px){
-  body{overflow:auto;height:auto;}
-  #app-screen{height:auto;min-height:100vh;overflow:hidden;}
-
-  /* Топбар на мобильных остаётся как есть (уже две строки) */
-  .topbar-row{height:44px;}
-  .tnav-btn{height:36px;padding:0 14px;font-size:11px;}
-  .tbtn{height:44px;}
-
-  /* Screens stack vertically */
-  .screen.active{display:flex!important;flex-direction:column;overflow:visible;height:auto;}
-  .screen:not(.active){display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;}
-
-  /* Reports */
-  #screen-reports{flex-direction:column!important;}
-  .rep-left{width:100%!important;border-right:none!important;border-bottom:2px solid var(--border2);overflow:visible!important;height:auto!important;}
-  .rep-right{width:100%!important;overflow:visible!important;height:auto!important;}
-  .rep-right-top{height:auto!important;flex-direction:column!important;}
-  .rep-right-top .panel{height:auto!important;}
-  .panel{height:auto!important;min-height:0!important;}
-  .panel-body{max-height:280px;}
-
-  /* DDS */
-  #screen-dds{flex-direction:column!important;overflow:visible!important;height:auto!important;}
-  .dds-wrap{flex-direction:column!important;overflow:visible!important;height:auto!important;}
-  .dds-left{width:100%!important;overflow:visible!important;height:auto!important;}
-  .dds-left .panel{height:auto!important;}
-  .dds-right{overflow:visible!important;height:auto!important;}
-  .dds-right .panel{height:auto!important;}
-
-  /* Calendar — two rows */
-  #screen-calendar{overflow:visible!important;height:auto!important;}
-  .cal-wrap{overflow:visible!important;height:auto!important;}
-  .cal-top-row{flex-direction:column!important;}
-  .cal-day-card{min-height:200px;}
-
-  /* Settings */
-  #screen-settings{flex-direction:column!important;overflow-y:auto!important;height:auto!important;}
-  #screen-settings .s-panel{width:100%!important;max-width:100%!important;}
-
-  /* Grids */
-  .plan-grid{grid-template-columns:1fr 1fr;}
-  .metrics-grid{grid-template-columns:1fr 1fr;}
-  .bal-grid{grid-template-columns:1fr 1fr;}
-  .cal-summary{grid-template-columns:1fr 1fr;}
-}
-
 /* ── DASHBOARD ── */
 #screen-dashboard{flex-direction:column;overflow-y:auto;}
 .dash-wrap{flex:1;display:flex;gap:var(--gap);padding:var(--gap);overflow:hidden;}
@@ -446,18 +396,6 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 #screen-extras{flex-direction:row;flex-wrap:wrap;gap:var(--gap);padding:var(--gap);overflow-y:auto;align-content:flex-start;}
 .extras-col{flex:1;min-width:300px;display:flex;flex-direction:column;gap:var(--gap);}
 
-/* ── MOBILE ADDITIONS ── */
-@media(max-width:700px){
-  .dash-wrap,.dash-left,.dash-right{flex-direction:column!important;overflow:visible!important;height:auto!important;width:100%!important;}
-  .dash-right-grid{grid-template-columns:1fr!important;}
-  .dash-right{overflow-y:visible!important;}
-  .dash-kpi-grid{grid-template-columns:1fr 1fr;}
-  #screen-analytics,#screen-extras{flex-direction:column!important;height:auto!important;overflow:visible!important;}
-  .extras-col{min-width:0!important;}
-  .chart-wrap{height:auto!important;min-height:0!important;}
-  .chart-wrap canvas{height:220px!important;max-height:220px!important;}
-}
-
 /* ── HEALTH ── */
 #screen-health{flex-direction:column;overflow-y:auto;padding:var(--gap);}
 .health-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);max-width:900px;margin:0 auto;width:100%;}
@@ -470,7 +408,6 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 #screen-templates{flex-direction:column;overflow-y:auto;padding:var(--gap);}
 .templates-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);}
 
-
 /* ── DASH CARDS ── */
 .dash-right-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-content:start;}
 .dash-card{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;}
@@ -480,10 +417,101 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dash-card-link{font-size:9px;opacity:.7;font-weight:400;letter-spacing:.3px;}
 .dash-card-body{padding:10px 12px;flex:1;overflow:hidden;}
 
+/* ── MOBILE ── */
 @media(max-width:700px){
+  body{overflow:auto;height:auto;}
+  #app-screen{height:auto;min-height:100vh;overflow:hidden;}
+
+  /* Mobile topbar adjustments */
+  .topbar-row {
+    height: 44px;
+  }
+  
+  .topbar-brand {
+    padding: 0 12px;
+  }
+  
+  .topbar-title {
+    font-size: 11px;
+  }
+  
+  .topbar-right {
+    height: 44px;
+  }
+  
+  .tbtn {
+    padding: 0 10px;
+    font-size: 10px;
+    height: 44px;
+  }
+  
+  .tnav-btn {
+    padding: 0 14px;
+    font-size: 11px;
+    height: 36px;
+  }
+  
+  .topbar-nav {
+    justify-content: flex-start;
+  }
+
+  /* Screens stack vertically */
+  .screen.active{display:flex!important;flex-direction:column;overflow:visible;height:auto;}
+  .screen:not(.active){display:none!important;height:0!important;overflow:hidden!important;visibility:hidden!important;pointer-events:none!important;}
+
+  /* Reports */
+  #screen-reports{flex-direction:column!important;}
+  .rep-left{width:100%!important;border-right:none!important;border-bottom:2px solid var(--border2);overflow:visible!important;height:auto!important;}
+  .rep-right{width:100%!important;overflow:visible!important;height:auto!important;}
+  .rep-right-top{height:auto!important;flex-direction:column!important;}
+  .rep-right-top .panel{height:auto!important;}
+  .panel{height:auto!important;min-height:0!important;}
+  .panel-body{max-height:280px;}
+
+  /* DDS */
+  #screen-dds{flex-direction:column!important;overflow:visible!important;height:auto!important;}
+  .dds-wrap{flex-direction:column!important;overflow:visible!important;height:auto!important;}
+  .dds-left{width:100%!important;overflow:visible!important;height:auto!important;}
+  .dds-left .panel{height:auto!important;}
+  .dds-right{overflow:visible!important;height:auto!important;}
+  .dds-right .panel{height:auto!important;}
+
+  /* Calendar */
+  #screen-calendar{overflow:visible!important;height:auto!important;}
+  .cal-wrap{overflow:visible!important;height:auto!important;}
+  .cal-top-row{flex-direction:column!important;}
+  .cal-day-card{min-height:200px;}
+
+  /* Settings */
+  #screen-settings{flex-direction:column!important;overflow-y:auto!important;height:auto!important;}
+  #screen-settings .s-panel{width:100%!important;max-width:100%!important;}
+
+  /* Grids */
+  .plan-grid{grid-template-columns:1fr 1fr;}
+  .metrics-grid{grid-template-columns:1fr 1fr;}
+  .bal-grid{grid-template-columns:1fr 1fr;}
+  .cal-summary{grid-template-columns:1fr 1fr;}
+  
+  /* Dashboard */
+  .dash-wrap,.dash-left,.dash-right{flex-direction:column!important;overflow:visible!important;height:auto!important;width:100%!important;}
+  .dash-right-grid{grid-template-columns:1fr!important;}
+  .dash-right{overflow-y:visible!important;}
+  .dash-kpi-grid{grid-template-columns:1fr 1fr;}
+  
+  /* Analytics, Extras */
+  #screen-analytics,#screen-extras{flex-direction:column!important;height:auto!important;overflow:visible!important;}
+  .extras-col{min-width:0!important;}
+  
+  /* Charts */
+  .chart-wrap{height:auto!important;min-height:0!important;}
+  .chart-wrap canvas{height:220px!important;max-height:220px!important;}
+  
+  /* Health, Loans, Templates */
   .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}
   #screen-health,#screen-loans,#screen-templates{overflow:visible;height:auto;}
-  /* P6: wallets full width */
-  .rep-right-top{flex-direction:column!important;}
-  .rep-right-top .panel:first-child{width:100%!important;}
+}
+
+/* ── DASH CARDS (mobile override) ── */
+@media(max-width:700px){
+  .dash-right-grid{grid-template-columns:1fr!important;}
 }
