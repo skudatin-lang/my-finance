@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#BA7517">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Финансы">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>Мои финансы</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -25,32 +30,33 @@
 <!-- ── APP ── -->
 <div id="app-screen">
 
-  <!-- TOPBAR - перестроен в две строки -->
+  <!-- TOPBAR: Two rows -->
   <div class="topbar">
-    <div class="topbar-row">
-      <div class="topbar-brand">
-        <div class="topbar-title">МОИ ФИНАНСЫ</div>
-      </div>
+    <div class="topbar-row1">
+      <div class="topbar-brand"><div class="topbar-title">МОИ ФИНАНСЫ</div></div>
       <div class="topbar-right">
         <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
         <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
+        <button class="tbtn" id="voice-topbar-btn" title="Голосовой ввод" style="font-size:15px;padding:0 10px">🎤</button>
         <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
         <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
       </div>
     </div>
-    <div class="topbar-nav">
-      <button class="tnav-btn" id="tnav-dashboard" onclick="window.showScreen('dashboard')">ДАШБОРД</button>
-      <button class="tnav-btn" id="tnav-reports" onclick="window.showScreen('reports')">ОТЧЁТЫ</button>
-      <button class="tnav-btn" id="tnav-dds" onclick="window.showScreen('dds')">ДДС</button>
-      <button class="tnav-btn" id="tnav-calendar" onclick="window.showScreen('calendar')">КАЛЕНДАРЬ</button>
-      <button class="tnav-btn" id="tnav-analytics" onclick="window.showScreen('analytics')">АНАЛИТИКА</button>
-      <button class="tnav-btn" id="tnav-extras" onclick="window.showScreen('extras')">ЦЕЛИ</button>
-      <button class="tnav-btn" id="tnav-loans" onclick="window.showScreen('loans')">КРЕДИТЫ</button>
-      <button class="tnav-btn" id="tnav-templates" onclick="window.showScreen('templates')">ШАБЛОНЫ</button>
-      <button class="tnav-btn" id="tnav-health" onclick="window.showScreen('health')">ЗДОРОВЬЕ</button>
-      <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
-      <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
-      <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
+    <div class="topbar-row2">
+      <div class="topbar-nav">
+        <button class="tnav-btn" id="tnav-dashboard" onclick="window.showScreen('dashboard')">ДАШБОРД</button>
+        <button class="tnav-btn active" id="tnav-reports" onclick="window.showScreen('reports')">ОТЧЁТЫ</button>
+        <button class="tnav-btn" id="tnav-dds" onclick="window.showScreen('dds')">ДДС</button>
+        <button class="tnav-btn" id="tnav-calendar" onclick="window.showScreen('calendar')">КАЛЕНДАРЬ</button>
+        <button class="tnav-btn" id="tnav-analytics" onclick="window.showScreen('analytics')">АНАЛИТИКА</button>
+        <button class="tnav-btn" id="tnav-extras" onclick="window.showScreen('extras')">ЦЕЛИ</button>
+        <button class="tnav-btn" id="tnav-loans" onclick="window.showScreen('loans')">КРЕДИТЫ</button>
+        <button class="tnav-btn" id="tnav-templates" onclick="window.showScreen('templates')">ШАБЛОНЫ</button>
+        <button class="tnav-btn" id="tnav-health" onclick="window.showScreen('health')">ЗДОРОВЬЕ</button>
+        <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
+        <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
+        <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
+      </div>
     </div>
   </div>
 
@@ -195,6 +201,27 @@
         </div>
       </div>
     </div>
+
+    <!-- FIX #3: Shopping list -->
+    <div class="panel" style="flex-shrink:0;margin:0 var(--gap) var(--gap)">
+      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px">
+        <span>&#128722; СПИСОК ПОКУПОК</span>
+        <span id="shopping-count" style="font-size:10px;font-weight:400;opacity:.8;letter-spacing:0"></span>
+      </div>
+      <div class="panel-body">
+        <div id="shopping-list-items"></div>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center">
+          <input class="fi" id="shop-quick-name" placeholder="Название товара" style="flex:2;min-width:110px">
+          <input class="fi" id="shop-quick-qty" type="number" placeholder="Кол-во" style="width:68px" value="1" min="1">
+          <input class="fi" id="shop-quick-price" type="number" placeholder="Цена &#8381;" style="width:82px">
+          <button class="sbtn amber" onclick="window.quickAddShopItem()" style="white-space:nowrap;padding:7px 12px">+ Добавить</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn-sec" style="flex:1;margin-top:0;font-size:11px;padding:7px" onclick="window.clearDoneShopItems()">Очистить купленное</button>
+          <button class="sbtn amber" onclick="window.openAddShopItem()" style="white-space:nowrap">+ Подробно</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ── SETTINGS ── -->
@@ -218,6 +245,7 @@
         <div id="plan-settings"></div>
         <div style="text-align:right;font-size:12px;color:var(--text2);margin-top:6px">Итого: <span id="plan-total-pct" style="font-weight:700">0%</span></div>
         <button class="btn-sec" style="margin-top:8px" onclick="window.savePlanSettings()">Сохранить план</button>
+        <button class="btn-sec" style="margin-top:6px" onclick="window.openAddPlanItem()">+ Добавить статью</button>
       </div>
     </div>
     <div class="s-panel" style="width:280px">
@@ -238,6 +266,18 @@
         <button class="btn-sec" style="margin-top:8px" onclick="window.openExpCat()">+ Добавить категорию</button>
       </div>
     </div>
+    <!-- FIX #6: Voice input settings -->
+    <div class="s-panel" style="width:360px">
+      <div class="s-panel-head">&#127908; ГОЛОСОВОЙ ВВОД (Яндекс SpeechKit)</div>
+      <div class="s-panel-body">
+        <div class="notice blue">Требуется Cloudflare Worker как CORS-прокси. Код воркера прилагается к приложению.</div>
+        <div class="fg"><label>ПРОКСИ URL (Cloudflare Worker)</label><input class="fi" id="voice-proxy-url" placeholder="https://your-worker.workers.dev"></div>
+        <div class="fg"><label>IAM ТОКЕН / API КЛЮЧ</label><input class="fi" id="voice-iam-token" type="password" placeholder="AQVNy..."></div>
+        <div class="fg"><label>FOLDER ID</label><input class="fi" id="voice-folder-id" placeholder="b1g..."></div>
+        <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить настройки голоса</button>
+        <div id="voice-status" style="font-size:11px;color:var(--text2);margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
+      </div>
+    </div>
     <div class="s-panel" style="width:100%;max-width:500px">
       <div class="s-panel-head">ДАННЫЕ</div>
       <div class="s-panel-body">
@@ -255,6 +295,7 @@
       </div>
     </div>
   </div>
+
 
   <!-- ── DASHBOARD ── -->
   <div id="screen-dashboard" class="screen">
@@ -339,6 +380,12 @@
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
           </div>
 
+          <!-- FIX #3: Shopping list dashboard widget -->
+          <div id="dash-widget-shopping" onclick="window.showScreen('calendar')" class="dash-card clickable">
+            <div class="dash-card-head">&#128722; СПИСОК ПОКУПОК <span class="dash-card-link">&#8594; КАЛЕНДАРЬ</span></div>
+            <div class="dash-card-body"><div id="dash-shopping"></div></div>
+          </div>
+
           <div id="dash-widget-portfolio" onclick="window.showScreen('portfolio')" class="dash-card clickable">
             <div class="dash-card-head">ИНВЕСТИЦИИ <span class="dash-card-link">→ ПОРТФЕЛЬ</span></div>
             <div class="dash-card-body"><div id="dash-portfolio"></div></div>
@@ -406,6 +453,7 @@
     </div>
   </div>
 
+
   <!-- ── HEALTH ── -->
   <div id="screen-health" class="screen">
     <div style="max-width:900px;margin:0 auto;width:100%">
@@ -465,6 +513,7 @@
     </div>
   </div>
 
+
   <!-- ── PORTFOLIO ── -->
   <div id="screen-portfolio" class="screen">
     <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
@@ -520,6 +569,7 @@
     </div>
   </div>
 
+
   <!-- ── PHYSICAL ASSETS ── -->
   <div id="screen-physassets" class="screen">
     <div style="display:flex;flex-direction:column;gap:var(--gap);padding:var(--gap);overflow-y:auto;height:100%">
@@ -550,7 +600,9 @@
     </div>
     <div id="planned-notice" class="plan-notice" style="display:none">Плановая операция — видна в календаре, не влияет на баланс</div>
     <div class="rf">
-      <div class="fg"><label>СУММА</label><input class="fi" type="number" id="op-amount" placeholder="0"></div>
+      <div class="fg" style="flex:2"><label>СУММА</label>
+        <div style="display:flex;gap:5px"><input class="fi" type="number" id="op-amount" placeholder="0" style="flex:1"><span id="voice-op-amount-wrap"></span></div>
+      </div>
       <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="op-date"></div>
     </div>
     <div class="fg" id="wallet-group"><label id="wallet-label">КОШЕЛЁК</label><select class="fi" id="op-wallet"></select></div>
@@ -561,7 +613,9 @@
       <select class="fi" id="op-transfer-cat"><option value="">— не указывать —</option></select>
       <div class="plan-notice" style="margin-top:6px;margin-bottom:0">Перевод можно привязать к статье финплана — учтётся как расход/откладывание без влияния на доход</div>
     </div>
-    <div class="fg"><label>ЗАМЕТКА (необязательно)</label><input class="fi" id="op-note" placeholder="Описание"></div>
+    <div class="fg"><label>ЗАМЕТКА (необязательно)</label>
+      <div style="display:flex;gap:5px"><input class="fi" id="op-note" placeholder="Описание" style="flex:1"><span id="voice-op-note-wrap"></span></div>
+    </div>
     <button class="btn-primary" onclick="window.saveOp()">Сохранить</button>
     <button class="btn-sec" onclick="window.closeModal('modal')">Отмена</button>
   </div>
@@ -611,11 +665,11 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched}from'./core.js';
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
-import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat}from'./settings.js';
+import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat,openAddPlanItem,openEditPlanItem,savePlanItem,deletePlanItem}from'./settings.js';
 import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
 import{renderDashboard}from'./dashboard.js';
 import{renderAnalytics,exportCSV,exportAllCSV}from'./analytics.js';
@@ -627,16 +681,105 @@ import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
 import{renderAssets,checkAssetsAlert}from'./assets.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
+import{renderShoppingList,getShoppingStats}from'./shopping.js';
+import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton}from'./voice.js';
 
 const $=id=>document.getElementById(id);
 
+// ── Shopping dashboard widget ─────────────────────────────
+window._renderShopWidget=function(){
+  const el=$('dash-shopping');if(!el||!state.D)return;
+  const s=getShoppingStats();
+  if(!s.total){
+    el.innerHTML='<div style="color:var(--text2);font-size:12px">Список пуст. <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>';
+    return;
+  }
+  const items=(state.D.shoppingList||[]).filter(i=>!i.done).slice(0,5);
+  el.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:5px">${s.pending} из ${s.total} не куплено${s.estimate>0?' · ~'+Math.round(s.estimate).toLocaleString('ru-RU')+'&#8381;':''}</div>`
+    +items.map(i=>`<div style="font-size:12px;padding:3px 0;border-bottom:.5px solid var(--border);display:flex;gap:6px;align-items:center">
+      <span>&#128722;</span><span style="flex:1;color:var(--topbar)">${i.name}</span>${i.qty>1?`<span style="color:var(--text2);font-size:11px">${i.qty}шт</span>`:''}
+    </div>`).join('')
+    +(s.pending>5?`<div style="font-size:10px;color:var(--text2);margin-top:3px">и ещё ${s.pending-5} позиций...</div>`:'');
+};
+
+// ── Quick add from calendar panel ────────────────────────
+window.quickAddShopItem=function(){
+  if(!state.D)return;
+  if(!state.D.shoppingList)state.D.shoppingList=[];
+  const nameEl=$('shop-quick-name');
+  const name=nameEl?.value.trim();
+  if(!name){nameEl?.focus();return;}
+  const qty=parseFloat($('shop-quick-qty')?.value)||1;
+  const price=parseFloat($('shop-quick-price')?.value)||0;
+  state.D.shoppingList.push({id:'sh'+Date.now(),name,qty,price,done:false});
+  sched();
+  nameEl.value='';
+  if($('shop-quick-qty'))$('shop-quick-qty').value=1;
+  if($('shop-quick-price'))$('shop-quick-price').value='';
+  nameEl.focus();
+  renderShoppingList();
+  window._renderShopWidget();
+};
+
+// ── Voice UI ──────────────────────────────────────────────
+function setupVoiceButtons(){
+  [['voice-op-amount-wrap','op-amount'],['voice-op-note-wrap','op-note'],['voice-shop-name-wrap','shop-item-name']].forEach(([wrapId,targetId])=>{
+    const wrap=$(wrapId);if(!wrap)return;
+    wrap.innerHTML='';
+    const btn=createVoiceButton(targetId);
+    wrap.appendChild(btn);
+  });
+  const topBtn=$('voice-topbar-btn');
+  if(topBtn){
+    topBtn.onclick=()=>{
+      if(!isVoiceConfigured()){
+        alert('Голосовой ввод не настроен.\nПерейдите в Настройки → Голосовой ввод.');
+        return;
+      }
+      openModal('modal',true);
+    };
+  }
+}
+
+function updateVoiceStatus(){
+  const el=$('voice-status');if(!el)return;
+  if(isVoiceConfigured()){
+    el.textContent='✓ Голосовой ввод настроен и готов к работе';
+    el.style.color='var(--green-dark)';el.style.background='var(--green-bg)';
+  }else{
+    el.textContent='⚠ Заполните Прокси URL, IAM токен и Folder ID для активации';
+    el.style.color='var(--orange-dark)';el.style.background='var(--amber-light)';
+  }
+}
+
+window.saveVoiceSettingsUI=function(){
+  const proxyUrl=$('voice-proxy-url')?.value.trim()||'';
+  const iamToken=$('voice-iam-token')?.value.trim()||'';
+  const folderId=$('voice-folder-id')?.value.trim()||'';
+  saveVoiceSettings(proxyUrl,iamToken,folderId);
+  updateVoiceStatus();
+  let msg='Настройки голосового ввода сохранены.';
+  if(!proxyUrl||!iamToken||!folderId)msg+='\nЗаполните все три поля для работы.';
+  else msg+='\nЭлементы с кнопкой 🎤 готовы к использованию.';
+  alert(msg);
+};
+
+function _loadVoiceToSettings(){
+  if(!state.D||!state.D.voiceSettings)return;
+  const vs=state.D.voiceSettings;
+  if($('voice-proxy-url'))$('voice-proxy-url').value=vs.proxyUrl||'';
+  if($('voice-iam-token'))$('voice-iam-token').value=vs.iamToken||'';
+  if($('voice-folder-id'))$('voice-folder-id').value=vs.folderId||'';
+  updateVoiceStatus();
+}
+
 function refreshCurrent(){
   const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
-  if(cur==='dashboard')renderDashboard();
+  if(cur==='dashboard'){renderDashboard();window._renderShopWidget();}
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
-  else if(cur==='calendar')renderCalendar();
-  else if(cur==='settings')renderSettings();
+  else if(cur==='calendar'){renderCalendar();renderShoppingList();}
+  else if(cur==='settings'){renderSettings();_loadVoiceToSettings();}
   else if(cur==='analytics'){renderAnalytics();renderLimits();}
   else if(cur==='extras'){renderGoals();renderRecurring();}
   else if(cur==='loans'){renderLoans();renderLoansSummary();}
@@ -646,6 +789,7 @@ function refreshCurrent(){
   else if(cur==='import'){initImportScreen();}
   else if(cur==='physassets')renderAssets();
 }
+
 
 function initBulk(){
   if(!state.D)return;
@@ -705,7 +849,7 @@ function renderImportPreview(){
       <th style="padding:6px;text-align:left">Описание</th>
       <th style="padding:6px;text-align:left">Категория</th>
       <th style="padding:6px;text-align:right">Сумма</th>
-     </tr></thead>
+    </tr></thead>
     <tbody>
     ${fresh.map((op,i)=>`<tr style="border-bottom:.5px solid var(--border);${op.type==='income'?'background:rgba(74,124,63,.05)':''}">
       <td style="padding:5px"><input type="checkbox" checked id="imp-chk-${i}"></td>
@@ -721,7 +865,7 @@ function renderImportPreview(){
       </td>
     </tr>`).join('')}
     </tbody>
-   </table>`;
+  </table>`;
 }
 
 window.selectAllImport=function(v){
@@ -844,9 +988,18 @@ initAuth(
     state.walletIdx=0;
     // Apply recurring ops for current month
     applyRecurring();
-    // Expose portfolio alert checker
+    // Expose alert checkers
     window._checkPortfolioAlert=checkPortfolioAlert;
     window._checkAssetsAlert=checkAssetsAlert;
+    // Load voice settings
+    loadVoiceSettings();
+    setupVoiceButtons();
+    updateVoiceStatus();
+    // Plan CRUD
+    window.openAddPlanItem=openAddPlanItem;
+    window.openEditPlanItem=openEditPlanItem;
+    window.savePlanItem=savePlanItem;
+    window.deletePlanItem=deletePlanItem;
     renderReports();
   },
   ()=>{
@@ -904,6 +1057,7 @@ $('loading-screen').style.display='flex';
     <button class="btn-sec" onclick="document.getElementById('modal-limit').classList.remove('open')">Отмена</button>
   </div>
 </div>
+
 
 <!-- MODAL: widget settings -->
 <div class="modal-overlay" id="modal-widgets">
@@ -973,6 +1127,7 @@ $('loading-screen').style.display='flex';
   </div>
 </div>
 
+
 <!-- MODAL: asset -->
 <div class="modal-overlay" id="modal-asset">
   <div class="modal">
@@ -991,6 +1146,7 @@ $('loading-screen').style.display='flex';
     <button class="btn-sec" onclick="document.getElementById('modal-asset').classList.remove('open')">Отмена</button>
   </div>
 </div>
+
 
 <!-- MODAL: physical asset -->
 <div class="modal-overlay" id="modal-phys-asset">
@@ -1026,5 +1182,42 @@ $('loading-screen').style.display='flex';
   </div>
 </div>
 
+
+<!-- MODAL: shopping item -->
+<div class="modal-overlay" id="modal-shop-item">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">ТОВАР В СПИСКЕ</span><button class="modal-close" onclick="document.getElementById('modal-shop-item').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label>
+      <div style="display:flex;gap:5px"><input class="fi" id="shop-item-name" placeholder="Молоко, хлеб..." style="flex:1"><span id="voice-shop-name-wrap"></span></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>КОЛИЧЕСТВО</label><input class="fi" type="number" id="shop-item-qty" value="1" min="1"></div>
+      <div class="fg"><label>ЦЕНА &#8381; (необяз.)</label><input class="fi" type="number" id="shop-item-price" placeholder="0"></div>
+    </div>
+    <input type="hidden" id="shop-item-id">
+    <button class="btn-primary" onclick="window.saveShopItem()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-shop-item').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: plan item add/edit (FIX #4) -->
+<div class="modal-overlay" id="modal-plan-item">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="plan-item-modal-title">СТАТЬЯ ФИНПЛАНА</span><button class="modal-close" onclick="document.getElementById('modal-plan-item').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ СТАТЬИ</label><input class="fi" id="pi-label" placeholder="Накопления, Кредиты, Продукты..."></div>
+    <div class="rf">
+      <div class="fg"><label>ПРОЦЕНТ ОТ ДОХОДА %</label><input class="fi" type="number" id="pi-pct" placeholder="10" min="0" max="100" step="0.5"></div>
+      <div class="fg"><label>ТИП</label>
+        <select class="fi" id="pi-type">
+          <option value="expense">Расход (куда тратить)</option>
+          <option value="income">Накопление (откладывать)</option>
+        </select>
+      </div>
+    </div>
+    <input type="hidden" id="pi-idx" value="-1">
+    <button class="btn-primary" onclick="window.savePlanItem()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-plan-item').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
 </body>
-</html>

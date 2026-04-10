@@ -1,0 +1,14 @@
+{
+  "name": "Мои финансы",
+  "short_name": "Финансы",
+  "description": "Личный учёт доходов, расходов и финансового плана",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F0E6C8",
+  "theme_color": "#BA7517",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

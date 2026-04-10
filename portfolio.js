@@ -76,8 +76,28 @@ export function renderPortfolio(){
         <div style="height:5px;border-radius:3px;background:var(--amber);width:${share}%"></div>
       </div>
       <div style="font-size:10px;color:var(--text2)">Цена обновлена: ${lastUpd}</div>
+      ${_portfolioRec(a,curVal,pnlP,share,total)}
     </div>`;
   }).join('');
+}
+
+
+function _portfolioRec(a,curVal,pnlP,share,total){
+  const daysSinceUpdate=a.lastUpdated?Math.floor((new Date()-new Date(a.lastUpdated))/(864e5)):999;
+  let icon='',msg='',color='var(--text2)';
+  if(daysSinceUpdate>=14){icon='⏰';msg='Цена не обновлялась '+daysSinceUpdate+' дн. — обновите для точных расчётов';color='var(--orange-dark)';}
+  else if(pnlP>=50){icon='🚀';msg='Отличный результат +'+pnlP+'%. Рассмотрите фиксацию части прибыли.';color='var(--green-dark)';}
+  else if(pnlP>=20){icon='📈';msg='Хорошая доходность +'+pnlP+'%. Держите позицию, следите за новостями.';color='var(--green-dark)';}
+  else if(pnlP>=5){icon='✅';msg='Позиция в плюсе +'+pnlP+'%. Продолжайте следить за динамикой.';color='var(--green-dark)';}
+  else if(pnlP>=-5){icon='➡';msg='Доходность около нуля ('+pnlP+'%). Оцените перспективы актива.';color='var(--amber-dark)';}
+  else if(pnlP>=-20){icon='⚠';msg='Убыток '+pnlP+'%. Проверьте фундаментальные показатели компании.';color='var(--orange-dark)';}
+  else{icon='🔴';msg='Значительный убыток '+pnlP+'%. Рассмотрите стоп-лосс или усреднение.';color='var(--red)';}
+  // Concentration warning
+  if(share>40&&!msg.includes('концентрац')){msg+=' Доля '+share+'% — высокая концентрация, диверсифицируйте портфель.';}
+  return`<div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-top:8px;display:flex;gap:8px;align-items:flex-start">
+    <span style="font-size:16px;flex-shrink:0">${icon}</span>
+    <div style="font-size:11px;color:${color};line-height:1.5">${msg}</div>
+  </div>`;
 }
 
 window.openAddAsset=function(){

@@ -13,10 +13,15 @@ export function renderSettings(){
     </div>`;
   }).join('');
 
-  $('plan-settings').innerHTML=state.D.plan.map((p,i)=>`<div class="pct-row">
-    <label>${p.label} <span style="font-size:10px;color:var(--text2)">(${p.type==='income'?'откл.':'расход'})</span></label>
-    <input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="window.updPT()">
+  $('plan-settings').innerHTML=state.D.plan.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:12px;font-weight:700;color:var(--topbar)">${p.label}</div>
+      <div style="font-size:10px;color:var(--text2)">${p.type==='income'?'Накопление':'Расход'}</div>
+    </div>
+    <input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="window.updPT()" style="width:52px;padding:5px;border:1.5px solid var(--border);border-radius:5px;font-size:13px;color:var(--topbar);background:#fff;text-align:right">
     <span style="font-size:13px;color:var(--text2)">%</span>
+    <button class="sbtn blue" onclick="window.openEditPlanItem(${i})" style="padding:4px 7px;font-size:11px" title="Изменить">✎</button>
+    <button class="sbtn red" onclick="window.deletePlanItem(${i})" style="padding:4px 7px;font-size:11px" title="Удалить">✕</button>
   </div>`).join('');
   updPT();
 
@@ -120,3 +125,47 @@ window.delIncomeCat=delIncomeCat;
 window.openEditExpCat=openEditExpCat;
 
 export{exportData,importData,clearAllOps};
+
+// ── Plan item CRUD ─────────────────────────────────────────
+export function openAddPlanItem(){
+  const modal=document.getElementById('modal-plan-item');if(!modal)return;
+  document.getElementById('plan-item-modal-title').textContent='НОВАЯ СТАТЬЯ ФИНПЛАНА';
+  document.getElementById('pi-idx').value=-1;
+  document.getElementById('pi-label').value='';
+  document.getElementById('pi-pct').value='';
+  document.getElementById('pi-type').value='expense';
+  modal.classList.add('open');
+}
+export function openEditPlanItem(i){
+  const p=state.D.plan[i];if(!p)return;
+  const modal=document.getElementById('modal-plan-item');if(!modal)return;
+  document.getElementById('plan-item-modal-title').textContent='ИЗМЕНИТЬ СТАТЬЮ';
+  document.getElementById('pi-idx').value=i;
+  document.getElementById('pi-label').value=p.label;
+  document.getElementById('pi-pct').value=p.pct;
+  document.getElementById('pi-type').value=p.type;
+  modal.classList.add('open');
+}
+export function savePlanItem(){
+  const label=document.getElementById('pi-label')?.value.trim();
+  const pct=parseFloat(document.getElementById('pi-pct')?.value)||0;
+  const type=document.getElementById('pi-type')?.value||'expense';
+  if(!label){alert('Введите название статьи');return;}
+  const idx=+(document.getElementById('pi-idx')?.value??'-1');
+  if(idx>=0){
+    state.D.plan[idx]={...state.D.plan[idx],label,pct,type};
+  }else{
+    state.D.plan.push({id:'p'+Date.now(),label,pct,type});
+  }
+  sched();
+  document.getElementById('modal-plan-item').classList.remove('open');
+  renderSettings();
+}
+export function deletePlanItem(i){
+  if(!confirm('Удалить статью «'+state.D.plan[i]?.label+'»?\nКатегории потеряют привязку.'))return;
+  state.D.plan.splice(i,1);sched();renderSettings();
+}
+window.openEditPlanItem=openEditPlanItem;
+window.deletePlanItem=deletePlanItem;
+window.openAddPlanItem=openAddPlanItem;
+window.savePlanItem=savePlanItem;
