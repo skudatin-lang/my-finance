@@ -1191,7 +1191,7 @@ initAuth(
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
     // Load app config from Firestore (workerUrl, adminUids, etc.)
-    await loadAppConfig();
+    try{ await loadAppConfig(); } catch(e){ console.warn('loadAppConfig unavailable:', e.message); }
     // Expose to browser console
     window.state = state;
     window._myUID = state.CU.uid;
@@ -1409,7 +1409,13 @@ document.addEventListener('click',e=>{
 
 
 // ── ADMIN: determined by /config/app in Firestore (no hardcode) ──
-function isAdmin(){ return !!(state.CU && isAdminUser(state.CU.uid)); }
+function isAdmin(){
+  // Bootstrap: owner always has admin access
+  // Additional admins loaded from Firestore /config/app
+  if(!state.CU) return false;
+  if(state.CU.uid === 'TmexoZZxotgY7c3oBLpdAP3TG8s1') return true;
+  return isAdminUser(state.CU.uid);
+}
 
 // Show/hide admin button in topbar
 function updateAdminVisibility(){
