@@ -286,10 +286,15 @@
           <div id="family-content"></div>
           <!-- Fallback buttons shown before JS renders content -->
           <div id="family-fallback" style="text-align:center;padding:20px">
-            <div style="font-size:32px;margin-bottom:12px">👨&#8205;👩&#8205;👧&#8205;👦</div>
+            <div style="font-size:32px;margin-bottom:12px">&#128106;</div>
             <div style="font-size:15px;font-weight:700;color:var(--topbar);margin-bottom:8px">Семейный доступ</div>
-            <div style="font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.6">
+            <div style="font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.6">
               Общий список покупок, синхронизация календаря и сводка за день
+            </div>
+            <div class="notice amber" style="font-size:11px;text-align:left;margin-bottom:16px">
+              <b>Требуется настройка Firebase:</b><br>
+              В Firebase Console → Firestore → Rules добавьте правило для коллекции /families/<br>
+              (подробнее в файле КАК_НАСТРОИТЬ_FIREBASE.txt)
             </div>
             <button class="btn-primary" style="max-width:280px" onclick="window._familyCreate()">Создать семейную группу</button>
             <button class="btn-sec" style="max-width:280px;margin-top:10px" onclick="window._familyJoin()">Вступить по коду</button>
@@ -1156,6 +1161,9 @@ initAuth(
     window.openEditPlanItem=openEditPlanItem;
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
+    // Expose to browser console for debugging/setup
+    window.state = state;
+    window._myUID = state.CU.uid;
     // Family mode
     loadFamilySettings();
     renderFamily();
@@ -1384,7 +1392,13 @@ function updateAdminVisibility(){
   if(adminBnav) adminBnav.style.display = show ? '' : 'none';
   // Show UID in admin panel
   const uidEl = document.getElementById('admin-uid-display');
-  if(uidEl && state.CU) uidEl.textContent = state.CU.uid;
+  if(uidEl && state.CU) {
+    uidEl.textContent = state.CU.uid;
+    // Also log to console for easy copy
+    console.log('%c YOUR FIREBASE UID (copy this):', 'color:orange;font-weight:bold;font-size:14px');
+    console.log('%c ' + state.CU.uid, 'color:#BA7517;font-size:16px;font-weight:bold;background:#FDF6E3;padding:4px 8px;border-radius:4px');
+    console.log('%c Paste into index.html: const ADMIN_UID = \''+state.CU.uid+'\'', 'color:green;font-size:12px');
+  }
 }
 
 // ── DASHBOARD: today block + shopping ─────────────────────────────
