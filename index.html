@@ -1583,27 +1583,27 @@ window._renderPlanInGoals = function(){
       ? (pct >= 100 ? 'var(--green-dark)' : 'var(--green)')
       : (over ? 'var(--red)' : 'var(--orange)');
 
-    const row = \`<div style="margin-bottom:10px">
+    const row = `<div style="margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;align-items:center">
-        <span style="font-weight:700;color:var(--topbar)">\${p.label} <span style="font-size:10px;color:var(--text2)">(\${p.pct}%)</span></span>
+        <span style="font-weight:700;color:var(--topbar)">${p.label} <span style="font-size:10px;color:var(--text2)">(${p.pct}%)</span></span>
         <div style="display:flex;gap:4px;align-items:center">
-          <span style="color:\${color}">\${fmt(spent)} / \${fmt(alloc)}</span>
-          <button class="sbtn blue" onclick="window.openEditPlanItem(\${i})" style="padding:2px 5px;font-size:10px">✎</button>
-          <button class="sbtn red" onclick="window.deletePlanItem(\${i})" style="padding:2px 5px;font-size:10px">✕</button>
+          <span style="color:${color}">${fmt(spent)} / ${fmt(alloc)}</span>
+          <button class="sbtn blue" onclick="window.openEditPlanItem(${i})" style="padding:2px 5px;font-size:10px">✎</button>
+          <button class="sbtn red" onclick="window.deletePlanItem(${i})" style="padding:2px 5px;font-size:10px">✕</button>
         </div>
       </div>
       <div style="background:var(--g50);border-radius:3px;height:5px">
-        <div style="height:5px;border-radius:3px;background:\${color};width:\${pct}%"></div>
+        <div style="height:5px;border-radius:3px;background:${color};width:${pct}%"></div>
       </div>
-      <div style="font-size:10px;color:\${over?'var(--red)':'var(--text2)'};margin-top:2px">\${over?'Перерасход: '+fmt(spent-alloc):'Остаток: '+fmt(alloc-spent)}</div>
-    </div>\`;
+      <div style="font-size:10px;color:${over?'var(--red)':'var(--text2)'};margin-top:2px">${over?'Перерасход: '+fmt(spent-alloc):'Остаток: '+fmt(alloc-spent)}</div>
+    </div>`;
 
     if(p.type === 'income') ih += row;
     else eh += row;
   });
 
-  incEl.innerHTML = ih ? \`<div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">НАКОПЛЕНИЯ / ИНВЕСТИЦИИ</div>\` + ih : '';
-  expEl.innerHTML = eh ? \`<div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">РАСХОДЫ ПО СТАТЬЯМ</div>\` + eh : '';
+  incEl.innerHTML = ih ? `<div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">НАКОПЛЕНИЯ / ИНВЕСТИЦИИ</div>` + ih : '';
+  expEl.innerHTML = eh ? `<div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">РАСХОДЫ ПО СТАТЬЯМ</div>` + eh : '';
 };
 
 
