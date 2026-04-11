@@ -2,6 +2,8 @@
 import{state,sched,db,today,fmt}from'./core.js';
 import{doc,getDoc,setDoc,onSnapshot,collection,query,where,orderBy,limit}from'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 // Family mode: owner creates a "family room", members get read-only access
 // Data model:
 //   /families/{familyId}/  — shared doc (calendar, shopping, planned ops)
@@ -196,7 +198,7 @@ export function renderFamily(){
   el.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div>
-        <div style="font-size:15px;font-weight:700;color:var(--topbar)">${familyData.name||'Семейная группа'}</div>
+        <div style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(familyData.name||'Семейная группа')}</div>
         <div style="font-size:11px;color:var(--text2)">Код группы: <b style="color:var(--amber-dark);letter-spacing:1px">${_familyId.replace('fam_','')}</b> · поделитесь с членами семьи</div>
       </div>
       ${myRole==='owner'?`<button class="sbtn amber" onclick="window.publishFamilyData()" style="font-size:11px">↑ Синхронизировать</button>`:''}
@@ -207,7 +209,7 @@ export function renderFamily(){
     <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
       ${Object.entries(members).map(([uid,m])=>`
         <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:8px 12px;min-width:130px">
-          <div style="font-size:12px;font-weight:700;color:var(--topbar)">${m.name||'Участник'}${m.role==='owner'?' 👑':''}</div>
+          <div style="font-size:12px;font-weight:700;color:var(--topbar)">${esc(m.name||'Участник')}${m.role==='owner'?' 👑':''}</div>
           ${m.todayIncome||m.todayExpense?`
             <div style="font-size:11px;color:var(--green-dark);margin-top:3px">+ ${fmt(m.todayIncome||0)}</div>
             <div style="font-size:11px;color:var(--orange-dark)">− ${fmt(m.todayExpense||0)}</div>
@@ -223,7 +225,7 @@ export function renderFamily(){
         const ds=d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
         const isInc=o.type==='planned_income';
         return`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--border);font-size:12px">
-          <span><span style="color:var(--text2)">${ds}</span> · <span style="color:var(--topbar)">${o.category||o.note||'—'}</span></span>
+          <span><span style="color:var(--text2)">${ds}</span> · <span style="color:var(--topbar)">${esc(o.category||o.note||'—')}</span></span>
           <span style="font-weight:700;color:${isInc?'var(--green-dark)':'var(--orange-dark)'}">${isInc?'+ ':'− '}${fmt(o.amount)}</span>
         </div>`;
       }).join('')}
@@ -233,8 +235,8 @@ export function renderFamily(){
     ${todayList.length?`
       <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-top:14px;margin-bottom:8px">ОБЩИЙ СПИСОК ПОКУПОК — СЕГОДНЯ</div>
       ${todayList.map(i=>`<div style="font-size:12px;padding:5px 0;border-bottom:.5px solid var(--border);display:flex;justify-content:space-between">
-        <span>🛒 ${i.name}${i.qty>1?' × '+i.qty:''}</span>
-        ${i.addedBy?`<span style="color:var(--text2);font-size:10px">${i.addedBy}</span>`:''}
+        <span>🛒 ${esc(i.name)}${i.qty>1?' × '+i.qty:''}</span>
+        ${i.addedBy?`<span style="color:var(--text2);font-size:10px">${esc(i.addedBy)}</span>`:''}
       </div>`).join('')}
     `:''}
 

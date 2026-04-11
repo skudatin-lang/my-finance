@@ -1,5 +1,7 @@
 import{$,state,sched,fmt,today,isPlanned}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderRecurring(){
   if(!state.D)return;
   if(!state.D.recurring)state.D.recurring=[];
@@ -10,8 +12,8 @@ export function renderRecurring(){
   }
   el.innerHTML=state.D.recurring.map((r,i)=>`<div class="s-row">
     <div>
-      <div class="s-name">${r.name}</div>
-      <div class="s-meta">${r.type==='income'?'Доход':'Расход'} · ${r.category} · ${r.day}-е число · ${fmt(r.amount)}</div>
+      <div class="s-name">${esc(r.name)}</div>
+      <div class="s-meta">${r.type==='income'?'Доход':'Расход'} · ${esc(r.category)} · ${r.day}-е число · ${fmt(r.amount)}</div>
     </div>
     <div style="display:flex;gap:5px">
       <button class="sbtn blue" onclick="window.editRecurring(${i})">Изм.</button>

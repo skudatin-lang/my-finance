@@ -1,5 +1,7 @@
 import{$,fmt,state,sched,today,fmtD}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderLoans(){
   if(!state.D)return;
   if(!state.D.loans)state.D.loans=[];
@@ -8,7 +10,7 @@ export function renderLoans(){
   let html='';
   if(debtWallets.length&&!state.D.loans.length){
     html+=`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue)">
-      Найдены кошельки с долгом: ${debtWallets.map(w=>`<b>${w.name}</b> (${fmt(Math.abs(w.balance))})`).join(', ')}.
+      Найдены кошельки с долгом: ${debtWallets.map(w=>`<b>${esc(w.name)}</b> (${fmt(Math.abs(w.balance))})`).join(', ')}.
       Нажмите «+ Добавить» и привяжите кошелёк для автозаполнения.
     </div>`;
   }
@@ -31,11 +33,11 @@ export function renderLoans(){
     return`<div style="background:var(--card);border:1.5px solid ${alert?'var(--orange)':'var(--border2)'};border-radius:10px;padding:14px 16px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--topbar)">${loan.name} ${isCard?'<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:2px 7px;border-radius:5px;margin-left:5px">КРЕДИТКА</span>':''}</div>
+          <div style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(loan.name)} ${isCard?'<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:2px 7px;border-radius:5px;margin-left:5px">КРЕДИТКА</span>':''}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px">
             ${isCard?`Ставка ${loan.rate}% · мин. ${loan.minPayPct||8}% (мин ${fmt(loan.minPayFixed||600)}) · платёж ~${fmt(loan.payment||0)}/мес`:
             `${loan.rate}% год. · ${loan.months} мес. · с ${fmtD(loan.startDate)}`}
-            ${wallet?' · кошелёк: '+wallet.name:''}
+            ${wallet?' · кошелёк: '+esc(wallet.name):''}
           </div>
         </div>
         <div style="display:flex;gap:5px">

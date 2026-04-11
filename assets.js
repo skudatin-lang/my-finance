@@ -1,5 +1,7 @@
 import{$,fmt,state,sched,today,getMOps,isPlanned}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderAssets(){
   if(!state.D)return;
   if(!state.D.physAssets)state.D.physAssets=[];
@@ -67,7 +69,7 @@ function renderAssetCard(a,i){
   return`<div style="background:var(--card);border:1.5px solid ${needsUpdate?'var(--orange)':'var(--border2)'};border-radius:12px;padding:16px;margin-bottom:14px">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
       <div>
-        <div style="font-size:16px;font-weight:700;color:var(--topbar)">${a.icon||'🏠'} ${a.name}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--topbar)">${esc(a.icon||'🏠')} ${esc(a.name)}</div>
         <div style="font-size:11px;color:var(--text2);margin-top:2px">${a.assetType==='apartment'?'Квартира':a.assetType==='car'?'Автомобиль':'Актив'} · обновлён: ${lastUpd}</div>
         ${needsUpdate?`<div style="font-size:11px;color:var(--orange-dark);font-weight:600;margin-top:3px">⚠ Обновите стоимость (${daysSince} дн.)</div>`:''}
       </div>
@@ -116,7 +118,7 @@ function renderAssetCard(a,i){
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
       <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">РАСХОДЫ НА СОДЕРЖАНИЕ (из операций)</div>
       ${ownershipCost.breakdown.map(b=>`<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0">
-        <span style="color:var(--topbar)">${b.cat}</span>
+        <span style="color:var(--topbar)">${esc(b.cat)}</span>
         <span style="color:var(--orange-dark)">−${fmt(b.monthly)}/мес</span>
       </div>`).join('')||'<div style="font-size:11px;color:var(--text2)">Привяжите категории расходов в настройках актива</div>'}
     </div>

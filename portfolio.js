@@ -1,5 +1,7 @@
 import{$,fmt,state,sched,today}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderPortfolio(){
   if(!state.D)return;
   if(!state.D.portfolio)state.D.portfolio=[];
@@ -45,7 +47,7 @@ export function renderPortfolio(){
     return`<div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div>
-          <div style="font-size:15px;font-weight:700;color:var(--topbar)">${a.ticker} <span style="font-size:12px;font-weight:400;color:var(--text2)">${a.name||''}</span></div>
+          <div style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(a.ticker)} <span style="font-size:12px;font-weight:400;color:var(--text2)">${esc(a.name||'')}</span></div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px">${a.qty} шт. · покупка ${fmt(a.buyPrice)}/шт · цена ${fmt(a.currentPrice||a.buyPrice)}/шт</div>
         </div>
         <div style="text-align:right;display:flex;gap:6px;align-items:center">

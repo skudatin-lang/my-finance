@@ -1,12 +1,14 @@
 import{$,fmt,state,planById,sched,exportData,importData,clearAllOps}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderSettings(){
   if(!state.D)return;
   $('wallets-settings').innerHTML=state.D.wallets.map((w,i)=>{
     const linkedPlan=state.D.plan.find(p=>p.id===w.planId);
     return`<div class="s-row">
       <div>
-        <div class="s-name">${w.name}${w.balance<0?'<span class="w-badge" style="margin-left:5px">долг</span>':''}</div>
+        <div class="s-name">${esc(w.name)}${w.balance<0?'<span class="w-badge" style="margin-left:5px">долг</span>':''}</div>
         <div class="s-meta">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+linkedPlan.label+'</span>':''}</div>
       </div>
       <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
@@ -15,7 +17,7 @@ export function renderSettings(){
 
   $('plan-settings').innerHTML=state.D.plan.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
     <div style="flex:1;min-width:0">
-      <div style="font-size:12px;font-weight:700;color:var(--topbar)">${p.label}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--topbar)">${esc(p.label)}</div>
       <div style="font-size:10px;color:var(--text2)">${p.type==='income'?'Накопление':'Расход'}</div>
     </div>
     <input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="window.updPT()" style="width:52px;padding:5px;border:1.5px solid var(--border);border-radius:5px;font-size:13px;color:var(--topbar);background:#fff;text-align:right">
@@ -26,14 +28,14 @@ export function renderSettings(){
   updPT();
 
   $('income-cats-list').innerHTML=state.D.incomeCats.map((c,i)=>`<div class="s-row">
-    <span class="s-name">${c}</span>
+    <span class="s-name">${esc(c)}</span>
     <button class="sbtn red" onclick="window.delIncomeCat(${i})">Удалить</button>
   </div>`).join('');
 
   $('expense-cats-list').innerHTML=state.D.expenseCats.map((c,i)=>{
     const pl=planById(c.planId);
     return`<div class="s-row">
-      <div><div class="s-name">${c.name}</div><div class="s-meta">\u2192 ${pl?pl.label:'не привязано'}</div></div>
+      <div><div class="s-name">${esc(c.name)}</div><div class="s-meta">\u2192 ${pl?esc(pl.label):'не привязано'}</div></div>
       <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditExpCat(${i})">Изм.</button><button class="sbtn red" onclick="window.delExpCat(${i})">Удал.</button></div>
     </div>`;
   }).join('');

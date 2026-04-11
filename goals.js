@@ -1,5 +1,7 @@
 import{$,state,sched,fmt,today}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderGoals(){
   if(!state.D)return;
   if(!state.D.goals)state.D.goals=[];
@@ -30,8 +32,8 @@ export function renderGoals(){
     return`<div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px 16px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
         <div>
-          <div style="font-size:14px;font-weight:700;color:var(--topbar)">${g.name}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${wallet?'Кошелёк: '+wallet.name:''}${g.deadline?' · Срок: '+new Date(g.deadline).toLocaleDateString('ru-RU'):''}</div>
+          <div style="font-size:14px;font-weight:700;color:var(--topbar)">${esc(g.name)}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${wallet?'Кошелёк: '+esc(wallet.name):''}${g.deadline?' · Срок: '+new Date(g.deadline).toLocaleDateString('ru-RU'):''}</div>
         </div>
         <div style="display:flex;gap:5px">
           <button class="sbtn blue" onclick="window.editGoal(${i})">Изм.</button>
