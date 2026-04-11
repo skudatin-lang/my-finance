@@ -57,6 +57,7 @@
         <button class="tnav-btn" id="tnav-portfolio" onclick="window.showScreen('portfolio')">ПОРТФЕЛЬ</button>
         <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
         <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
+        <button class="tnav-btn" id="tnav-family" onclick="window.showScreen('family')">СЕМЬЯ</button>
       </div>
     </div>
   </div>
@@ -263,6 +264,17 @@
     </div>
   </div>
 
+  <!-- ── FAMILY ── -->
+  <div id="screen-family" class="screen">
+    <div style="max-width:700px;margin:0 auto;width:100%;padding:var(--gap);overflow-y:auto">
+      <div style="font-size:18px;font-weight:700;color:var(--topbar);margin-bottom:var(--gap)">Семейный доступ 👨‍👩‍👧‍👦</div>
+      <div class="panel">
+        <div class="panel-head">СЕМЕЙНАЯ ГРУППА</div>
+        <div class="panel-body"><div id="family-content"><div style="color:var(--text2);font-size:13px">Загрузка...</div></div></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── SETTINGS ── -->
   <div id="screen-settings" class="screen">
     <div class="s-panel" style="width:320px">
@@ -310,9 +322,26 @@
       <div class="s-panel-head">&#127908; ГОЛОСОВОЙ ВВОД (Яндекс SpeechKit)</div>
       <div class="s-panel-body">
         <div class="notice blue">Требуется Cloudflare Worker как CORS-прокси. Код воркера прилагается к приложению.</div>
-        <div class="fg"><label>STT ПРОКСИ URL (для распознавания речи)</label><input class="fi" id="voice-proxy-url" placeholder="https://your-worker.workers.dev/stt"></div>
-        <div class="fg"><label>GPT ПРОКСИ URL (для AI-анализа команд, необяз.)</label><input class="fi" id="voice-gpt-url" placeholder="https://your-worker.workers.dev/gpt"></div>
-        <div class="fg"><label>IAM ТОКЕН / API КЛЮЧ (если используете свой)</label><input class="fi" id="voice-iam-token" type="password" placeholder="AQVNy... (оставьте пустым если токен в Worker)"></div>
+        <div class="notice blue" style="font-size:11px;margin-bottom:10px">
+          Ключи Яндекс API хранятся в Cloudflare Worker (не у пользователей).
+          Воркер сам подставляет ключ — вы вводите только URL воркера.
+        </div>
+        <div class="fg"><label>URL ВОРКЕРА (base URL)</label>
+          <input class="fi" id="voice-proxy-url" placeholder="https://my-worker.YOUR-NAME.workers.dev">
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">Воркер автоматически направит /stt и /gpt на нужные Яндекс API</div>
+        </div>
+        <div class="fg"><label>APP SECRET (защита от чужих запросов)</label>
+          <input class="fi" id="voice-app-secret" type="password" placeholder="Секрет из настроек Worker → Variables">
+        </div>
+        <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--text2);margin-bottom:10px">
+          <b>Как настроить:</b><br>
+          1. Откройте workers.cloudflare.com → создайте Worker<br>
+          2. Вставьте код из файла <b>cloudflare_worker.js</b><br>
+          3. Settings → Variables → добавьте YANDEX_API_KEY и YANDEX_FOLDER<br>
+          4. Скопируйте URL воркера сюда
+        </div>
+        <input type="hidden" id="voice-iam-token" value="">
+        <input type="hidden" id="voice-gpt-url" value="">
         <div class="fg"><label>FOLDER ID</label><input class="fi" id="voice-folder-id" placeholder="b1g..."></div>
         <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить настройки голоса</button>
         <div id="voice-status" style="font-size:11px;color:var(--text2);margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
@@ -723,6 +752,7 @@ import{renderAssets,checkAssetsAlert}from'./assets.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 import{renderShoppingList,getShoppingStats,getAllPendingStats,onCalendarDayChange,getActiveDate}from'./shopping.js';
 import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton,handleVoiceIntent,executeIntent,parseIntent,_showToast}from'./voice.js';
+import{renderFamily,loadFamilySettings}from'./family.js';
 
 const $=id=>document.getElementById(id);
 
@@ -804,10 +834,8 @@ function updateVoiceStatus(){
 
 window.saveVoiceSettingsUI=function(){
   const proxyUrl=$('voice-proxy-url')?.value.trim()||'';
-  const gptProxyUrl=$('voice-gpt-url')?.value.trim()||proxyUrl;
-  const iamToken=$('voice-iam-token')?.value.trim()||'';
-  const folderId=$('voice-folder-id')?.value.trim()||'';
-  saveVoiceSettings(proxyUrl,gptProxyUrl,iamToken,folderId);
+  const appSecret=$('voice-app-secret')?.value.trim()||'';
+  saveVoiceSettings(proxyUrl,proxyUrl,appSecret);
   updateVoiceStatus();
   let msg='Настройки голосового ввода сохранены.';
   if(!proxyUrl||!iamToken||!folderId)msg+='\nЗаполните все три поля для работы.';
@@ -819,8 +847,7 @@ function _loadVoiceToSettings(){
   if(!state.D||!state.D.voiceSettings)return;
   const vs=state.D.voiceSettings;
   if($('voice-proxy-url'))$('voice-proxy-url').value=vs.proxyUrl||'';
-  if($('voice-iam-token'))$('voice-iam-token').value=vs.iamToken||'';
-  if($('voice-folder-id'))$('voice-folder-id').value=vs.folderId||'';
+  if($('voice-app-secret'))$('voice-app-secret').value=vs.appSecret||'';
   updateVoiceStatus();
 }
 
@@ -837,6 +864,7 @@ function refreshCurrent(){
   else if(cur==='templates'){renderTemplates();initBulk();}
   else if(cur==='health')renderHealth();
   else if(cur==='portfolio')renderPortfolio();
+  else if(cur==='family')renderFamily();
   else if(cur==='import'){initImportScreen();}
   else if(cur==='physassets')renderAssets();
 }
@@ -1053,6 +1081,8 @@ initAuth(
     window.openEditPlanItem=openEditPlanItem;
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
+    // Family mode
+    loadFamilySettings();
     // Smart floating voice button
     document.body.appendChild(createSmartVoiceButton());
     window._refreshCurrentScreen=refreshCurrent;
