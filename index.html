@@ -792,7 +792,7 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,loadAppConfig,saveAppConfig,isAdminUser,appConfig}from'./core.js';
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
@@ -811,6 +811,36 @@ import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 import{renderShoppingList,getShoppingStats,getAllPendingStats,onCalendarDayChange,getActiveDate}from'./shopping.js';
 import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton,handleVoiceIntent,executeIntent,parseIntent,_showToast}from'./voice.js';
 import{renderFamily,loadFamilySettings}from'./family.js';
+
+// ── AppConfig (inline — no dependency on core.js exports) ─────────
+const OWNER_UID='TmexoZZxotgY7c3oBLpdAP3TG8s1';
+const appConfig={adminUids:[],workerUrl:'',appSecret:'',loaded:false};
+async function loadAppConfig(){
+  try{
+    const {getFirestore,doc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const {getApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const snap=await getDoc(doc(getFirestore(getApp()),'config','app'));
+    if(snap.exists()){
+      const d=snap.data();
+      appConfig.adminUids=d.adminUids||[];
+      appConfig.workerUrl=d.workerUrl||'';
+      appConfig.appSecret=d.appSecret||'';
+      appConfig.loaded=true;
+    }
+  }catch(e){console.info('AppConfig:',e.message);}
+}
+async function saveAppConfig(data){
+  try{
+    const {getFirestore,doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const {getApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    await setDoc(doc(getFirestore(getApp()),'config','app'),data,{merge:true});
+    Object.assign(appConfig,data);
+    return true;
+  }catch(e){console.error('saveAppConfig:',e.message);return false;}
+}
+function isAdminUser(uid){return uid===OWNER_UID||appConfig.adminUids.includes(uid);}
+function isAdmin(){return !!(state.CU&&isAdminUser(state.CU.uid));}
+
 
 const $=id=>document.getElementById(id);
 
@@ -1409,13 +1439,7 @@ document.addEventListener('click',e=>{
 
 
 // ── ADMIN: determined by /config/app in Firestore (no hardcode) ──
-function isAdmin(){
-  // Bootstrap: owner always has admin access
-  // Additional admins loaded from Firestore /config/app
-  if(!state.CU) return false;
-  if(state.CU.uid === 'TmexoZZxotgY7c3oBLpdAP3TG8s1') return true;
-  return isAdminUser(state.CU.uid);
-}
+
 
 // Show/hide admin button in topbar
 function updateAdminVisibility(){
