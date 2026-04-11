@@ -37,7 +37,8 @@
       <div class="topbar-right">
         <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
         <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
-        <button class="tbtn" id="voice-topbar-btn" title="Голосовой ввод" style="font-size:15px;padding:0 10px">🎤</button>
+        <button class="tbtn" onclick="window.openSearch()" title="Поиск" style="font-size:15px;padding:0 10px">🔍</button>
+        <button class="tbtn" onclick="window.openQuickAdd()" title="Быстрая операция" style="font-size:15px;padding:0 10px">⚡</button>
         <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
         <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
       </div>
@@ -61,6 +62,41 @@
   </div>
 
   <!-- ── REPORTS ── -->
+  <!-- ── MOBILE BOTTOM NAV ── -->
+  <nav class="bottom-nav" id="bottom-nav">
+    <button class="bnav-btn" id="bnav-dashboard" onclick="window.showScreen('dashboard')">
+      <span class="bnav-icon">📊</span>ГЛАВНАЯ
+    </button>
+    <button class="bnav-btn" id="bnav-reports" onclick="window.showScreen('reports')">
+      <span class="bnav-icon">📋</span>ОТЧЁТЫ
+    </button>
+    <button class="bnav-btn" id="bnav-calendar" onclick="window.showScreen('calendar')">
+      <span class="bnav-icon">📅</span>КАЛЕНДАРЬ
+    </button>
+    <button class="bnav-btn" id="bnav-extras" onclick="window.showScreen('extras')">
+      <span class="bnav-icon">🎯</span>ЦЕЛИ
+    </button>
+    <button class="bnav-btn" id="bnav-more" onclick="window.showMobileMenu()">
+      <span class="bnav-icon">☰</span>ЕЩЁ
+    </button>
+  </nav>
+
+  <!-- ── MOBILE MORE MENU ── -->
+  <div id="mobile-more-menu" style="display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--topbar);z-index:149;padding:8px 0;border-top:1px solid rgba(255,255,255,.15)">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0">
+      <button onclick="window.showScreen('dds');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💵</span>ДДС</button>
+      <button onclick="window.showScreen('analytics');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">📈</span>АНАЛИТИКА</button>
+      <button onclick="window.showScreen('loans');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💳</span>КРЕДИТЫ</button>
+      <button onclick="window.showScreen('health');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💚</span>ЗДОРОВЬЕ</button>
+      <button onclick="window.showScreen('portfolio');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">📊</span>ПОРТФЕЛЬ</button>
+      <button onclick="window.showScreen('templates');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚡</span>ШАБЛОНЫ</button>
+      <button onclick="window.showScreen('physassets');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">🏠</span>АКТИВЫ</button>
+      <button onclick="window.showScreen('import');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">📥</span>ИМПОРТ</button>
+      <button onclick="window.showScreen('settings');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚙️</span>НАСТРОЙКИ</button>
+    </div>
+  </div>
+
+
   <div id="screen-reports" class="screen active">
     <div class="rep-left">
       <!-- Month nav -->
@@ -205,7 +241,10 @@
       <div class="panel" style="flex-shrink:0">
         <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px">
           <span>&#128722; СПИСОК ПОКУПОК</span>
-          <span id="shopping-count" style="font-size:10px;font-weight:400;opacity:.8;letter-spacing:0"></span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="shopping-count" style="font-size:10px;font-weight:400;opacity:.8;letter-spacing:0"></span>
+            <button class="sbtn amber" onclick="window.openAddShopItem()" style="padding:3px 8px;font-size:11px;border-radius:5px">+ Добавить</button>
+          </div>
         </div>
         <div class="panel-body">
           <div id="shopping-list-items"></div>
@@ -271,8 +310,9 @@
       <div class="s-panel-head">&#127908; ГОЛОСОВОЙ ВВОД (Яндекс SpeechKit)</div>
       <div class="s-panel-body">
         <div class="notice blue">Требуется Cloudflare Worker как CORS-прокси. Код воркера прилагается к приложению.</div>
-        <div class="fg"><label>ПРОКСИ URL (Cloudflare Worker)</label><input class="fi" id="voice-proxy-url" placeholder="https://your-worker.workers.dev"></div>
-        <div class="fg"><label>IAM ТОКЕН / API КЛЮЧ</label><input class="fi" id="voice-iam-token" type="password" placeholder="AQVNy..."></div>
+        <div class="fg"><label>STT ПРОКСИ URL (для распознавания речи)</label><input class="fi" id="voice-proxy-url" placeholder="https://your-worker.workers.dev/stt"></div>
+        <div class="fg"><label>GPT ПРОКСИ URL (для AI-анализа команд, необяз.)</label><input class="fi" id="voice-gpt-url" placeholder="https://your-worker.workers.dev/gpt"></div>
+        <div class="fg"><label>IAM ТОКЕН / API КЛЮЧ (если используете свой)</label><input class="fi" id="voice-iam-token" type="password" placeholder="AQVNy... (оставьте пустым если токен в Worker)"></div>
         <div class="fg"><label>FOLDER ID</label><input class="fi" id="voice-folder-id" placeholder="b1g..."></div>
         <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить настройки голоса</button>
         <div id="voice-status" style="font-size:11px;color:var(--text2);margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
@@ -681,37 +721,47 @@ import{renderTemplates}from'./templates.js';
 import{renderPortfolio,checkPortfolioAlert}from'./portfolio.js';
 import{renderAssets,checkAssetsAlert}from'./assets.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
-import{renderShoppingList,getShoppingStats}from'./shopping.js';
-import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton}from'./voice.js';
+import{renderShoppingList,getShoppingStats,getAllPendingStats,onCalendarDayChange,getActiveDate}from'./shopping.js';
+import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton,handleVoiceIntent,executeIntent,parseIntent,_showToast}from'./voice.js';
 
 const $=id=>document.getElementById(id);
 
 // ── Shopping dashboard widget ─────────────────────────────
 window._renderShopWidget=function(){
   const el=$('dash-shopping');if(!el||!state.D)return;
-  const s=getShoppingStats();
-  if(!s.total){
-    el.innerHTML='<div style="color:var(--text2);font-size:12px">Список пуст. <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>';
+  const lists=getAllPendingStats();
+  if(!lists.length){
+    el.innerHTML='<div style="color:var(--text2);font-size:12px">Нет активных списков. <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>';
     return;
   }
-  const items=(state.D.shoppingList||[]).filter(i=>!i.done).slice(0,5);
-  el.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:5px">${s.pending} из ${s.total} не куплено${s.estimate>0?' · ~'+Math.round(s.estimate).toLocaleString('ru-RU')+'&#8381;':''}</div>`
-    +items.map(i=>`<div style="font-size:12px;padding:3px 0;border-bottom:.5px solid var(--border);display:flex;gap:6px;align-items:center">
-      <span>&#128722;</span><span style="flex:1;color:var(--topbar)">${i.name}</span>${i.qty>1?`<span style="color:var(--text2);font-size:11px">${i.qty}шт</span>`:''}
-    </div>`).join('')
-    +(s.pending>5?`<div style="font-size:10px;color:var(--text2);margin-top:3px">и ещё ${s.pending-5} позиций...</div>`:'');
+  const totalPending=lists.reduce((s,l)=>s+l.pending,0);
+  let html=`<div style="font-size:11px;color:var(--text2);margin-bottom:6px">${totalPending} позиций в ${lists.length} списк${lists.length===1?'е':'ах'}</div>`;
+  lists.slice(0,3).forEach(l=>{
+    const d=new Date(l.date+'T12:00:00');
+    const ds=d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+    html+=`<div style="padding:4px 0;border-bottom:.5px solid var(--border);display:flex;justify-content:space-between;font-size:12px">
+      <span style="color:var(--text2)">${ds}</span>
+      <span style="color:var(--topbar);font-weight:600">${l.pending} позиций</span>
+    </div>`;
+    l.items.filter(i=>!i.done).slice(0,2).forEach(i=>{
+      html+=`<div style="font-size:11px;color:var(--text2);padding:2px 0 2px 10px">&#128722; ${i.name}${i.qty>1?' × '+i.qty:''}</div>`;
+    });
+  });
+  el.innerHTML=html;
 };
 
 // ── Quick add from calendar panel ────────────────────────
 window.quickAddShopItem=function(){
   if(!state.D)return;
-  if(!state.D.shoppingList)state.D.shoppingList=[];
+  if(!state.D.shoppingLists)state.D.shoppingLists={};
   const nameEl=$('shop-quick-name');
   const name=nameEl?.value.trim();
   if(!name){nameEl?.focus();return;}
   const qty=parseFloat($('shop-quick-qty')?.value)||1;
   const price=parseFloat($('shop-quick-price')?.value)||0;
-  state.D.shoppingList.push({id:'sh'+Date.now(),name,qty,price,done:false});
+  const date=state.calDay||today();
+  if(!state.D.shoppingLists[date])state.D.shoppingLists[date]=[];
+  state.D.shoppingLists[date].push({id:'sh'+Date.now(),name,qty,price,done:false});
   sched();
   nameEl.value='';
   if($('shop-quick-qty'))$('shop-quick-qty').value=1;
@@ -754,9 +804,10 @@ function updateVoiceStatus(){
 
 window.saveVoiceSettingsUI=function(){
   const proxyUrl=$('voice-proxy-url')?.value.trim()||'';
+  const gptProxyUrl=$('voice-gpt-url')?.value.trim()||proxyUrl;
   const iamToken=$('voice-iam-token')?.value.trim()||'';
   const folderId=$('voice-folder-id')?.value.trim()||'';
-  saveVoiceSettings(proxyUrl,iamToken,folderId);
+  saveVoiceSettings(proxyUrl,gptProxyUrl,iamToken,folderId);
   updateVoiceStatus();
   let msg='Настройки голосового ввода сохранены.';
   if(!proxyUrl||!iamToken||!folderId)msg+='\nЗаполните все три поля для работы.';
@@ -948,7 +999,8 @@ window.exportAllCSV=exportAllCSV;
 window.chMonth=d=>{state.repOff+=d;renderReports();};
 window.ddsChM=d=>{state.ddsOff+=d;renderDDS();};
 window.calChM=d=>{state.calOff+=d;renderCalendar();};
-window.selCalDay=ds=>showCalDay(ds);
+window.selCalDay=ds=>{showCalDay(ds);state.calDay=ds;onCalendarDayChange();};
+window._getCalActiveDate=()=>state.calDay||today();
 window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
 window.setCatTab=tab=>setCatTab(tab);
 window.signInGoogle=signInGoogle;
@@ -1001,6 +1053,15 @@ initAuth(
     window.openEditPlanItem=openEditPlanItem;
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
+    // Smart floating voice button
+    document.body.appendChild(createSmartVoiceButton());
+    window._refreshCurrentScreen=refreshCurrent;
+    // Quick add modal setup
+    setupQuickAdd();
+    // Search setup
+    setupSearch();
+    // Onboarding check
+    checkOnboarding();
     renderReports();
   },
   ()=>{
@@ -1035,6 +1096,166 @@ $('loading-screen').style.display='flex';
     if(active)active.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'});
   };
 })();
+
+
+// ── Quick Add Modal ──────────────────────────────────────────────────
+let _qaType='expense';
+function setupQuickAdd(){
+  if(!state.D)return;
+}
+window.qaSetType=function(type){
+  _qaType=type;
+  ['expense','income'].forEach(t=>{
+    const el=$('qa-type-'+t);if(!el)return;
+    el.className='type-btn'+(t==='expense'?' ae':' ai');
+    if(t!==type)el.style.opacity='.5'; else el.style.opacity='1';
+  });
+  const catBtns=$('qa-cat-btns');if(!catBtns||!state.D)return;
+  const cats=type==='income'?state.D.incomeCats:state.D.expenseCats.slice(0,8).map(c=>c.name);
+  catBtns.innerHTML=cats.map(c=>`<button onclick="window.qaSelectCat(this,'${c}')" class="sbtn amber" style="font-size:11px;padding:5px 10px;border-radius:5px">${c}</button>`).join('');
+};
+window.qaSelectCat=function(btn,cat){
+  document.querySelectorAll('#qa-cat-btns .sbtn').forEach(b=>b.style.background='var(--amber-light)');
+  btn.style.background='var(--amber)';btn.style.color='#fff';
+  btn.dataset.selected='1';
+  document.querySelectorAll('#qa-cat-btns .sbtn').forEach(b=>{if(b!==btn)delete b.dataset.selected;});
+};
+window.openQuickAdd=function(){
+  if(!state.D)return;
+  _qaType='expense';
+  $('qa-amount').value='';$('qa-note').value='';
+  $('qa-wallet').innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  window.qaSetType('expense');
+  $('modal-quick-add').classList.add('open');
+  setTimeout(()=>$('qa-amount')?.focus(),100);
+  // Add voice button
+  const wrap=$('voice-qa-amount-wrap');
+  if(wrap&&!wrap.children.length)wrap.appendChild(createVoiceButton('qa-amount'));
+};
+window.saveQuickOp=function(){
+  const amount=parseFloat($('qa-amount')?.value);
+  if(!amount||amount<=0){$('qa-amount')?.focus();return;}
+  const wallet=$('qa-wallet')?.value;
+  const note=$('qa-note')?.value||'';
+  const selectedCat=document.querySelector('#qa-cat-btns [data-selected]');
+  const category=selectedCat?.textContent||(_qaType==='income'?'Прочее':'Прочее');
+  const op={id:'op'+Date.now(),type:_qaType,amount,date:today(),wallet,category,note};
+  const w=state.D.wallets.find(w=>w.id===wallet);
+  if(w){if(_qaType==='income')w.balance+=amount;else w.balance-=amount;}
+  state.D.operations.push(op);
+  sched();
+  $('modal-quick-add').classList.remove('open');
+  refreshCurrent();
+};
+
+// ── Search ──────────────────────────────────────────────────────────
+function setupSearch(){}
+window.openSearch=function(){
+  $('search-query').value='';
+  $('search-results').innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Введите запрос для поиска по операциям</div>';
+  $('modal-search').classList.add('open');
+  setTimeout(()=>$('search-query')?.focus(),100);
+};
+window.doSearch=function(q){
+  const el=$('search-results');if(!el||!state.D)return;
+  if(!q.trim()){el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Введите запрос</div>';return;}
+  const qL=q.toLowerCase();
+  const ops=state.D.operations.filter(o=>{
+    if(o.type==='planned_income'||o.type==='planned_expense')return false;
+    return(o.category||'').toLowerCase().includes(qL)||
+           (o.note||'').toLowerCase().includes(qL)||
+           String(o.amount).includes(qL)||
+           (o.date||'').includes(qL)||
+           (o.type==='income'&&'доход'.includes(qL))||
+           (o.type==='expense'&&'расход'.includes(qL));
+  }).sort((a,b)=>a.date<b.date?1:-1).slice(0,50);
+  if(!ops.length){el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Ничего не найдено</div>';return;}
+  el.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Найдено: ${ops.length} операций</div>`+
+    ops.map(o=>{
+      const isIn=o.type==='income',isOut=o.type==='expense';
+      const col=isIn?'var(--green-dark)':isOut?'var(--orange-dark)':'var(--blue)';
+      const pfx=isIn?'+ ':isOut?'− ':'';
+      const w=state.D.wallets.find(w=>w.id===o.wallet);
+      return`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--topbar)">${o.category||'—'}</div>
+          <div style="font-size:11px;color:var(--text2)">${o.date||''}${w?' · '+w.name:''}${o.note?' · '+o.note:''}</div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:${col}">${pfx}${fmt(o.amount)}</div>
+      </div>`;
+    }).join('');
+};
+
+// ── Onboarding ─────────────────────────────────────────────────────
+function checkOnboarding(){
+  if(!state.D)return;
+  if(state.D.onboardingDone)return;
+  if(state.D.operations.length>0){state.D.onboardingDone=true;sched();return;}
+  showOnboarding();
+}
+let _obStep=0;
+const _obSteps=[
+  {title:'Добавьте кошельки 👛',desc:'Карта, наличные, накопительный счёт — укажите текущий баланс каждого.',action:'Открыть настройки кошельков',fn:()=>{document.getElementById('modal-onboarding').classList.remove('open');window.showScreen('settings');}},
+  {title:'Настройте финансовый план 📊',desc:'Разделите доход на статьи: обязательные расходы, накопления, кредиты. Итого должно быть 100%.',action:'Открыть план',fn:()=>{document.getElementById('modal-onboarding').classList.remove('open');window.showScreen('settings');}},
+  {title:'Добавьте первую операцию ✅',desc:'Запишите любой доход или расход — приложение начнёт строить аналитику.',action:'Добавить операцию',fn:()=>{document.getElementById('modal-onboarding').classList.remove('open');openModal('modal',true);}},
+];
+function showOnboarding(){
+  _obStep=0;renderOnboarding();
+  document.getElementById('modal-onboarding').classList.add('open');
+}
+function renderOnboarding(){
+  const el=$('onboarding-steps');if(!el)return;
+  el.innerHTML=_obSteps.map((s,i)=>`
+    <div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)${i===_obStep?';background:var(--amber-light);margin:0 -8px;padding:14px 8px;border-radius:8px':''}">
+      <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700;background:${i<_obStep?'var(--green)':i===_obStep?'var(--amber)':'var(--border)'};color:${i<=_obStep?'#fff':'var(--text2)'}">${i<_obStep?'✓':i+1}</div>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:700;color:var(--topbar);margin-bottom:4px">${s.title}</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.5">${s.desc}</div>
+        ${i===_obStep?`<button class="btn-primary" style="margin-top:10px;width:auto;padding:8px 20px" onclick="window._obAction(${i})">${s.action}</button>`:''}
+      </div>
+    </div>`).join('')+`
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn-sec" style="flex:1;margin-top:0" onclick="_obNext()">Пропустить шаг →</button>
+    <button class="btn-sec" style="flex:1;margin-top:0" onclick="window._obSkipAll()">Пропустить всё</button>
+  </div>`;
+}
+window._obAction=function(i){_obSteps[i].fn();};
+window._obNext=function(){_obStep=Math.min(_obStep+1,_obSteps.length-1);if(_obStep>=_obSteps.length-1&&state.D){state.D.onboardingDone=true;sched();}renderOnboarding();};
+window._obSkipAll=function(){if(state.D){state.D.onboardingDone=true;sched();}document.getElementById('modal-onboarding').classList.remove('open');};
+
+
+
+// ── Mobile bottom nav ─────────────────────────────────────────────
+const _bottomNavScreens=['dashboard','reports','calendar','extras'];
+function updateBottomNav(name){
+  _bottomNavScreens.forEach(s=>{
+    const btn=document.getElementById('bnav-'+s);
+    if(btn)btn.classList.toggle('active',s===name);
+  });
+  const moreBtn=document.getElementById('bnav-more');
+  if(moreBtn)moreBtn.classList.toggle('active',!_bottomNavScreens.includes(name));
+}
+window.showMobileMenu=function(){
+  const m=document.getElementById('mobile-more-menu');
+  if(m)m.style.display=m.style.display==='none'?'block':'none';
+};
+window.hideMobileMenu=function(){
+  const m=document.getElementById('mobile-more-menu');
+  if(m)m.style.display='none';
+};
+// Patch showScreen to update bottom nav
+const _origShowScreen=window.showScreen;
+window.showScreen=function(name){
+  _origShowScreen(name);
+  updateBottomNav(name);
+  window.hideMobileMenu();
+};
+// Close more menu on outside click
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('mobile-more-menu');
+  const btn=document.getElementById('bnav-more');
+  if(menu&&!menu.contains(e.target)&&!btn?.contains(e.target))menu.style.display='none';
+});
 
 </script>
 
@@ -1219,6 +1440,7 @@ $('loading-screen').style.display='flex';
       <div class="fg"><label>КОЛИЧЕСТВО</label><input class="fi" type="number" id="shop-item-qty" value="1" min="1"></div>
       <div class="fg"><label>ЦЕНА &#8381; (необяз.)</label><input class="fi" type="number" id="shop-item-price" placeholder="0"></div>
     </div>
+    <div class="fg"><label>ДАТА ПОКУПКИ</label><input class="fi" type="date" id="shop-item-date"></div>
     <input type="hidden" id="shop-item-id">
     <button class="btn-primary" onclick="window.saveShopItem()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-shop-item').classList.remove('open')">Отмена</button>
@@ -1242,6 +1464,64 @@ $('loading-screen').style.display='flex';
     <input type="hidden" id="pi-idx" value="-1">
     <button class="btn-primary" onclick="window.savePlanItem()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-plan-item').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+
+<!-- MODAL: voice intent confirmation -->
+<div class="modal-overlay" id="modal-voice-intent">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr">
+      <span class="modal-title vi-title">ГОЛОСОВАЯ КОМАНДА</span>
+      <button class="modal-close" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">&#10005;</button>
+    </div>
+    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.6;color:var(--topbar)" class="vi-body"></div>
+    <div class="notice blue" style="margin-bottom:12px;font-size:11px">Проверьте правильность и подтвердите или откройте форму редактирования</div>
+    <button class="btn-primary vi-confirm">Подтвердить</button>
+    <button class="btn-sec vi-edit" style="margin-top:8px">Редактировать вручную</button>
+    <button class="btn-sec" style="margin-top:6px" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: onboarding -->
+<div class="modal-overlay" id="modal-onboarding" style="align-items:flex-start;padding:0;background:rgba(61,43,26,.85)">
+  <div style="background:var(--card);width:100%;max-width:520px;min-height:100vh;overflow-y:auto;padding:28px 24px;margin:0 auto" id="onboarding-inner">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:36px;margin-bottom:8px">💰</div>
+      <div style="font-size:20px;font-weight:700;color:var(--topbar);letter-spacing:.5px">МОИ ФИНАНСЫ</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:6px">Давайте настроим приложение за 3 простых шага</div>
+    </div>
+    <div id="onboarding-steps"></div>
+  </div>
+</div>
+
+<!-- MODAL: quick add operation (inline fast) -->
+<div class="modal-overlay" id="modal-quick-add">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><span class="modal-title">БЫСТРАЯ ОПЕРАЦИЯ</span><button class="modal-close" onclick="document.getElementById('modal-quick-add').classList.remove('open')">&#10005;</button></div>
+    <div class="type-toggle" style="margin-bottom:10px">
+      <div class="type-btn ae" id="qa-type-expense" onclick="window.qaSetType('expense')">− Расход</div>
+      <div class="type-btn ai" id="qa-type-income" onclick="window.qaSetType('income')">+ Доход</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="fi" type="number" id="qa-amount" placeholder="Сумма ₽" style="flex:1;font-size:20px;font-weight:700" autofocus>
+      <span id="voice-qa-amount-wrap"></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="qa-cat-btns"></div>
+    <div class="fg" style="margin-bottom:10px"><label>КОШЕЛЁК</label><select class="fi" id="qa-wallet"></select></div>
+    <div class="fg" style="margin-bottom:12px"><label>ЗАМЕТКА (необяз.)</label><input class="fi" id="qa-note" placeholder="Описание"></div>
+    <button class="btn-primary" style="font-size:15px" onclick="window.saveQuickOp()">Сохранить</button>
+  </div>
+</div>
+
+<!-- MODAL: search operations -->
+<div class="modal-overlay" id="modal-search">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-hdr"><span class="modal-title">ПОИСК ПО ОПЕРАЦИЯМ</span><button class="modal-close" onclick="document.getElementById('modal-search').classList.remove('open')">&#10005;</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input class="fi" id="search-query" placeholder="Категория, сумма, заметка, дата..." style="flex:1" oninput="window.doSearch(this.value)">
+    </div>
+    <div id="search-results" style="max-height:60vh;overflow-y:auto"></div>
   </div>
 </div>
 
