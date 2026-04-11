@@ -1,177 +1,146 @@
 // ╔══════════════════════════════════════════════════════════════════╗
-// ║  Cloudflare Worker — Proxy for Yandex SpeechKit STT + GPT       ║
-// ║  Deploy: workers.cloudflare.com → Create Worker → Paste → Save  ║
+// ║  Cloudflare Worker — My Finance App Proxy                        ║
 // ║                                                                   ║
-// ║  Required Environment Variables (Settings → Variables):         ║
-// ║    YANDEX_API_KEY  = "Api-Key AQVNy..."   ← your Yandex API key  ║
-// ║    YANDEX_FOLDER   = "b1g..."             ← your folder ID       ║
-// ║    APP_SECRET      = "any-random-string"  ← protects your worker ║
-// ║                                                                   ║
-// ║  Endpoints:                                                       ║
-// ║    POST /stt  → Yandex SpeechKit (binary audio)                 ║
-// ║    POST /gpt  → Yandex GPT (JSON)                               ║
-// ║    GET  /     → health check                                     ║
+// ║  DEPLOY INSTRUCTIONS:                                            ║
+// ║  1. workers.cloudflare.com → Create Worker → paste → Deploy     ║
+// ║  2. Settings → Variables and Secrets → Add:                     ║
+// ║       YANDEX_API_KEY = "AQVNy..."  (from console.yandex.cloud)  ║
+// ║       YANDEX_FOLDER  = "b1g..."    (folder ID)                  ║
+// ║       APP_SECRET     = "any-random-strong-password-here"        ║
+// ║  3. Copy worker URL → paste in app Admin Panel                  ║
 // ╚══════════════════════════════════════════════════════════════════╝
 
-const YANDEX_STT_URL = 'https://stt.api.cloud.yandex.net/speech/v1/stt:recognize';
-const YANDEX_GPT_URL = 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion';
+const YANDEX_STT = 'https://stt.api.cloud.yandex.net/speech/v1/stt:recognize';
+const YANDEX_GPT = 'https://llm.api.cloud.yandex.net/foundationModels/v1/completion';
 
-const CORS_HEADERS = {
+// ALL headers that the browser may send — must be listed here
+const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-App-Secret',
+  'Access-Control-Allow-Headers': [
+    'Content-Type',
+    'X-App-Secret',
+    'X-Audio-Format',
+    'X-Sample-Rate',
+    'X-User-Id',
+    'Authorization',
+  ].join(', '),
   'Access-Control-Max-Age': '86400',
 };
 
-// Per-user rate limiting via Cloudflare KV (optional but recommended)
-// Create KV namespace "RATE_LIMITS" and bind it to the worker
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, 'Content-Type': 'application/json' },
+  });
+}
 
 export default {
   async fetch(request, env) {
-    // CORS preflight
+    // 1. Preflight — MUST respond before any auth checks
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { status: 204, headers: CORS });
     }
 
-    const url = new URL(request.url);
-
-    // Health check
+    // 2. Health check
     if (request.method === 'GET') {
-      return new Response(JSON.stringify({ ok: true, service: 'finance-proxy' }), {
-        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
+      return json({ ok: true, service: 'my-finance-proxy', version: '2.0' });
     }
 
     if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
+      return json({ error: 'Method not allowed' }, 405);
     }
 
-    // Optional: verify app secret to prevent abuse
-    const appSecret = request.headers.get('X-App-Secret');
-    if (env.APP_SECRET && appSecret !== env.APP_SECRET) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
-    }
-
-    // Rate limiting (requires KV namespace bound as RATE_LIMITS)
-    if (env.RATE_LIMITS) {
-      const userId = request.headers.get('X-User-Id') || 'anonymous';
-      const month = new Date().toISOString().slice(0, 7); // "2026-04"
-      const key = `${userId}:${month}`;
-      const count = parseInt(await env.RATE_LIMITS.get(key) || '0');
-      const MONTHLY_LIMIT = 500; // requests per user per month
-
-      if (count >= MONTHLY_LIMIT) {
-        return new Response(JSON.stringify({
-          error: 'Лимит запросов исчерпан',
-          limit: MONTHLY_LIMIT,
-          reset: 'начало следующего месяца'
-        }), {
-          status: 429, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-        });
+    // 3. App secret guard (skip if APP_SECRET not configured — dev mode)
+    if (env.APP_SECRET) {
+      const secret = request.headers.get('X-App-Secret') || '';
+      if (secret !== env.APP_SECRET) {
+        return json({ error: 'Unauthorized' }, 401);
       }
+    }
 
-      // Increment counter (expires in 35 days)
-      await env.RATE_LIMITS.put(key, String(count + 1), { expirationTtl: 35 * 24 * 3600 });
+    // 4. Rate limiting via KV (optional — bind KV namespace as RATE_LIMITS)
+    if (env.RATE_LIMITS) {
+      const uid = request.headers.get('X-User-Id') || 'anon';
+      const key = `${uid}:${new Date().toISOString().slice(0, 7)}`;
+      const count = parseInt((await env.RATE_LIMITS.get(key)) || '0');
+      const LIMIT = parseInt(env.MONTHLY_LIMIT || '500');
+      if (count >= LIMIT) {
+        return json({ error: 'Monthly limit reached', limit: LIMIT }, 429);
+      }
+      await env.RATE_LIMITS.put(key, String(count + 1), {
+        expirationTtl: 35 * 86400,
+      });
     }
 
     const apiKey = env.YANDEX_API_KEY;
     const folderId = env.YANDEX_FOLDER;
 
     if (!apiKey || !folderId) {
-      return new Response(JSON.stringify({ error: 'Server not configured (missing env vars)' }), {
-        status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
+      return json({ error: 'Worker not configured: add YANDEX_API_KEY and YANDEX_FOLDER in Variables' }, 500);
     }
 
-    const path = url.pathname;
+    const path = new URL(request.url).pathname;
 
     try {
-      // ── STT: Speech-to-Text ──────────────────────────────────────
-      // Receives raw binary audio, forwards to Yandex STT REST API
-      if (path === '/stt' || path === '/speech') {
-        const contentType = request.headers.get('Content-Type') || 'audio/webm';
-        const audioFormat = request.headers.get('X-Audio-Format') || 'WEBM_OPUS';
-        const sampleRate = request.headers.get('X-Sample-Rate') || '48000';
+      // ── /stt — Speech-to-Text ────────────────────────────────────
+      if (path === '/stt') {
+        // Get audio format from header (sent by voice.js)
+        const fmt = (request.headers.get('X-Audio-Format') || 'WEBM_OPUS')
+          .toLowerCase()
+          .replace('_', '-'); // webm-opus or ogg-opus
+        const rate = request.headers.get('X-Sample-Rate') || '48000';
 
-        const audioBody = await request.arrayBuffer();
+        const sttUrl =
+          YANDEX_STT +
+          '?' +
+          new URLSearchParams({
+            folderId,
+            lang: 'ru-RU',
+            format: fmt,
+            sampleRateHertz: rate,
+          }).toString();
 
-        const sttUrl = `${YANDEX_STT_URL}?` + new URLSearchParams({
-          folderId,
-          lang: 'ru-RU',
-          format: audioFormat.toLowerCase().replace('_', '-'), // webm-opus
-          sampleRateHertz: sampleRate,
-        });
+        const audio = await request.arrayBuffer();
 
-        const sttResp = await fetch(sttUrl, {
+        const resp = await fetch(sttUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Api-Key ${apiKey}`,
-            'Content-Type': contentType,
+            Authorization: `Api-Key ${apiKey}`,
+            'Content-Type': request.headers.get('Content-Type') || 'audio/webm',
           },
-          body: audioBody,
+          body: audio,
         });
 
-        const sttData = await sttResp.json();
-
-        return new Response(JSON.stringify(sttData), {
-          status: sttResp.status,
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-        });
+        const data = await resp.json();
+        return json(data, resp.status);
       }
 
-      // ── GPT: Text completion ─────────────────────────────────────
-      if (path === '/gpt' || path === '/completion' || path === '/') {
+      // ── /gpt — Yandex GPT ────────────────────────────────────────
+      if (path === '/gpt') {
         const body = await request.json();
-
-        // Inject model URI if not provided
         if (!body.modelUri) {
           body.modelUri = `gpt://${folderId}/yandexgpt-lite/latest`;
         }
 
-        const gptResp = await fetch(YANDEX_GPT_URL, {
+        const resp = await fetch(YANDEX_GPT, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Api-Key ${apiKey}`,
+            Authorization: `Api-Key ${apiKey}`,
             'x-folder-id': folderId,
           },
           body: JSON.stringify(body),
         });
 
-        const gptData = await gptResp.json();
-
-        return new Response(JSON.stringify(gptData), {
-          status: gptResp.status,
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-        });
+        const data = await resp.json();
+        return json(data, resp.status);
       }
 
-      return new Response(JSON.stringify({ error: 'Unknown endpoint. Use /stt or /gpt' }), {
-        status: 404, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
+      return json({ error: 'Unknown path. Use /stt or /gpt' }, 404);
 
     } catch (err) {
-      return new Response(JSON.stringify({ error: err.message }), {
-        status: 500, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-      });
+      return json({ error: err.message }, 500);
     }
   },
 };
-
-// ══════════════════════════════════════════════════════════════════
-// HOW TO DEPLOY:
-// 1. Go to https://workers.cloudflare.com → Log in → Create Worker
-// 2. Paste this entire file → Save and Deploy
-// 3. Go to Settings → Variables and Secrets → Add:
-//      YANDEX_API_KEY = your key from console.yandex.cloud
-//      YANDEX_FOLDER  = your folder ID from console.yandex.cloud
-//      APP_SECRET     = any random string (e.g. "myfinance2024secret")
-// 4. (Optional) Create KV namespace "RATE_LIMITS", bind to worker
-// 5. Copy your worker URL: https://your-worker.YOUR-NAME.workers.dev
-// 6. In the app Settings → Voice Input:
-//      STT URL: https://your-worker.YOUR-NAME.workers.dev/stt
-//      GPT URL: https://your-worker.YOUR-NAME.workers.dev/gpt
-//      App Secret: the APP_SECRET you set in step 3
-// ══════════════════════════════════════════════════════════════════
