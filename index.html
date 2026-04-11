@@ -9,6 +9,9 @@
 <meta name="apple-mobile-web-app-title" content="Финансы">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="shortcut icon" href="icon-192.png">
 <title>Мои финансы</title>
 <link rel="stylesheet" href="styles.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -58,6 +61,7 @@
         <button class="tnav-btn" id="tnav-import" onclick="window.showScreen('import')">ИМПОРТ</button>
         <button class="tnav-btn" id="tnav-physassets" onclick="window.showScreen('physassets')">АКТИВЫ</button>
         <button class="tnav-btn" id="tnav-family" onclick="window.showScreen('family')">СЕМЬЯ</button>
+        <button class="tnav-btn" id="tnav-admin" onclick="window.showScreen('admin')" style="display:none;color:#ff9900">⚙ АДМИН</button>
       </div>
     </div>
   </div>
@@ -93,6 +97,8 @@
       <button onclick="window.showScreen('templates');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚡</span>ШАБЛОНЫ</button>
       <button onclick="window.showScreen('physassets');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">🏠</span>АКТИВЫ</button>
       <button onclick="window.showScreen('import');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">📥</span>ИМПОРТ</button>
+      <button onclick="window.showScreen('family');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">👨‍👩‍👧‍👦</span>СЕМЬЯ</button>
+      <button id="bnav-admin" onclick="window.showScreen('admin');window.hideMobileMenu()" style="display:none;background:none;border:none;color:#ff9900;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚙</span>АДМИН</button>
       <button onclick="window.showScreen('settings');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚙️</span>НАСТРОЙКИ</button>
     </div>
   </div>
@@ -238,27 +244,33 @@
         </div>
       </div>
 
-      <!-- Shopping list — inside cal-wrap so it scrolls properly on desktop -->
+      <!-- 3. Список покупок (привязан к выбранной дате) -->
       <div class="panel" style="flex-shrink:0">
         <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px">
           <span>&#128722; СПИСОК ПОКУПОК</span>
           <div style="display:flex;align-items:center;gap:8px">
             <span id="shopping-count" style="font-size:10px;font-weight:400;opacity:.8;letter-spacing:0"></span>
-            <button class="sbtn amber" onclick="window.openAddShopItem()" style="padding:3px 8px;font-size:11px;border-radius:5px">+ Добавить</button>
+            <button class="sbtn amber" onclick="window.openAddShopItem()" style="padding:3px 8px;font-size:11px;border-radius:5px">+ Подробно</button>
           </div>
         </div>
         <div class="panel-body">
           <div id="shopping-list-items"></div>
           <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center">
-            <input class="fi" id="shop-quick-name" placeholder="Название товара" style="flex:2;min-width:110px">
-            <input class="fi" id="shop-quick-qty" type="number" placeholder="Кол-во" style="width:68px" value="1" min="1">
-            <input class="fi" id="shop-quick-price" type="number" placeholder="Цена &#8381;" style="width:82px">
-            <button class="sbtn amber" onclick="window.quickAddShopItem()" style="white-space:nowrap;padding:7px 12px">+ Добавить</button>
+            <input class="fi" id="shop-quick-name" placeholder="Товар" style="flex:2;min-width:100px">
+            <input class="fi" id="shop-quick-qty" type="number" placeholder="Кол-во" style="width:62px" value="1" min="1">
+            <input class="fi" id="shop-quick-price" type="number" placeholder="Цена &#8381;" style="width:78px">
+            <button class="sbtn amber" onclick="window.quickAddShopItem()" style="white-space:nowrap;padding:7px 10px">+</button>
           </div>
-          <div style="display:flex;gap:6px;margin-top:8px">
-            <button class="btn-sec" style="flex:1;margin-top:0;font-size:11px;padding:7px" onclick="window.clearDoneShopItems()">Очистить купленное</button>
-            <button class="sbtn amber" onclick="window.openAddShopItem()" style="white-space:nowrap">+ Подробно</button>
-          </div>
+          <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:6px" onclick="window.clearDoneShopItems()">Очистить купленное</button>
+        </div>
+      </div>
+
+      <!-- 4. Регулярные операции -->
+      <div class="panel" style="flex-shrink:0">
+        <div class="panel-head">РЕГУЛЯРНЫЕ ОПЕРАЦИИ</div>
+        <div class="panel-body">
+          <div id="cal-recurring-list"></div>
+          <button class="btn-sec" style="margin-top:8px;font-size:11px;padding:6px" onclick="window.openAddRecurring()">+ Добавить регулярную</button>
         </div>
       </div>
     </div>
@@ -271,6 +283,53 @@
       <div class="panel">
         <div class="panel-head">СЕМЕЙНАЯ ГРУППА</div>
         <div class="panel-body"><div id="family-content"><div style="color:var(--text2);font-size:13px">Загрузка...</div></div></div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ── ADMIN (owner only) ── -->
+  <div id="screen-admin" class="screen">
+    <div style="max-width:800px;margin:0 auto;width:100%;padding:var(--gap);overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:var(--gap)">
+        <div style="font-size:18px;font-weight:700;color:var(--topbar)">Панель администратора</div>
+        <span style="font-size:11px;background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:10px;font-weight:700">ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:var(--gap)">
+        <div class="s-panel" style="width:380px">
+          <div class="s-panel-head">🎤 ГОЛОСОВОЙ ВВОД (Яндекс SpeechKit)</div>
+          <div class="s-panel-body">
+            <div class="notice blue" style="font-size:11px">Ключи хранятся в Cloudflare Worker. Пользователи их не видят.</div>
+            <div class="fg"><label>URL ВОРКЕРА (base URL)</label>
+              <input class="fi" id="voice-proxy-url" placeholder="https://my-worker.YOUR-NAME.workers.dev">
+            </div>
+            <div class="fg"><label>APP SECRET (защита воркера)</label>
+              <input class="fi" id="voice-app-secret" type="password" placeholder="Из Variables воркера">
+            </div>
+            <div style="background:var(--amber-light);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.7">
+              <b>Инструкция:</b><br>
+              1. workers.cloudflare.com → New Worker → вставить cloudflare_worker.js<br>
+              2. Settings → Variables → YANDEX_API_KEY, YANDEX_FOLDER, APP_SECRET<br>
+              3. Скопировать URL воркера → вставить выше
+            </div>
+            <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить</button>
+            <button class="btn-sec" style="margin-top:8px" onclick="window.testVoiceWorker()">Проверить соединение</button>
+            <div id="voice-status" style="font-size:11px;margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
+          </div>
+        </div>
+        <div class="s-panel" style="width:380px">
+          <div class="s-panel-head">📊 СТАТИСТИКА (заглушка)</div>
+          <div class="s-panel-body">
+            <div id="admin-stats"><div style="color:var(--text2);font-size:13px">Статистика пользователей — будет здесь</div></div>
+          </div>
+        </div>
+        <div class="s-panel" style="width:380px">
+          <div class="s-panel-head">🔧 ТВОЙ FIREBASE UID</div>
+          <div class="s-panel-body">
+            <div style="font-size:12px;color:var(--text2);margin-bottom:8px">Вставь этот UID в код как ADMIN_UID, чтобы только ты видел эту панель:</div>
+            <div id="admin-uid-display" style="font-family:monospace;font-size:13px;background:var(--topbar);color:#C9A96E;padding:10px;border-radius:6px;word-break:break-all"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -317,36 +376,7 @@
         <button class="btn-sec" style="margin-top:8px" onclick="window.openExpCat()">+ Добавить категорию</button>
       </div>
     </div>
-    <!-- FIX #6: Voice input settings -->
-    <div class="s-panel" style="width:360px">
-      <div class="s-panel-head">&#127908; ГОЛОСОВОЙ ВВОД (Яндекс SpeechKit)</div>
-      <div class="s-panel-body">
-        <div class="notice blue">Требуется Cloudflare Worker как CORS-прокси. Код воркера прилагается к приложению.</div>
-        <div class="notice blue" style="font-size:11px;margin-bottom:10px">
-          Ключи Яндекс API хранятся в Cloudflare Worker (не у пользователей).
-          Воркер сам подставляет ключ — вы вводите только URL воркера.
-        </div>
-        <div class="fg"><label>URL ВОРКЕРА (base URL)</label>
-          <input class="fi" id="voice-proxy-url" placeholder="https://my-worker.YOUR-NAME.workers.dev">
-          <div style="font-size:10px;color:var(--text2);margin-top:3px">Воркер автоматически направит /stt и /gpt на нужные Яндекс API</div>
-        </div>
-        <div class="fg"><label>APP SECRET (защита от чужих запросов)</label>
-          <input class="fi" id="voice-app-secret" type="password" placeholder="Секрет из настроек Worker → Variables">
-        </div>
-        <div style="background:var(--amber-light);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--text2);margin-bottom:10px">
-          <b>Как настроить:</b><br>
-          1. Откройте workers.cloudflare.com → создайте Worker<br>
-          2. Вставьте код из файла <b>cloudflare_worker.js</b><br>
-          3. Settings → Variables → добавьте YANDEX_API_KEY и YANDEX_FOLDER<br>
-          4. Скопируйте URL воркера сюда
-        </div>
-        <input type="hidden" id="voice-iam-token" value="">
-        <input type="hidden" id="voice-gpt-url" value="">
-        <div class="fg"><label>FOLDER ID</label><input class="fi" id="voice-folder-id" placeholder="b1g..."></div>
-        <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить настройки голоса</button>
-        <div id="voice-status" style="font-size:11px;color:var(--text2);margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
-      </div>
-    </div>
+
     <div class="s-panel" style="width:100%;max-width:500px">
       <div class="s-panel-head">ДАННЫЕ</div>
       <div class="s-panel-body">
@@ -373,7 +403,8 @@
     </div>
     <div class="dash-wrap">
       <div class="dash-left">
-        <div id="dash-widget-kpi"><div class="panel" style="flex-shrink:0;overflow:visible">
+        <!-- 1. Ключевые метрики -->
+        <div class="panel" style="flex-shrink:0;overflow:visible">
           <div class="panel-head">КЛЮЧЕВЫЕ МЕТРИКИ</div>
           <div class="panel-body" style="overflow:visible">
             <div class="dash-kpi-grid" style="grid-template-columns:1fr 1fr">
@@ -387,19 +418,25 @@
               <div class="dash-progress-bar"><div class="dash-progress-fill" id="dash-month-progress" style="width:0%"></div></div>
             </div>
           </div>
-        </div></div>
-        <div id="dash-widget-alerts"><div class="panel" style="flex-shrink:0">
+        </div>
+        <!-- 2. Алерты -->
+        <div class="panel" style="flex-shrink:0">
           <div class="panel-head">АЛЕРТЫ</div>
           <div class="panel-body"><div id="dash-alerts"></div></div>
-        </div></div>
-        <div id="dash-widget-quick"><div class="panel" style="flex-shrink:0">
-          <div class="panel-head">БЫСТРЫЕ ОПЕРАЦИИ</div>
-          <div class="panel-body"><div id="dash-quick-ops" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
-        </div></div>
-        <div id="dash-widget-top3"><div class="panel" style="flex:1;min-height:0">
-          <div class="panel-head">ТОП-3 КАТЕГОРИИ РАСХОДОВ</div>
-          <div class="panel-body"><div id="dash-top3"></div></div>
-        </div></div>
+        </div>
+        <!-- 3. Сегодня -->
+        <div class="panel" style="flex-shrink:0">
+          <div class="panel-head">СЕГОДНЯ</div>
+          <div class="panel-body"><div id="dash-today-main"></div></div>
+        </div>
+        <!-- 4. Список покупок -->
+        <div class="panel" style="flex:1;min-height:80px;cursor:pointer" onclick="window.showScreen('calendar')">
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+            <span>&#128722; СПИСОК ПОКУПОК</span>
+            <span style="font-size:10px;opacity:.7;font-weight:400">&#8594; КАЛЕНДАРЬ</span>
+          </div>
+          <div class="panel-body"><div id="dash-shopping-main"></div></div>
+        </div>
       </div>
       <div class="dash-right">
         <div class="dash-right-grid">
@@ -502,6 +539,7 @@
   <!-- ── EXTRAS: GOALS + RECURRING ── -->
   <div id="screen-extras" class="screen">
     <div class="extras-col">
+      <!-- 1. Финансовые цели -->
       <div class="panel">
         <div class="panel-head">ФИНАНСОВЫЕ ЦЕЛИ</div>
         <div class="panel-body">
@@ -511,12 +549,17 @@
       </div>
     </div>
     <div class="extras-col">
+      <!-- 2. Финансовый план (из настроек, здесь удобнее) -->
       <div class="panel">
-        <div class="panel-head">РЕГУЛЯРНЫЕ ОПЕРАЦИИ</div>
+        <div class="panel-head">ФИНАНСОВЫЙ ПЛАН</div>
         <div class="panel-body">
-          <div class="notice blue">Регулярные операции автоматически добавляются в календарь как плановые в начале каждого месяца</div>
-          <div id="recurring-list"></div>
-          <button class="btn-sec" style="margin-top:8px" onclick="window.openAddRecurring()">+ Добавить регулярную</button>
+          <div class="notice amber" style="font-size:11px">Итого должно быть 100%. Кликайте ✎ для редактирования.</div>
+          <div id="plan-settings-goals"></div>
+          <div style="text-align:right;font-size:12px;color:var(--text2);margin-top:6px">Итого: <span id="plan-total-pct-goals" style="font-weight:700">0%</span></div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button class="btn-sec" style="flex:1;margin-top:0" onclick="window.savePlanSettingsGoals()">Сохранить план</button>
+            <button class="btn-sec" style="flex:1;margin-top:0" onclick="window.openAddPlanItem()">+ Добавить статью</button>
+          </div>
         </div>
       </div>
     </div>
@@ -758,7 +801,7 @@ const $=id=>document.getElementById(id);
 
 // ── Shopping dashboard widget ─────────────────────────────
 window._renderShopWidget=function(){
-  const el=$('dash-shopping');if(!el||!state.D)return;
+  const el=$('dash-shopping')||$('dash-shopping-main');if(!el||!state.D)return;
   const lists=getAllPendingStats();
   if(!lists.length){
     el.innerHTML='<div style="color:var(--text2);font-size:12px">Нет активных списков. <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>';
@@ -853,13 +896,13 @@ function _loadVoiceToSettings(){
 
 function refreshCurrent(){
   const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
-  if(cur==='dashboard'){renderDashboard();window._renderShopWidget();}
+  if(cur==='dashboard'){renderDashboard();window._renderDashMain&&window._renderDashMain();}
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
-  else if(cur==='calendar'){renderCalendar();renderShoppingList();}
+  else if(cur==='calendar'){renderCalendar();renderShoppingList();window._renderCalRecurring&&window._renderCalRecurring();}
   else if(cur==='settings'){renderSettings();_loadVoiceToSettings();}
   else if(cur==='analytics'){renderAnalytics();renderLimits();}
-  else if(cur==='extras'){renderGoals();renderRecurring();}
+  else if(cur==='extras'){renderGoals();renderRecurring();window._renderPlanInGoals&&window._renderPlanInGoals();}
   else if(cur==='loans'){renderLoans();renderLoansSummary();}
   else if(cur==='templates'){renderTemplates();initBulk();}
   else if(cur==='health')renderHealth();
@@ -867,6 +910,7 @@ function refreshCurrent(){
   else if(cur==='family')renderFamily();
   else if(cur==='import'){initImportScreen();}
   else if(cur==='physassets')renderAssets();
+  else if(cur==='admin'){updateAdminVisibility();}
 }
 
 
@@ -1083,6 +1127,7 @@ initAuth(
     window.deletePlanItem=deletePlanItem;
     // Family mode
     loadFamilySettings();
+    renderFamily();
     // Smart floating voice button
     document.body.appendChild(createSmartVoiceButton());
     window._refreshCurrentScreen=refreshCurrent;
@@ -1092,6 +1137,7 @@ initAuth(
     setupSearch();
     // Onboarding check
     checkOnboarding();
+    updateAdminVisibility();
     renderReports();
   },
   ()=>{
@@ -1103,6 +1149,10 @@ initAuth(
 
 $('auth-screen').style.display='none';
 $('loading-screen').style.display='flex';
+// Register service worker for PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW:',e));
+}
 
 // ── Drag-to-scroll topbar nav on desktop ─────────────────
 (function(){
@@ -1286,6 +1336,123 @@ document.addEventListener('click',e=>{
   const btn=document.getElementById('bnav-more');
   if(menu&&!menu.contains(e.target)&&!btn?.contains(e.target))menu.style.display='none';
 });
+
+
+// ── ADMIN: only visible to owner ─────────────────────────────────
+// After first login run: console.log(state.CU.uid) to get your UID
+// Then replace the string below with your actual Firebase UID
+const ADMIN_UID = 'REPLACE_WITH_YOUR_FIREBASE_UID';
+function isAdmin(){ return !!(state.CU && (state.CU.uid === ADMIN_UID || ADMIN_UID === 'REPLACE_WITH_YOUR_FIREBASE_UID')); }
+
+// Show/hide admin button in topbar
+function updateAdminVisibility(){
+  const adminBtn = document.getElementById('tnav-admin');
+  const adminBnav = document.getElementById('bnav-admin');
+  const show = isAdmin();
+  if(adminBtn) adminBtn.style.display = show ? '' : 'none';
+  if(adminBnav) adminBnav.style.display = show ? '' : 'none';
+  // Show UID in admin panel
+  const uidEl = document.getElementById('admin-uid-display');
+  if(uidEl && state.CU) uidEl.textContent = state.CU.uid;
+}
+
+// ── DASHBOARD: today block + shopping ─────────────────────────────
+window._renderDashMain = function(){
+  // Today operations
+  const el = document.getElementById('dash-today-main');
+  if(el && state.D){
+    const ds = today();
+    const ops = state.D.operations.filter(o=>o.date===ds && !['planned_income','planned_expense'].includes(o.type));
+    const inc = ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+    const exp = ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+    const bal = inc - exp;
+    if(!ops.length){
+      el.innerHTML = '<div style="color:var(--text2);font-size:12px">Сегодня операций нет</div>';
+    } else {
+      el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div><div style="font-size:9px;color:var(--text2);font-weight:700">ДОХОД</div><div style="font-size:14px;font-weight:700;color:var(--green-dark)">${fmt(inc)}</div></div>
+        <div><div style="font-size:9px;color:var(--text2);font-weight:700">РАСХОД</div><div style="font-size:14px;font-weight:700;color:var(--red)">${fmt(exp)}</div></div>
+        <div><div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div><div style="font-size:14px;font-weight:700;color:${bal>=0?'var(--green-dark)':'var(--red)'}">${bal<0?'−':''}${fmt(Math.abs(bal))}</div></div>
+      </div>`
+      + ops.slice(0,3).map(o=>`<div style="font-size:11px;color:var(--text2);padding:3px 0;border-top:.5px solid var(--border)">${o.category||'—'} · ${o.type==='income'?'+':'−'}${fmt(o.amount)}</div>`).join('')
+      + (ops.length>3?`<div style="font-size:10px;color:var(--text2)">+${ops.length-3} операций</div>`:'');
+    }
+  }
+  // Shopping on dashboard (main left block)
+  const shopEl = document.getElementById('dash-shopping-main');
+  if(shopEl) window._renderShopWidget && window._renderShopWidget();
+};
+
+// ── CALENDAR: recurring list ──────────────────────────────────────
+window._renderCalRecurring = function(){
+  const el = document.getElementById('cal-recurring-list');
+  if(!el || !state.D) return;
+  if(!state.D.recurring || !state.D.recurring.length){
+    el.innerHTML = '<div style="color:var(--text2);font-size:12px">Нет регулярных операций</div>';
+    return;
+  }
+  el.innerHTML = state.D.recurring.map((r,i)=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:.5px solid var(--border);align-items:center">
+    <div>
+      <div style="font-size:13px;font-weight:700;color:var(--topbar)">${r.name}</div>
+      <div style="font-size:11px;color:var(--text2)">${r.type==='income'?'Доход':'Расход'} · ${r.category} · ${r.day}-е число</div>
+    </div>
+    <span style="font-size:13px;font-weight:700;color:${r.type==='income'?'var(--green-dark)':'var(--orange-dark)'}">${r.type==='income'?'+':'−'}${fmt(r.amount)}</span>
+  </div>`).join('');
+};
+
+// ── GOALS: plan section ───────────────────────────────────────────
+window._renderPlanInGoals = function(){
+  const el = document.getElementById('plan-settings-goals');
+  if(!el || !state.D) return;
+  el.innerHTML = state.D.plan.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:700;color:var(--topbar)">${p.label}</div>
+        <div style="font-size:10px;color:var(--text2)">${p.type==='income'?'Накопление':'Расход'}</div>
+      </div>
+      <input type="number" min="0" max="100" value="${p.pct}" id="ppg-${i}" oninput="window.updPTGoals()" style="width:52px;padding:5px;border:1.5px solid var(--border);border-radius:5px;font-size:13px;color:var(--topbar);background:#fff;text-align:right">
+      <span style="font-size:13px;color:var(--text2)">%</span>
+      <button class="sbtn blue" onclick="window.openEditPlanItem(${i})" style="padding:4px 7px;font-size:11px">✎</button>
+      <button class="sbtn red" onclick="window.deletePlanItem(${i})" style="padding:4px 7px;font-size:11px">✕</button>
+    </div>`).join('');
+  window.updPTGoals();
+};
+
+window.updPTGoals = function(){
+  let t=0;
+  state.D.plan.forEach((_,i)=>{const e=document.getElementById('ppg-'+i);if(e)t+=parseFloat(e.value)||0;});
+  const e=document.getElementById('plan-total-pct-goals');
+  if(e){e.textContent=Math.round(t)+'%';e.style.color=Math.round(t)===100?'var(--green)':'var(--red)';}
+};
+
+window.savePlanSettingsGoals = function(){
+  let t=0;
+  state.D.plan.forEach((p,i)=>{const e=document.getElementById('ppg-'+i);const v=parseFloat(e?.value)||0;p.pct=v;t+=v;});
+  if(Math.round(t)!==100){alert('Сумма должна быть 100%. Сейчас: '+Math.round(t)+'%');return;}
+  sched();alert('План сохранён');
+};
+
+// ── Admin: test worker connection ─────────────────────────────────
+window.testVoiceWorker = async function(){
+  const url = document.getElementById('voice-proxy-url')?.value.trim();
+  const secret = document.getElementById('voice-app-secret')?.value.trim();
+  if(!url){alert('Введите URL воркера');return;}
+  const el = document.getElementById('voice-status');
+  if(el){el.textContent='Проверяю...';el.style.color='var(--text2)';}
+  try{
+    const headers = {'X-App-Secret': secret||''};
+    const resp = await fetch(url.replace(/\/?$/,''), {method:'GET', headers});
+    const data = await resp.json();
+    if(data.ok){
+      if(el){el.textContent='✓ Воркер работает: '+JSON.stringify(data);el.style.color='var(--green-dark)';el.style.background='var(--green-bg)';}
+    }else{
+      if(el){el.textContent='⚠ Воркер ответил: '+JSON.stringify(data);el.style.color='var(--orange-dark)';}
+    }
+  }catch(e){
+    if(el){el.textContent='✗ Ошибка: '+e.message;el.style.color='var(--red)';el.style.background='var(--red-bg)';}
+  }
+};
+
 
 </script>
 
