@@ -792,7 +792,7 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today}from'./core.js';
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,appConfig,loadAppConfig,saveAppConfig,isAdminUser}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
@@ -810,36 +810,11 @@ import{renderAssets,checkAssetsAlert}from'./assets.js';
 import{parseCSV,deduplicateOps,importOps}from'./import-csv.js';
 import{renderShoppingList,getShoppingStats,getAllPendingStats,onCalendarDayChange,getActiveDate}from'./shopping.js';
 import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton,handleVoiceIntent,executeIntent,parseIntent,_showToast}from'./voice.js';
-import{renderFamily,loadFamilySettings}from'./family.js';
+import{renderFamily,loadFamilySettings,unsubscribeFamilyOnLogout}from'./family.js';
 
-// ── AppConfig (inline — no dependency on core.js exports) ─────────
+// ── AppConfig — imported from core.js (appConfig, loadAppConfig, saveAppConfig, isAdminUser)
 const OWNER_UID='TmexoZZxotgY7c3oBLpdAP3TG8s1';
-const appConfig={adminUids:[],workerUrl:'',appSecret:'',loaded:false};
-async function loadAppConfig(){
-  try{
-    const {getFirestore,doc,getDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const {getApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    const snap=await getDoc(doc(getFirestore(getApp()),'config','app'));
-    if(snap.exists()){
-      const d=snap.data();
-      appConfig.adminUids=d.adminUids||[];
-      appConfig.workerUrl=d.workerUrl||'';
-      appConfig.appSecret=d.appSecret||'';
-      appConfig.loaded=true;
-    }
-  }catch(e){console.info('AppConfig:',e.message);}
-}
-async function saveAppConfig(data){
-  try{
-    const {getFirestore,doc,setDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const {getApp}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
-    await setDoc(doc(getFirestore(getApp()),'config','app'),data,{merge:true});
-    Object.assign(appConfig,data);
-    return true;
-  }catch(e){console.error('saveAppConfig:',e.message);return false;}
-}
-function isAdminUser(uid){return uid===OWNER_UID||appConfig.adminUids.includes(uid);}
-function isAdmin(){return !!(state.CU&&isAdminUser(state.CU.uid));}
+function isAdmin(){return !!(state.CU&&(state.CU.uid===OWNER_UID||isAdminUser(state.CU.uid)));}
 
 
 const $=id=>document.getElementById(id);
@@ -1195,7 +1170,7 @@ window.importDataFile=e=>importData(e,refreshCurrent);
 window.clearOps=()=>clearAllOps(refreshCurrent);
 
 initAuth(
-  user=>{
+  async user=>{
     $('loading-screen').style.display='none';
     $('auth-screen').style.display='none';
     $('app-screen').style.display='flex';
@@ -1208,10 +1183,10 @@ initAuth(
     // Expose alert checkers
     window._checkPortfolioAlert=checkPortfolioAlert;
     window._checkAssetsAlert=checkAssetsAlert;
-    // Load voice settings
-    // Load voice settings from Firestore /config/app (set by admin once)
+    // Load app config from Firestore first (workerUrl, adminUids, appSecret)
+    try{ await loadAppConfig(); } catch(e){ console.warn('loadAppConfig:', e.message); }
+    // Load voice settings (uses appConfig.workerUrl if set)
     loadVoiceSettings();
-    // Override with app-level config if available
     if(appConfig.workerUrl) saveVoiceSettings(appConfig.workerUrl, appConfig.workerUrl, appConfig.appSecret);
     setupVoiceButtons();
     updateVoiceStatus();
@@ -1220,8 +1195,6 @@ initAuth(
     window.openEditPlanItem=openEditPlanItem;
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
-    // Load app config from Firestore (workerUrl, adminUids, etc.)
-    try{ await loadAppConfig(); } catch(e){ console.warn('loadAppConfig unavailable:', e.message); }
     // Expose to browser console
     window.state = state;
     window._myUID = state.CU.uid;
@@ -1241,6 +1214,7 @@ initAuth(
     renderReports();
   },
   ()=>{
+    unsubscribeFamilyOnLogout();
     $('app-screen').style.display='none';
     $('loading-screen').style.display='none';
     $('auth-screen').style.display='flex';

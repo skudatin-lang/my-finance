@@ -1,14 +1,31 @@
 // Service Worker for PWA (offline caching + icon support)
-const CACHE = 'my-finance-v1';
+const CACHE = 'my-finance-v2';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
   './core.js',
   './dashboard.js',
+  './analytics.js',
+  './assets.js',
+  './calendar.js',
+  './dds.js',
+  './goals.js',
+  './health.js',
+  './import-csv.js',
+  './loans.js',
+  './operations.js',
+  './portfolio.js',
+  './recurring.js',
+  './reports.js',
+  './settings.js',
+  './shopping.js',
+  './templates.js',
+  './voice.js',
+  './family.js',
+  './manifest.json',
   './icon-192.png',
   './icon-512.png',
-  './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
 ];
 

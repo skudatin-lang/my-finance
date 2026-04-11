@@ -106,6 +106,8 @@ export function saveEditOp(onDone){
   const o=state.D.operations[idx],newAmt=parseFloat($('edit-op-amount').value);
   if(!newAmt||newAmt<=0){alert('Введите сумму');return;}
   const newW=$('edit-op-wallet').value;
+  // Guard: transfer self-transfer check (shouldn't happen in edit, but just in case)
+  if(o.type==='transfer'&&newW===o.walletTo){alert('Нельзя переводить на тот же кошелёк');return;}
   const wOld=state.D.wallets.find(w=>w.id===o.wallet);
   if(wOld){if(o.type==='income')wOld.balance-=o.amount;else wOld.balance+=o.amount;}
   const wNew=state.D.wallets.find(w=>w.id===newW);

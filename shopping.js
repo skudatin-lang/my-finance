@@ -1,5 +1,6 @@
-// shopping.js — список покупок, привязанный к дате
 import{$,state,sched,fmt,today}from'./core.js';
+
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 // shoppingLists: { [date: string]: [{id,name,qty,price,done}] }
 // Миграция: если старый формат (массив), переносим в сегодняшнюю дату
@@ -55,7 +56,7 @@ export function renderShoppingList(){
         <input type="checkbox" ${item.done?'checked':''} onchange="window.toggleShopItem('${item.id}',this.checked,'${date}')" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;flex-shrink:0">
       </label>
       <div class="shop-info">
-        <div class="shop-name">${item.name}</div>
+        <div class="shop-name">${esc(item.name)}</div>
         ${(item.qty>1||item.price>0)?`<div class="shop-meta">${item.qty>1?item.qty+' шт.':''}${item.price>0?' · '+fmt(item.price)+'/шт':''}${total>0?' = '+fmt(total):''}</div>`:''}
       </div>
       <div class="shop-actions">

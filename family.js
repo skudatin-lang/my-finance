@@ -12,6 +12,11 @@ let _familyId=null;
 let _unsubscribe=null;
 export let familyData={shoppingLists:{},operations:[],walletsSummary:[]};
 
+export function unsubscribeFamilyOnLogout(){
+  if(_unsubscribe){_unsubscribe();_unsubscribe=null;}
+  _familyId=null;
+  familyData={shoppingLists:{},operations:[],walletsSummary:[]};
+}
 export function getFamilyId(){return _familyId;}
 export function isInFamily(){return!!_familyId;}
 
@@ -24,7 +29,7 @@ export function loadFamilySettings(){
 // ── Create or join family ────────────────────────────────────────
 export async function createFamily(familyName){
   if(!state.D||!state.CU)return{error:'Нет авторизации'};
-  const id='fam_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  const id='fam_'+Math.random().toString(36).slice(2,10)+Math.random().toString(36).slice(2,6);
   const ref=doc(db,'families',id);
   await setDoc(ref,{
     name:familyName,
@@ -192,7 +197,7 @@ export function renderFamily(){
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
       <div>
         <div style="font-size:15px;font-weight:700;color:var(--topbar)">${familyData.name||'Семейная группа'}</div>
-        <div style="font-size:11px;color:var(--text2)">Код группы: <b style="color:var(--amber-dark);letter-spacing:1px">${_familyId.split('_').pop()}</b> · поделитесь с членами семьи</div>
+        <div style="font-size:11px;color:var(--text2)">Код группы: <b style="color:var(--amber-dark);letter-spacing:1px">${_familyId.replace('fam_','')}</b> · поделитесь с членами семьи</div>
       </div>
       ${myRole==='owner'?`<button class="sbtn amber" onclick="window.publishFamilyData()" style="font-size:11px">↑ Синхронизировать</button>`:''}
     </div>
@@ -244,7 +249,7 @@ window.openCreateFamily=function(){
   if(!name)return;
   createFamily(name).then(r=>{
     if(r.error){alert('Ошибка: '+r.error);return;}
-    alert(`Группа создана!\n\nКод для вступления: ${r.familyId.split('_').pop()}\nПоделитесь кодом с членами семьи.`);
+    alert(`Группа создана!\n\nКод для вступления: ${r.familyId.replace('fam_','')}\nПоделитесь кодом с членами семьи.`);
     renderFamily();
   });
 };
@@ -253,7 +258,7 @@ window.openJoinFamily=function(){
   const code=prompt('Введите код группы (6 символов):');
   if(!code)return;
   // Find full family ID by suffix
-  const fullId=`fam_${code}`;
+  const fullId=`fam_${code.replace(/^fam_/,'')}`;
   joinFamily(fullId).then(r=>{
     if(r.error){alert('Ошибка: '+r.error);return;}
     alert('Вы вступили в группу «'+r.familyName+'»!');

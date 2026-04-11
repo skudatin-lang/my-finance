@@ -286,9 +286,12 @@ function renderDebtsDash(){
   const now=new Date();
   const upcoming=loans.map(l=>{
     const payDay=l.payDay||1;
-    const ds=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(payDay).padStart(2,'0');
-    const diff=Math.ceil((new Date(ds)-new Date(today()))/(1000*60*60*24));
-    return{...l,daysLeft:diff};
+    // Try this month first; if already past, use next month
+    let d=new Date(now.getFullYear(),now.getMonth(),payDay);
+    if(d<new Date(today()))d=new Date(now.getFullYear(),now.getMonth()+1,payDay);
+    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay).padStart(2,'0');
+    const diff=Math.ceil((d-new Date(today()))/(1000*60*60*24));
+    return{...l,daysLeft:diff,nextDate:ds};
   }).filter(l=>l.daysLeft>=0&&l.daysLeft<=10).sort((a,b)=>a.daysLeft-b.daysLeft);
 
   el.innerHTML=`

@@ -1,5 +1,7 @@
 import{$,fmt,state,sched,today,isPlanned,wName}from'./core.js';
 
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
 export function renderTemplates(){
   if(!state.D)return;
   if(!state.D.templates)state.D.templates=[];
@@ -20,8 +22,8 @@ export function renderTemplates(){
     return`<div style="background:${bg};border:1.5px solid ${border};border-radius:10px;padding:12px 14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start">
         <div style="flex:1">
-          <div style="font-size:14px;font-weight:700;color:${color}">${t.name}</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${t.type==='income'?'Доход':'Расход'} · ${t.category} · ${walletName}</div>
+          <div style="font-size:14px;font-weight:700;color:${color}">${esc(t.name)}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${t.type==='income'?'Доход':'Расход'} · ${esc(t.category)} · ${esc(walletName)}</div>
           ${t.items&&t.items.length>1?`<div style="font-size:10px;color:var(--text2);margin-top:2px">${t.items.length} позиций · итого ${fmt(t.items.reduce((s,it)=>s+it.amount,0))}</div>`:`<div style="font-size:13px;font-weight:700;color:${color};margin-top:2px">${fmt(t.amount)}</div>`}
         </div>
         <div style="display:flex;gap:5px;align-items:center">
