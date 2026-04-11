@@ -191,6 +191,52 @@ export function detectAnomalies(factOps){
   return anomalies.sort((a,b)=>b.pct-a.pct);
 }
 
+
+// ── Global app config (loaded from Firestore /config/app) ─────────
+// Set once in Firebase Console, never in code
+export const appConfig = {
+  adminUids: [],
+  workerUrl: '',
+  appSecret: '',
+  loaded: false,
+};
+
+export async function loadAppConfig() {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'app'));
+    if (snap.exists()) {
+      const d = snap.data();
+      appConfig.adminUids = d.adminUids || [];
+      appConfig.workerUrl = d.workerUrl || '';
+      appConfig.appSecret = d.appSecret || '';
+      appConfig.loaded = true;
+    }
+  } catch(e) {
+    // /config/app may not exist yet — that's OK
+    console.info('App config not found in Firestore — using defaults');
+  }
+}
+
+export async function saveAppConfig(data) {
+  // Only callable by admin — Firestore rules enforce this server-side
+  try {
+    await setDoc(doc(db, 'config', 'app'), data, { merge: true });
+    appConfig.adminUids = data.adminUids ?? appConfig.adminUids;
+    appConfig.workerUrl = data.workerUrl ?? appConfig.workerUrl;
+    appConfig.appSecret = data.appSecret ?? appConfig.appSecret;
+    return true;
+  } catch(e) {
+    console.error('saveAppConfig failed:', e.message);
+    return false;
+  }
+}
+
+export function isAdminUser(uid) {
+  // If no adminUids configured yet, no one is admin (avoids open access)
+  if (!appConfig.adminUids.length) return false;
+  return appConfig.adminUids.includes(uid);
+}
+
 export function initAuth(onLogin,onLogout){
   onAuthStateChanged(auth,async user=>{
     if(user){state.CU=user;await loadData(user.uid);onLogin(user);}

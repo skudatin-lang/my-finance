@@ -329,7 +329,11 @@
               2. Settings → Variables → YANDEX_API_KEY, YANDEX_FOLDER, APP_SECRET<br>
               3. Скопировать URL воркера → вставить выше
             </div>
-            <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить</button>
+            <div class="fg" style="margin-top:10px"><label>ADMIN UIDs (через запятую)</label>
+              <input class="fi" id="admin-uids-input" placeholder="uid1, uid2, ...">
+              <div style="font-size:10px;color:var(--text2);margin-top:3px">Ваш UID показан ниже в блоке "Твой Firebase UID"</div>
+            </div>
+            <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить всё в базу данных</button>
             <button class="btn-sec" style="margin-top:8px" onclick="window.testVoiceWorker()">Проверить соединение</button>
             <div id="voice-status" style="font-size:11px;margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
           </div>
@@ -788,7 +792,7 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today}from'./core.js';
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,loadAppConfig,saveAppConfig,isAdminUser,appConfig}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
@@ -909,12 +913,29 @@ function updateVoiceStatus(){
   }
 }
 
-window.saveVoiceSettingsUI=function(){
+window.saveVoiceSettingsUI=async function(){
   const proxyUrl=$('voice-proxy-url')?.value.trim()||'';
-  const appSecret=$('voice-app-secret')?.value.trim()||'';
-  saveVoiceSettings(proxyUrl,proxyUrl,appSecret);
-  // Force immediate save to Firebase (don't wait for debounce)
-  import('./core.js').then(m=>m.saveNow());
+  const appSecretVal=$('voice-app-secret')?.value.trim()||'';
+  const adminUidsRaw=$('admin-uids-input')?.value.trim()||'';
+  // Parse admin UIDs (comma-separated)
+  const newAdminUids=adminUidsRaw
+    ? adminUidsRaw.split(',').map(s=>s.trim()).filter(Boolean)
+    : appConfig.adminUids;
+  // Save to Firestore /config/app
+  const ok = await saveAppConfig({
+    workerUrl: proxyUrl,
+    appSecret: appSecretVal,
+    adminUids: newAdminUids,
+  });
+  if(ok){
+    // Also update local voice module
+    saveVoiceSettings(proxyUrl, proxyUrl, appSecretVal);
+    const statusEl=$('voice-status');
+    if(statusEl){statusEl.textContent='✓ Настройки сохранены в базе данных';statusEl.style.color='var(--green-dark)';statusEl.style.background='var(--green-bg)';}
+    alert('Настройки сохранены!\n\nОни хранятся в Firestore и не зависят от кода.\nПри следующем запуске приложение загрузит их автоматически.');
+  } else {
+    alert('Ошибка сохранения. Проверьте правила Firestore:\n/config/app — разрешите write для adminUids.');
+  }
   updateVoiceStatus();
   let msg='Настройки голосового ввода сохранены.';
   if(!proxyUrl||!iamToken||!folderId)msg+='\nЗаполните все три поля для работы.';
@@ -946,7 +967,12 @@ function refreshCurrent(){
   else if(cur==='family')renderFamily();
   else if(cur==='import'){initImportScreen();}
   else if(cur==='physassets')renderAssets();
-  else if(cur==='admin'){updateAdminVisibility();}
+  else if(cur==='admin'){
+    updateAdminVisibility();
+    // Fill admin UIDs field from loaded config
+    const uidsInput=$('admin-uids-input');
+    if(uidsInput && appConfig.adminUids.length) uidsInput.value = appConfig.adminUids.join(', ');
+  }
 }
 
 
@@ -1153,7 +1179,10 @@ initAuth(
     window._checkPortfolioAlert=checkPortfolioAlert;
     window._checkAssetsAlert=checkAssetsAlert;
     // Load voice settings
+    // Load voice settings from Firestore /config/app (set by admin once)
     loadVoiceSettings();
+    // Override with app-level config if available
+    if(appConfig.workerUrl) saveVoiceSettings(appConfig.workerUrl, appConfig.workerUrl, appConfig.appSecret);
     setupVoiceButtons();
     updateVoiceStatus();
     // Plan CRUD
@@ -1161,7 +1190,9 @@ initAuth(
     window.openEditPlanItem=openEditPlanItem;
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
-    // Expose to browser console for debugging/setup
+    // Load app config from Firestore (workerUrl, adminUids, etc.)
+    await loadAppConfig();
+    // Expose to browser console
     window.state = state;
     window._myUID = state.CU.uid;
     // Family mode
@@ -1377,28 +1408,21 @@ document.addEventListener('click',e=>{
 });
 
 
-// ── ADMIN: only visible to owner ─────────────────────────────────
-// After first login run: console.log(state.CU.uid) to get your UID
-// Then replace the string below with your actual Firebase UID
-const ADMIN_UID = 'REPLACE_WITH_YOUR_FIREBASE_UID';
-function isAdmin(){ return !!(state.CU && (state.CU.uid === ADMIN_UID || ADMIN_UID === 'REPLACE_WITH_YOUR_FIREBASE_UID')); }
+// ── ADMIN: determined by /config/app in Firestore (no hardcode) ──
+function isAdmin(){ return !!(state.CU && isAdminUser(state.CU.uid)); }
 
 // Show/hide admin button in topbar
 function updateAdminVisibility(){
   const adminBtn = document.getElementById('tnav-admin');
   const adminBnav = document.getElementById('bnav-admin');
   const show = isAdmin();
-  if(adminBtn) adminBtn.style.display = show ? '' : 'none';
-  if(adminBnav) adminBnav.style.display = show ? '' : 'none';
-  // Show UID in admin panel
+  if(adminBtn){ adminBtn.style.display = show ? '' : 'none'; }
+  if(adminBnav){ adminBnav.style.display = show ? '' : 'none'; }
+  // Populate admin panel fields
   const uidEl = document.getElementById('admin-uid-display');
-  if(uidEl && state.CU) {
-    uidEl.textContent = state.CU.uid;
-    // Also log to console for easy copy
-    console.log('%c YOUR FIREBASE UID (copy this):', 'color:orange;font-weight:bold;font-size:14px');
-    console.log('%c ' + state.CU.uid, 'color:#BA7517;font-size:16px;font-weight:bold;background:#FDF6E3;padding:4px 8px;border-radius:4px');
-    console.log('%c Paste into index.html: const ADMIN_UID = \''+state.CU.uid+'\'', 'color:green;font-size:12px');
-  }
+  if(uidEl && state.CU) uidEl.textContent = state.CU.uid;
+  if($('voice-proxy-url')) $('voice-proxy-url').value = appConfig.workerUrl || '';
+  if($('voice-app-secret')) $('voice-app-secret').value = appConfig.appSecret || '';
 }
 
 // ── DASHBOARD: today block + shopping ─────────────────────────────
