@@ -812,7 +812,7 @@ import{renderShoppingList,getShoppingStats,getAllPendingStats,onCalendarDayChang
 import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton,handleVoiceIntent,executeIntent,parseIntent,_showToast}from'./voice.js';
 import{renderFamily,loadFamilySettings,unsubscribeFamilyOnLogout}from'./family.js';
 
-// ── AppConfig — imported from core.js (appConfig, loadAppConfig, saveAppConfig, isAdminUser)
+// ── AppConfig — imported from core.js
 const OWNER_UID='TmexoZZxotgY7c3oBLpdAP3TG8s1';
 function isAdmin(){return !!(state.CU&&(state.CU.uid===OWNER_UID||isAdminUser(state.CU.uid)));}
 
@@ -1431,24 +1431,56 @@ function updateAdminVisibility(){
 
 // ── DASHBOARD: today block + shopping ─────────────────────────────
 window._renderDashMain = function(){
-  // Today operations
+  // ── Today operations — mirrors calendar day panel exactly ──────
   const el = document.getElementById('dash-today-main');
   if(el && state.D){
     const ds = today();
-    const ops = state.D.operations.filter(o=>o.date===ds && !['planned_income','planned_expense'].includes(o.type));
-    const inc = ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-    const exp = ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+    const allOps = state.D.operations.filter(o=>o.date===ds && !['planned_income','planned_expense'].includes(o.type));
+    const inc = allOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+    const exp = allOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
     const bal = inc - exp;
-    if(!ops.length){
-      el.innerHTML = '<div style="color:var(--text2);font-size:12px">Сегодня операций нет</div>';
+
+    if(!allOps.length){
+      el.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:4px 0">Операций нет — <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber-dark);font-weight:700">открыть календарь →</a></div>';
     } else {
-      el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
-        <div><div style="font-size:9px;color:var(--text2);font-weight:700">ДОХОД</div><div style="font-size:14px;font-weight:700;color:var(--green-dark)">${fmt(inc)}</div></div>
-        <div><div style="font-size:9px;color:var(--text2);font-weight:700">РАСХОД</div><div style="font-size:14px;font-weight:700;color:var(--red)">${fmt(exp)}</div></div>
-        <div><div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div><div style="font-size:14px;font-weight:700;color:${bal>=0?'var(--green-dark)':'var(--red)'}">${bal<0?'−':''}${fmt(Math.abs(bal))}</div></div>
-      </div>`
-      + ops.slice(0,3).map(o=>`<div style="font-size:11px;color:var(--text2);padding:3px 0;border-top:.5px solid var(--border)">${o.category||'—'} · ${o.type==='income'?'+':'−'}${fmt(o.amount)}</div>`).join('')
-      + (ops.length>3?`<div style="font-size:10px;color:var(--text2)">+${ops.length-3} операций</div>`:'');
+      // Summary row — same as calendar day balance row
+      const balColor = bal<0?'var(--red)':bal>0?'var(--green-dark)':'var(--topbar)';
+      let html = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:var(--green-bg);border-radius:6px;padding:6px 8px">
+          <div style="font-size:9px;color:var(--text2);font-weight:700">ДОХОД</div>
+          <div style="font-size:13px;font-weight:700;color:var(--green-dark)">${inc>0?'+ ':''} ${fmt(inc)}</div>
+        </div>
+        <div style="background:var(--red-bg);border-radius:6px;padding:6px 8px">
+          <div style="font-size:9px;color:var(--text2);font-weight:700">РАСХОД</div>
+          <div style="font-size:13px;font-weight:700;color:var(--red)">${exp>0?'− ':''} ${fmt(exp)}</div>
+        </div>
+        <div style="background:var(--amber-light);border-radius:6px;padding:6px 8px">
+          <div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div>
+          <div style="font-size:13px;font-weight:700;color:${balColor}">${bal<0?'− ':''}${fmt(Math.abs(bal))}</div>
+        </div>
+      </div>`;
+
+      // Op list — same as calendar: name + wallet + amount, transfers shown correctly
+      const wName = id => { const w=state.D.wallets.find(w=>w.id===id); return w?w.name:id||'?'; };
+      const fmtD = ds => { if(!ds)return''; const[y,m,d]=ds.split('-'); return d+'.'+m+'.'+y; };
+      allOps.slice(0,5).forEach(o=>{
+        const isIn=o.type==='income', isOut=o.type==='expense', isTr=o.type==='transfer';
+        const label = isTr ? `Перевод → ${wName(o.walletTo)}` : (o.category||o.note||'—');
+        const amtColor = isIn?'var(--green-dark)':isOut?'var(--orange-dark)':'var(--blue)';
+        const amtSign = isIn?'+ ':isTr?'':'− ';
+        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:.5px solid var(--border)">
+          <div style="min-width:0;flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--topbar);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div>
+            <div style="font-size:10px;color:var(--text2)">${wName(o.wallet||'')} · ${fmtD(o.date)}</div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:${amtColor};white-space:nowrap;margin-left:8px">${amtSign}${fmt(o.amount)}</div>
+        </div>`;
+      });
+      if(allOps.length>5){
+        html += `<div style="font-size:10px;color:var(--text2);padding-top:4px">ещё ${allOps.length-5} операций</div>`;
+      }
+      html += `<div style="margin-top:6px"><a href="#" onclick="window.showScreen('calendar');return false" style="font-size:11px;color:var(--amber-dark);font-weight:700;text-decoration:none">Открыть в календаре →</a></div>`;
+      el.innerHTML = html;
     }
   }
   // Shopping on dashboard (main left block)

@@ -40,15 +40,29 @@ export async function startRecording(onResult,onError,onStateChange){
     const stream=await navigator.mediaDevices.getUserMedia({audio:{sampleRate:16000,channelCount:1,echoCancellation:true}});
     _audioChunks=[];
     // Prefer OGG/OPUS (Yandex STT supports it natively), fallback to WebM
-    const mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-      ?'audio/webm;codecs=opus'
-      :'audio/webm';
-    _mediaRecorder=new MediaRecorder(stream,{mimeType:mime});
+    // Detect best supported audio format for this browser
+    // Safari: only supports audio/mp4 (no webm support at all)
+    // Chrome/Firefox: prefer webm/opus
+    let mime = '';
+    const candidates = [
+      'audio/webm;codecs=opus',
+      'audio/ogg;codecs=opus',
+      'audio/webm',
+      'audio/mp4;codecs=mp4a.40.2',
+      'audio/mp4',
+      '',
+    ];
+    for(const c of candidates){
+      if(!c || MediaRecorder.isTypeSupported(c)){mime=c;break;}
+    }
+    _mediaRecorder=new MediaRecorder(stream, mime?{mimeType:mime}:{});
     _mediaRecorder.ondataavailable=e=>{if(e.data&&e.data.size>0)_audioChunks.push(e.data);};
     _mediaRecorder.onstop=async()=>{
       stream.getTracks().forEach(t=>t.stop());
       onStateChange&&onStateChange(false);
-      const text=await _sendSTT(mime);
+      // Use the actual mimeType the recorder used (may differ from requested on Safari)
+      const actualMime=_mediaRecorder.mimeType||mime||'audio/webm';
+      const text=await _sendSTT(actualMime);
       if(text)onResult&&onResult(text);
       else onError&&onError('Речь не распознана — попробуйте ещё раз');
     };
@@ -71,12 +85,17 @@ export function stopRecording(){
 async function _sendSTT(mimeType){
   if(!_audioChunks.length)return null;
   const blob=new Blob(_audioChunks,{type:mimeType});
-  // Yandex STT REST v1 expects raw binary audio
-  // Format: webm-opus or ogg-opus, 16kHz mono
-  const format=mimeType.includes('ogg')?'OGG_OPUS':'WEBM_OPUS';
+
+  // Map MIME type to Yandex STT format string
+  let format='WEBM_OPUS';
+  if(mimeType.includes('ogg'))format='OGG_OPUS';
+  else if(mimeType.includes('mp4')||mimeType.includes('m4a')||mimeType.includes('aac'))format='MP4_AAC';
+  // For MP4_AAC Yandex STT v1 uses a different endpoint — fall back to auto
+  const isMP4 = format==='MP4_AAC';
 
   // Ensure URL ends without trailing slash
-  const url=_sttUrl.replace(/\/?$/,'')+(_sttUrl.endsWith('/stt')?'':'/stt');
+  const baseUrl=_sttUrl.replace(/\/?$/,'');
+  const url=baseUrl+(baseUrl.endsWith('/stt')?'':'/stt');
 
   const headers={
     'Content-Type':mimeType,
@@ -90,14 +109,21 @@ async function _sendSTT(mimeType){
     const resp=await fetch(url,{method:'POST',headers,body:blob});
     const data=await resp.json();
     if(!resp.ok){
-      const msg=data.error_message||data.error||JSON.stringify(data).slice(0,120);
+      const msg=data.error_message||data.error||data.message||JSON.stringify(data).slice(0,200);
       _showToast('STT ошибка ('+resp.status+'): '+msg);
+      console.error('STT error response:',data);
       return null;
     }
     // Yandex STT v1 returns: {"result": "recognized text"}
-    return(data.result||'').trim()||null;
+    const result=(data.result||'').trim();
+    if(!result){
+      _showToast('Речь не распознана. Говорите чётче и ближе к микрофону.');
+      return null;
+    }
+    return result;
   }catch(e){
-    _showToast('Ошибка соединения: '+e.message);
+    _showToast('Ошибка соединения с воркером: '+e.message+'\nПроверьте URL в настройках.');
+    console.error('STT fetch error:',e);
     return null;
   }
 }
