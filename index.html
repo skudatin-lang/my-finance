@@ -441,12 +441,12 @@
           </div>
         </div>
         <!-- 2. Алерты -->
-        <div class="panel" style="flex-shrink:0">
+        <div class="panel" style="flex-shrink:0;min-height:120px">
           <div class="panel-head">АЛЕРТЫ</div>
           <div class="panel-body"><div id="dash-alerts"></div></div>
         </div>
         <!-- 3. Сегодня -->
-        <div class="panel" style="flex-shrink:0">
+        <div class="panel" style="flex-shrink:0;min-height:120px">
           <div class="panel-head">СЕГОДНЯ</div>
           <div class="panel-body"><div id="dash-today-main"></div></div>
         </div>
@@ -974,10 +974,12 @@ function refreshCurrent(){
   else if(cur==='physassets')renderAssets();
   else if(cur==='admin'){
     updateAdminVisibility();
-    // Fill admin UIDs field from loaded config
     const uidsInput=$('admin-uids-input');
     if(uidsInput && appConfig.adminUids.length) uidsInput.value = appConfig.adminUids.join(', ');
   }
+  // Always keep dash-today-main in sync regardless of current screen
+  if(cur!=='dashboard') window._renderDashMain&&window._renderDashMain();
+}
 }
 
 
