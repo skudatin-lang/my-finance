@@ -941,10 +941,6 @@ window.saveVoiceSettingsUI=async function(){
     alert('Ошибка сохранения. Проверьте правила Firestore:\n/config/app — разрешите write для adminUids.');
   }
   updateVoiceStatus();
-  let msg='Настройки голосового ввода сохранены.';
-  if(!proxyUrl||!iamToken||!folderId)msg+='\nЗаполните все три поля для работы.';
-  else msg+='\nЭлементы с кнопкой 🎤 готовы к использованию.';
-  alert(msg);
 };
 
 function _loadVoiceToSettings(){
