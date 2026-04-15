@@ -33,75 +33,121 @@ export function isRecording() { return _isRecording; }
 export async function startRecording(onResult, onError, onStateChange) {
   if (_isRecording) return;
   if (!isVoiceConfigured()) {
-    onError && onError('Голосовой ввод не настроен. Настройки → Голосовой ввод → укажите URL воркера.');
+    onError && onError('Голосовой ввод не настроен. Настройки → укажите URL воркера.');
     return;
   }
+
+  // FIX 1: НЕ запрашиваем sampleRate принудительно.
+  // Yandex oggopus читает rate из контейнера автоматически.
+  // Принудительный sampleRate:16000 + отправка 48000 кГц ломал распознавание.
+  let stream;
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true },
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     });
-    _audioChunks = [];
-
-    // Выбираем лучший поддерживаемый формат
-    // Safari: только audio/mp4; Chrome/Firefox: webm/opus
-    let mime = '';
-    const candidates = [
-      'audio/webm;codecs=opus',
-      'audio/ogg;codecs=opus',
-      'audio/webm',
-      'audio/mp4;codecs=mp4a.40.2',
-      'audio/mp4',
-      '',
-    ];
-    for (const c of candidates) {
-      if (!c || MediaRecorder.isTypeSupported(c)) { mime = c; break; }
-    }
-
-    _mediaRecorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
-    _mediaRecorder.ondataavailable = e => { if (e.data && e.data.size > 0) _audioChunks.push(e.data); };
-    _mediaRecorder.onstop = async () => {
-      stream.getTracks().forEach(t => t.stop());
-      onStateChange && onStateChange(false);
-      const actualMime = _mediaRecorder.mimeType || mime || 'audio/webm';
-      const text = await _sendSTT(actualMime);
-      if (text) onResult && onResult(text);
-      else onError && onError('Речь не распознана — попробуйте ещё раз');
-    };
-    _mediaRecorder.onerror = e => { onError && onError('Ошибка записи: ' + (e.error?.message || '')); };
-    _mediaRecorder.start(100);
-    _isRecording = true;
-    onStateChange && onStateChange(true);
   } catch (e) {
     onError && onError(
       e.name === 'NotAllowedError'
         ? 'Нет доступа к микрофону. Разрешите его в настройках браузера.'
         : 'Микрофон недоступен: ' + e.message
     );
+    return;
   }
+
+  _audioChunks = [];
+
+  // FIX 2: Только форматы, которые поддерживает Yandex STT v1.
+  // Yandex v1 /stt:recognize поддерживает: oggopus, lpcm, mp3.
+  // audio/mp4 (iOS Safari) намеренно исключён — не поддерживается Яндексом.
+  const candidates = [
+    'audio/ogg;codecs=opus',   // Firefox, Android — нативный oggopus
+    'audio/webm;codecs=opus',  // Chrome, Edge — WebM+Opus, Яндекс принимает как oggopus
+    'audio/webm',              // Chrome без уточнения кодека
+  ];
+
+  let mime = '';
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c)) { mime = c; break; }
+  }
+
+  // FIX 3: Если ни один формат не поддерживается (iOS Safari) — показываем понятную ошибку.
+  if (!mime) {
+    stream.getTracks().forEach(t => t.stop());
+    onError && onError(
+      'Ваш браузер не поддерживает голосовой ввод.\n' +
+      'Используйте Chrome или Firefox — Safari не поддерживает нужный формат аудио (MP4/AAC).'
+    );
+    return;
+  }
+
+  try {
+    _mediaRecorder = new MediaRecorder(stream, { mimeType: mime });
+  } catch (e) {
+    stream.getTracks().forEach(t => t.stop());
+    onError && onError('Ошибка инициализации записи: ' + e.message);
+    return;
+  }
+
+  _mediaRecorder.ondataavailable = e => {
+    if (e.data && e.data.size > 0) _audioChunks.push(e.data);
+  };
+
+  // FIX 4: Освобождаем stream НЕМЕДЛЕННО при stop — до async STT запроса.
+  // Раньше: stream.getTracks().stop() внутри async → при ошибке STT стрим
+  // оставался активным, следующий getUserMedia мог зависнуть или вернуть NotAllowedError.
+  _mediaRecorder.onstop = async () => {
+    stream.getTracks().forEach(t => t.stop()); // синхронно, сразу
+    onStateChange && onStateChange(false);
+    try {
+      const actualMime = _mediaRecorder.mimeType || mime;
+      const text = await _sendSTT(actualMime);
+      if (text) onResult && onResult(text);
+      else onError && onError('Речь не распознана — говорите чётче и ближе к микрофону');
+    } catch (e) {
+      onError && onError('Ошибка распознавания: ' + e.message);
+    }
+  };
+
+  // FIX 5: Освобождаем стрим и при ошибке MediaRecorder
+  _mediaRecorder.onerror = e => {
+    stream.getTracks().forEach(t => t.stop());
+    _isRecording = false;
+    onStateChange && onStateChange(false);
+    onError && onError('Ошибка записи: ' + (e.error?.message || 'неизвестная ошибка'));
+  };
+
+  _mediaRecorder.start(250); // 250мс вместо 100мс — стабильнее на мобильных
+  _isRecording = true;
+  onStateChange && onStateChange(true);
 }
 
 export function stopRecording() {
   if (!_isRecording || !_mediaRecorder) return;
   _isRecording = false;
-  try { _mediaRecorder.stop(); } catch (e) { }
+  try { _mediaRecorder.stop(); } catch (e) { /* уже остановлен */ }
 }
 
-// ── STT: отправка бинарного аудио на воркер /stt ──────────────────────────
+// ── STT: отправка аудио на воркер /stt ───────────────────────────────────
 async function _sendSTT(mimeType) {
   if (!_audioChunks.length) return null;
+
   const blob = new Blob(_audioChunks, { type: mimeType });
 
+  // FIX: Маппинг mimeType → заголовок X-Audio-Format для воркера
+  // Воркер переводит WEBM_OPUS/OGG_OPUS → 'oggopus' (формат Яндекса)
   let format = 'WEBM_OPUS';
   if (mimeType.includes('ogg')) format = 'OGG_OPUS';
-  else if (mimeType.includes('mp4') || mimeType.includes('m4a') || mimeType.includes('aac')) format = 'MP4_AAC';
+  else if (mimeType.includes('webm')) format = 'WEBM_OPUS';
 
   const baseUrl = _sttUrl.replace(/\/?$/, '');
   const url = baseUrl + (baseUrl.endsWith('/stt') ? '' : '/stt');
 
+  // FIX: X-Sample-Rate убран для oggopus — Яндекс читает rate из контейнера.
+  // Мы НЕ знаем реальный rate (браузер мог проигнорировать наш hint),
+  // поэтому лучше не передавать и дать Яндексу определить самостоятельно.
   const headers = {
     'Content-Type': mimeType,
     'X-Audio-Format': format,
-    'X-Sample-Rate': '48000',
   };
   if (_appSecret) headers['X-App-Secret'] = _appSecret;
   if (_userId) headers['X-User-Id'] = _userId;
@@ -109,21 +155,41 @@ async function _sendSTT(mimeType) {
   try {
     const resp = await fetch(url, { method: 'POST', headers, body: blob });
     const data = await resp.json();
+
     if (!resp.ok) {
       const msg = data.error_message || data.error || data.message || JSON.stringify(data).slice(0, 200);
+
+      // Неподдерживаемый формат (приходит если iOS Safari всё же попал сюда)
+      if (resp.status === 415 || (msg && msg.toLowerCase().includes('format'))) {
+        _showToast('⚠ Формат аудио не поддерживается. Используйте Chrome или Firefox.');
+        console.error('[STT] Format error:', data);
+        return null;
+      }
+
+      // Ошибка авторизации
+      if (resp.status === 401) {
+        _showToast('⚠ Ошибка авторизации. Проверьте App Secret в разделе Администратор.');
+        return null;
+      }
+
       _showToast('STT ошибка (' + resp.status + '): ' + msg);
-      console.error('STT error response:', data);
+      console.error('[STT] Error response:', data);
       return null;
     }
+
+    // Яндекс v1 возвращает: {"result": "распознанный текст"}
     const result = (data.result || '').trim();
     if (!result) {
+      console.warn('[STT] Empty result from Yandex. Full response:', data);
       _showToast('Речь не распознана. Говорите чётче и ближе к микрофону.');
       return null;
     }
+
     return result;
+
   } catch (e) {
-    _showToast('Ошибка соединения с воркером: ' + e.message + '\nПроверьте URL в настройках.');
-    console.error('STT fetch error:', e);
+    _showToast('Ошибка соединения с воркером: ' + e.message);
+    console.error('[STT] Fetch error:', e);
     return null;
   }
 }
@@ -164,18 +230,20 @@ export async function parseIntent(spokenText) {
   if (_appSecret) headers['X-App-Secret'] = _appSecret;
   if (_userId) headers['X-User-Id'] = _userId;
 
-  const body = {
-    completionOptions: { stream: false, temperature: 0.1, maxTokens: 400 },
-    messages: [
-      { role: 'system', text: systemPrompt },
-      { role: 'user', text: spokenText },
-    ],
-  };
-
   try {
-    const resp = await fetch(endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        completionOptions: { stream: false, temperature: 0.1, maxTokens: 400 },
+        messages: [
+          { role: 'system', text: systemPrompt },
+          { role: 'user', text: spokenText },
+        ],
+      }),
+    });
     if (!resp.ok) {
-      console.warn('GPT parse failed:', resp.status);
+      console.warn('[GPT] parse failed:', resp.status);
       return _fallbackParse(spokenText);
     }
     const data = await resp.json();
@@ -184,7 +252,7 @@ export async function parseIntent(spokenText) {
     if (!clean) return _fallbackParse(spokenText);
     return JSON.parse(clean);
   } catch (e) {
-    console.warn('GPT parse error:', e.message);
+    console.warn('[GPT] parse error:', e.message);
     return _fallbackParse(spokenText);
   }
 }
@@ -275,19 +343,14 @@ function _openEdit(intent) {
       }, 100);
       break;
     }
-    case 'add_shopping':
-      window.openAddShopItem && window.openAddShopItem();
-      break;
-    default:
-      document.getElementById('modal')?.classList.add('open');
+    case 'add_shopping': window.openAddShopItem && window.openAddShopItem(); break;
+    default: document.getElementById('modal')?.classList.add('open');
   }
 }
 
 // ── Выполнение подтверждённого интента ────────────────────────────────────
 export function executeIntent(intent) {
   if (!state.D) return;
-
-  // Получаем активную дату из ui.js (если зарегистрирована), иначе today()
   const activeDate = window._getCalActiveDate ? window._getCalActiveDate() : today();
 
   switch (intent.intent) {
@@ -309,10 +372,9 @@ export function executeIntent(intent) {
     }
     case 'add_shopping': {
       if (!state.D.shoppingLists) state.D.shoppingLists = {};
-      const date = activeDate;
-      if (!state.D.shoppingLists[date]) state.D.shoppingLists[date] = [];
+      if (!state.D.shoppingLists[activeDate]) state.D.shoppingLists[activeDate] = [];
       (intent.items || []).forEach(item => {
-        state.D.shoppingLists[date].push({
+        state.D.shoppingLists[activeDate].push({
           id: 'sh' + Date.now() + Math.random(),
           name: item.name, qty: item.qty || 1, price: item.price || 0, done: false,
         });
@@ -344,11 +406,7 @@ export function executeIntent(intent) {
       if (!intent.name) { _openEdit(intent); return; }
       if (!state.D.goals) state.D.goals = [];
       const w = state.D.wallets.find(w => w.name.toLowerCase().includes('сбереж')) || state.D.wallets[0];
-      state.D.goals.push({
-        id: 'goal' + Date.now(),
-        name: intent.name, target: intent.target_amount || 0,
-        walletId: w?.id, deadline: intent.deadline || null,
-      });
+      state.D.goals.push({ id: 'goal' + Date.now(), name: intent.name, target: intent.target_amount || 0, walletId: w?.id, deadline: intent.deadline || null });
       sched();
       _showToast('✓ Цель «' + intent.name + '» создана');
       break;
@@ -364,43 +422,29 @@ export function executeIntent(intent) {
       _showToast('✓ Категория «' + intent.name + '» добавлена');
       break;
     }
-    case 'check_balance':
-      break; // показывается в модалке подтверждения
-    default:
-      _openEdit(intent);
+    case 'check_balance': break;
+    default: _openEdit(intent);
   }
 }
 
-// ── Плавающая умная кнопка голоса ─────────────────────────────────────────
+// ── Плавающая умная кнопка ────────────────────────────────────────────────
 export function createSmartVoiceButton() {
-  // Инжектируем стили один раз
   if (!document.getElementById('smart-voice-btn-style')) {
     const style = document.createElement('style');
     style.id = 'smart-voice-btn-style';
     style.textContent = `
       #smart-voice-btn {
-        position: fixed;
-        bottom: 80px;
-        right: 20px;
-        z-index: 200;
-        width: 52px;
-        height: 52px;
-        border-radius: 50%;
-        background: var(--amber);
-        border: none;
+        position: fixed; bottom: 80px; right: 20px; z-index: 200;
+        width: 52px; height: 52px; border-radius: 50%;
+        background: var(--amber); border: none;
         box-shadow: 0 4px 16px rgba(0,0,0,.25);
-        font-size: 22px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        font-size: 22px; cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
         transition: background .2s, transform .15s;
         -webkit-tap-highlight-color: transparent;
       }
       #smart-voice-btn:active { transform: scale(.93); }
-      @media (min-width: 700px) {
-        #smart-voice-btn { bottom: 28px; right: 28px; }
-      }
+      @media (min-width: 700px) { #smart-voice-btn { bottom: 28px; right: 28px; } }
     `;
     document.head.appendChild(style);
   }
@@ -414,45 +458,29 @@ export function createSmartVoiceButton() {
 
   btn.onclick = async () => {
     if (!isVoiceConfigured()) {
-      alert('Голосовой ввод не настроен.\n\nПерейдите: Настройки → Голосовой ввод\nВведите URL вашего Cloudflare Worker.');
+      alert('Голосовой ввод не настроен.\n\nПерейдите: Администратор → введите URL Cloudflare Worker.');
       return;
     }
     if (active) { stopRecording(); return; }
-
     await startRecording(
       async text => {
-        active = false;
-        btn.textContent = '🎤';
-        btn.style.background = '';
-        btn.style.transform = '';
+        active = false; btn.textContent = '🎤'; btn.style.background = ''; btn.style.transform = '';
         _showToast('🔍 «' + text + '» — анализирую...');
         const intent = await parseIntent(text);
         handleVoiceIntent(intent, executeIntent);
       },
-      msg => {
-        active = false;
-        btn.textContent = '🎤';
-        btn.style.background = '';
-        btn.style.transform = '';
-        _showToast('⚠ ' + msg);
-      },
+      msg => { active = false; btn.textContent = '🎤'; btn.style.background = ''; btn.style.transform = ''; _showToast('⚠ ' + msg); },
       isRec => {
         active = isRec;
-        if (isRec) {
-          btn.textContent = '⏹';
-          btn.style.background = '#c0392b';
-          btn.style.transform = 'scale(1.12)';
-        } else {
-          btn.textContent = '⏳';
-          btn.style.background = 'var(--amber)';
-        }
+        if (isRec) { btn.textContent = '⏹'; btn.style.background = '#c0392b'; btn.style.transform = 'scale(1.12)'; }
+        else { btn.textContent = '⏳'; btn.style.background = 'var(--amber)'; }
       }
     );
   };
   return btn;
 }
 
-// ── Инлайн-кнопка микрофона для текстовых полей ───────────────────────────
+// ── Инлайн-кнопка для текстовых полей ────────────────────────────────────
 export function createVoiceButton(targetInputId, extraStyle = '') {
   const btn = document.createElement('button');
   btn.type = 'button';
@@ -463,39 +491,24 @@ export function createVoiceButton(targetInputId, extraStyle = '') {
 
   btn.onclick = async () => {
     if (!isVoiceConfigured()) {
-      alert('Голосовой ввод не настроен.\n\nПерейдите в раздел «Администратор» и введите URL вашего Cloudflare Worker.');
+      alert('Голосовой ввод не настроен.\n\nПерейдите в раздел «Администратор» и введите URL Cloudflare Worker.');
       return;
     }
     if (active) { stopRecording(); return; }
     await startRecording(
       text => {
-        active = false;
-        btn.textContent = '🎤';
-        btn.style.background = 'var(--amber-light)';
+        active = false; btn.textContent = '🎤'; btn.style.background = 'var(--amber-light)';
         const el = document.getElementById(targetInputId);
-        if (el) {
-          el.value = text;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.focus();
-        }
+        if (el) { el.value = text; el.dispatchEvent(new Event('input', { bubbles: true })); el.focus(); }
       },
-      msg => {
-        active = false;
-        btn.textContent = '🎤';
-        btn.style.background = 'var(--amber-light)';
-        _showToast('⚠ ' + msg);
-      },
-      isRec => {
-        active = isRec;
-        btn.textContent = isRec ? '⏹' : '⏳';
-        btn.style.background = isRec ? '#fdd' : 'var(--amber-light)';
-      }
+      msg => { active = false; btn.textContent = '🎤'; btn.style.background = 'var(--amber-light)'; _showToast('⚠ ' + msg); },
+      isRec => { active = isRec; btn.textContent = isRec ? '⏹' : '⏳'; btn.style.background = isRec ? '#fdd' : 'var(--amber-light)'; }
     );
   };
   return btn;
 }
 
-// ── Toast уведомление ─────────────────────────────────────────────────────
+// ── Toast ─────────────────────────────────────────────────────────────────
 export function _showToast(msg) {
   let t = document.getElementById('voice-toast');
   if (!t) {
