@@ -1,23 +1,68 @@
 /**
  * portfolio.js — Вкладка «Портфель»
  *
- * Блоки:
- * 1. Шапка: стоимость, П/У, прогресс к цели
- * 2. Стратегия (консервативная/умеренная/агрессивная) + параметры
- * 3. Анализ движка: распределение (диаграмма + полосы) + секторы
- * 4. Рекомендации: продать / купить / план пополнения
- * 5. Список активов с карточками
- * 6. LLM-объяснение по кнопке
+ * ИСПРАВЛЕНИЯ:
+ * 1. saveAsset: нормализация запятой→точка, чёткая валидация qty/buyPrice
+ * 2. _fillAssetTypeSelect: вставка полей до кнопки Сохранить (не после)
+ * 3. UI: понятный дашборд с таблицей активов, диаграммой, рекомендациями
  */
 
 import { $, fmt, state, sched, today, appConfig } from './core.js';
-import {
-  runEngine, STRATEGIES, REGIME_LABELS, GROUP_LABELS, ASSET_TYPES, SECTORS,
-} from './investment-engine.js';
 
 const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// ── Получение настроек ────────────────────────────────────────────────────
+// ── Нормализация числа (запятая→точка, пробелы) ───────────────────────────
+// ФИКС #2: пользователи вводят "884,25" или "1 000" — parseFloat не справлялся
+function toNum(val) {
+  if (val == null) return 0;
+  const s = String(val).replace(/\s/g, '').replace(',', '.');
+  const n = parseFloat(s);
+  return isNaN(n) ? 0 : n;
+}
+
+// ── Типы активов ─────────────────────────────────────────────────────────
+const ASSET_TYPES = [
+  { value: 'bond_fixed',    label: '📄 ОФЗ / фикс. купон' },
+  { value: 'bond_floating', label: '🔄 Флоатер (перем. купон)' },
+  { value: 'etf',           label: '💵 ETF / БПИФ (денежный)' },
+  { value: 'stock',         label: '📈 Акция' },
+  { value: 'cash',          label: '💴 Кэш / депозит' },
+  { value: 'currency',      label: '💶 Валюта' },
+];
+
+// ── Цвета по типу ─────────────────────────────────────────────────────────
+const TYPE_COLOR = {
+  bond_fixed: '#4A7C3F', bond_floating: '#5B9BD5',
+  etf: '#C9A96E', stock: '#C0392B', cash: '#95a5a6', currency: '#8e44ad',
+};
+const TYPE_LABEL = Object.fromEntries(ASSET_TYPES.map(t => [t.value, t.label]));
+
+// ── Стратегии ─────────────────────────────────────────────────────────────
+const STRATEGIES = {
+  conservative: { label: '🛡️ Консервативная', desc: 'Сохранение капитала, доходность чуть выше инфляции', maxVol: 10 },
+  moderate:     { label: '⚖️ Умеренная',       desc: 'Баланс роста и защиты', maxVol: 15 },
+  aggressive:   { label: '🚀 Агрессивная',     desc: 'Максимизация роста, высокий риск', maxVol: 25 },
+};
+
+// Целевые веса по стратегии и ставке
+function getTarget(strategy, keyRate) {
+  const high = keyRate >= 0.18;
+  const low  = keyRate < 0.14;
+  const targets = {
+    conservative: high
+      ? { etf: 0.55, bond_floating: 0.15, bond_fixed: 0.20, stock: 0.05, cash: 0.05 }
+      : { etf: 0.30, bond_floating: 0.10, bond_fixed: 0.45, stock: 0.10, cash: 0.05 },
+    moderate: high
+      ? { etf: 0.40, bond_floating: 0.10, bond_fixed: 0.20, stock: 0.25, cash: 0.05 }
+      : { etf: 0.20, bond_floating: 0.05, bond_fixed: 0.30, stock: 0.40, cash: 0.05 },
+    aggressive: high
+      ? { etf: 0.20, bond_floating: 0.05, bond_fixed: 0.10, stock: 0.60, cash: 0.05 }
+      : { etf: 0.10, bond_floating: 0.00, bond_fixed: 0.15, stock: 0.70, cash: 0.05 },
+  };
+  return targets[strategy] || targets.moderate;
+}
+
+// ── Настройки ─────────────────────────────────────────────────────────────
 function getSettings() {
   if (!state.D.portfolioSettings) {
     state.D.portfolioSettings = { keyRate: 0.21, monthlyCash: 10000, strategy: 'moderate', goalAmount: 0, goalYears: 5 };
@@ -30,458 +75,394 @@ export function renderPortfolio() {
   if (!state.D) return;
   if (!state.D.portfolio) state.D.portfolio = [];
 
-  const settings = getSettings();
+  const s = getSettings();
   const assets = state.D.portfolio;
-  const result = runEngine(assets, settings.keyRate, settings.monthlyCash, settings.strategy, settings.goalAmount, settings.goalYears);
+  const total = assets.reduce((sum, a) => sum + a.qty * (a.currentPrice || a.buyPrice), 0);
+  const totalCost = assets.reduce((sum, a) => sum + a.qty * a.buyPrice, 0);
+  const pnl = total - totalCost;
+  const pnlPct = totalCost > 0 ? Math.round(pnl / totalCost * 1000) / 10 : 0;
 
-  _ensureEngineContainers();
-  _renderSummary(result, assets);
-  _renderStrategy(settings, result);
-  _renderAnalysis(result);
-  _renderRecommendations(result);
-  _renderAssetList(assets, result.total || 0);
+  // Текущие веса по типу
+  const weights = {};
+  for (const a of assets) {
+    const t = a.assetType || 'stock';
+    const v = a.qty * (a.currentPrice || a.buyPrice);
+    weights[t] = (weights[t] || 0) + v;
+  }
+  const wPct = Object.fromEntries(Object.entries(weights).map(([k, v]) => [k, total > 0 ? v / total : 0]));
+
+  const target = getTarget(s.strategy, s.keyRate);
+  const expectedYield = _calcExpectedYield(assets, total);
+  const balScore = _calcBalanceScore(wPct, target);
+  const goalPct = s.goalAmount > 0 ? Math.min(Math.round(total / s.goalAmount * 100), 100) : null;
+  const reqYield = (s.goalAmount > 0 && s.goalYears > 0 && total > 0)
+    ? Math.round((Math.pow(s.goalAmount / total, 1 / s.goalYears) - 1) * 1000) / 10
+    : null;
+
+  _renderHeader(total, totalCost, pnl, pnlPct, expectedYield, balScore, goalPct, reqYield, s);
+  _renderStrategyBar(s);
+  _renderChart(wPct, target, total, assets);
+  _renderRecommendations(wPct, target, s, total, assets);
+  _renderTable(assets, total);
 }
 
-// ── Создаём контейнеры, если их нет ──────────────────────────────────────
-function _ensureEngineContainers() {
-  const anchor = $('portfolio-list'); if (!anchor) return;
-  const parent = anchor.parentNode;
-  const ids = ['port-summary-ext', 'port-strategy', 'port-analysis', 'port-recommendations'];
-  ids.forEach(id => {
-    if (!$(id)) {
-      const div = document.createElement('div');
-      div.id = id;
-      parent.insertBefore(div, anchor);
-    }
-  });
-}
+// ── Блок 1: Шапка ─────────────────────────────────────────────────────────
+function _renderHeader(total, totalCost, pnl, pnlPct, yld, score, goalPct, reqYield, s) {
+  const summaryEl = $('portfolio-summary'); if (!summaryEl) return;
 
-// ── 1. Шапка ─────────────────────────────────────────────────────────────
-function _renderSummary(result, assets) {
-  const summaryEl = $('portfolio-summary');
-  const extEl = $('port-summary-ext');
-  if (!summaryEl) return;
-
-  const total = result.total || 0;
-  const totalCost = assets.reduce((s, a) => s + a.qty * a.buyPrice, 0);
-  const totalPnl = total - totalCost;
-  const pnlPct = totalCost > 0 ? Math.round(totalPnl / totalCost * 1000) / 10 : 0;
-  const ri = REGIME_LABELS[result.regime || 'neutral'];
+  const hl = s.keyRate >= 0.18 ? '🔴 Высокая ставка' : s.keyRate >= 0.14 ? '🟡 Нейтральная' : '🟢 Низкая ставка';
+  const scoreColor = score >= 70 ? 'var(--green-dark)' : score >= 40 ? 'var(--amber-dark)' : 'var(--red)';
 
   summaryEl.innerHTML = `
-    <div class="bal-grid">
-      <div class="bal-item">
-        <div class="bal-lbl">СТОИМОСТЬ</div>
-        <div class="bal-val">${fmt(Math.round(total))}</div>
-      </div>
-      <div class="bal-item">
-        <div class="bal-lbl">ВЛОЖЕНО</div>
-        <div class="bal-val">${fmt(Math.round(totalCost))}</div>
-      </div>
-      <div class="bal-item ${totalPnl >= 0 ? 'green' : 'red'}">
-        <div class="bal-lbl">ПРИБЫЛЬ / УБЫТОК</div>
-        <div class="bal-val ${totalPnl >= 0 ? 'pos' : 'neg'}">${totalPnl >= 0 ? '+' : ''}${fmt(Math.round(totalPnl))}</div>
-      </div>
-      <div class="bal-item ${totalPnl >= 0 ? 'green' : 'red'}">
-        <div class="bal-lbl">ДОХОДНОСТЬ</div>
-        <div class="bal-val ${totalPnl >= 0 ? 'pos' : 'neg'}">${pnlPct >= 0 ? '+' : ''}${pnlPct}%</div>
-      </div>
-    </div>`;
-
-  if (!extEl) return;
-  const gp = result.goalProgress;
-  const goalBlock = gp ? `
-    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;flex:1;min-width:200px">
-      <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">🎯 ПРОГРЕСС К ЦЕЛИ</div>
-      <div style="font-size:18px;font-weight:700;color:var(--topbar)">${gp.progressPct}%</div>
-      <div style="font-size:11px;color:var(--text2);margin:4px 0">${fmt(Math.round(total))} из ${fmt(gp.goalAmount)}</div>
-      <div style="background:var(--g50);border-radius:3px;height:6px;margin:5px 0">
-        <div style="height:6px;border-radius:3px;background:var(--amber);width:${gp.progressPct}%"></div>
-      </div>
-      ${gp.requiredYield !== null ? `<div style="font-size:10px;color:var(--text2)">Нужная доходность: <b style="color:${gp.requiredYield > result.expectedYield ? 'var(--red)' : 'var(--green-dark)'}">${gp.requiredYield}% / год</b></div>` : ''}
-    </div>` : '';
-
-  extEl.innerHTML = `
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
-      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;display:flex;align-items:center;gap:10px;flex:1;min-width:200px">
-        <span style="font-size:22px">${ri.icon}</span>
-        <div>
-          <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px">РЕЖИМ РЫНКА</div>
-          <div style="font-size:13px;font-weight:700;color:${ri.color}">${ri.label}</div>
-          <div style="font-size:10px;color:var(--text2);line-height:1.4;max-width:220px">${ri.desc}</div>
+
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 16px;flex:2;min-width:200px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">ПОРТФЕЛЬ</div>
+        <div style="font-size:26px;font-weight:700;color:var(--topbar);letter-spacing:-.5px">${fmt(Math.round(total))}</div>
+        <div style="font-size:12px;margin-top:4px">
+          <span style="color:var(--text2)">вложено ${fmt(Math.round(totalCost))}</span>
+          <span style="margin-left:10px;font-weight:700;color:${pnl >= 0 ? 'var(--green-dark)' : 'var(--red)'}">
+            ${pnl >= 0 ? '+' : ''}${fmt(Math.round(pnl))} (${pnlPct >= 0 ? '+' : ''}${pnlPct}%)
+          </span>
         </div>
       </div>
-      ${!result.empty ? `
-      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;flex:1;min-width:120px">
-        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">БАЛАНСИРОВКА</div>
-        <div style="font-size:24px;font-weight:700;color:${result.strategyScore >= 70 ? 'var(--green-dark)' : result.strategyScore >= 40 ? 'var(--amber-dark)' : 'var(--red)'}">
-          ${result.strategyScore}<span style="font-size:12px;color:var(--text2)">/100</span>
-        </div>
-        <div style="font-size:10px;color:var(--text2);margin-top:2px">${result.strategyScore >= 70 ? 'Сбалансирован' : result.strategyScore >= 40 ? 'Требует внимания' : 'Дисбаланс'}</div>
+
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 16px;flex:1;min-width:120px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">БАЛАНС</div>
+        <div style="font-size:26px;font-weight:700;color:${scoreColor}">${score}<span style="font-size:12px;color:var(--text2)">/100</span></div>
+        <div style="font-size:10px;color:${scoreColor}">${score >= 70 ? '✓ Сбалансирован' : score >= 40 ? '⚠ Проверьте' : '✗ Дисбаланс'}</div>
       </div>
-      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;flex:1;min-width:120px">
+
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 16px;flex:1;min-width:120px">
         <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">ОЖ. ДОХОДНОСТЬ</div>
-        <div style="font-size:24px;font-weight:700;color:var(--green-dark)">${result.expectedYield}%</div>
-        <div style="font-size:10px;color:var(--text2);margin-top:2px">годовых</div>
+        <div style="font-size:26px;font-weight:700;color:var(--green-dark)">${yld}%</div>
+        <div style="font-size:10px;color:var(--text2)">${hl}</div>
       </div>
-      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;flex:1;min-width:120px">
-        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">ВОЛАТИЛЬНОСТЬ</div>
-        <div style="font-size:24px;font-weight:700;color:${result.volatilityOk ? 'var(--green-dark)' : 'var(--red)'}">~${result.approxVolatility}%</div>
-        <div style="font-size:10px;color:${result.volatilityOk ? 'var(--green-dark)' : 'var(--red)'};margin-top:2px">${result.volatilityOk ? '✓ В норме' : '⚠ Выше нормы'}</div>
+
+      ${goalPct !== null ? `
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 16px;flex:1;min-width:140px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">🎯 ЦЕЛЬ</div>
+        <div style="font-size:26px;font-weight:700;color:var(--amber-dark)">${goalPct}%</div>
+        <div style="background:var(--g50);border-radius:3px;height:4px;margin:4px 0">
+          <div style="height:4px;border-radius:3px;background:var(--amber);width:${goalPct}%"></div>
+        </div>
+        ${reqYield !== null ? `<div style="font-size:10px;color:${reqYield > 0 ? 'var(--text2)' : 'var(--green-dark)'}">нужно ${reqYield > 0 ? reqYield + '%/год' : 'уже достигнуто'}</div>` : ''}
       </div>` : ''}
-      ${goalBlock}
+
     </div>`;
 }
 
-// ── 2. Стратегия и параметры ──────────────────────────────────────────────
-function _renderStrategy(settings, result) {
-  const el = $('port-strategy'); if (!el) return;
+// ── Блок 2: Стратегия ─────────────────────────────────────────────────────
+function _renderStrategyBar(s) {
+  let el = $('port-strategy-bar');
+  if (!el) {
+    const anchor = $('portfolio-list'); if (!anchor) return;
+    el = document.createElement('div'); el.id = 'port-strategy-bar';
+    anchor.parentNode.insertBefore(el, anchor);
+  }
 
-  const stratBtns = Object.entries(STRATEGIES).map(([key, s]) => {
-    const active = key === settings.strategy;
-    return `<button onclick="window.setPortfolioStrategy('${key}')" style="
-      flex:1;padding:8px 6px;border:2px solid ${active ? s.color : 'var(--border)'};
+  const btns = Object.entries(STRATEGIES).map(([k, v]) => {
+    const active = k === s.strategy;
+    return `<button onclick="window.setPortStrategy('${k}')" style="
+      flex:1;padding:8px 4px;border:2px solid ${active ? 'var(--amber)' : 'var(--border)'};
       border-radius:8px;background:${active ? 'var(--amber-light)' : 'var(--bg)'};
-      cursor:pointer;font-size:11px;font-weight:700;color:${active ? s.color : 'var(--text2)'};
-      transition:.15s">${s.icon} ${s.label}</button>`;
+      color:${active ? 'var(--topbar)' : 'var(--text2)'};font-size:11px;font-weight:700;cursor:pointer">${v.label}</button>`;
   }).join('');
 
   el.innerHTML = `
-    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px 16px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">⚙️ ПАРАМЕТРЫ АНАЛИЗА</div>
-      <div style="display:flex;gap:8px;margin-bottom:12px">${stratBtns}</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;padding:7px 10px;background:var(--amber-light);border-radius:6px">
-        ${(STRATEGIES[settings.strategy] || STRATEGIES.moderate).desc}
-        ${result.strategyData ? ` Допустимая волатильность: <b>до ${result.strategyData.maxVolatility * 100}% / год</b>.` : ''}
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-        <div class="fg" style="margin:0;flex:1;min-width:130px">
-          <label style="font-size:10px">КЛЮЧЕВАЯ СТАВКА ЦБ %</label>
-          <input class="fi" type="number" id="eng-key-rate" value="${Math.round(settings.keyRate * 100)}" min="1" max="50" step="0.25" style="padding:6px 8px">
+    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 16px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">⚙️ ПАРАМЕТРЫ</div>
+      <div style="display:flex;gap:6px;margin-bottom:10px">${btns}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px">${(STRATEGIES[s.strategy] || STRATEGIES.moderate).desc}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <div class="fg" style="margin:0;flex:1;min-width:110px">
+          <label style="font-size:10px">СТАВКА ЦБ %</label>
+          <input class="fi" type="number" id="port-key-rate" value="${Math.round(s.keyRate * 100)}" min="1" max="50" step="0.25" style="padding:6px 8px">
         </div>
-        <div class="fg" style="margin:0;flex:1;min-width:130px">
-          <label style="font-size:10px">ЕЖЕМЕСЯЧНЫЙ ВЗНОС ₽</label>
-          <input class="fi" type="number" id="eng-monthly" value="${settings.monthlyCash}" min="0" step="1000" style="padding:6px 8px">
+        <div class="fg" style="margin:0;flex:1;min-width:110px">
+          <label style="font-size:10px">ВЗНОС В МЕСЯЦ ₽</label>
+          <input class="fi" type="number" id="port-monthly" value="${s.monthlyCash}" min="0" step="1000" style="padding:6px 8px">
         </div>
-        <div class="fg" style="margin:0;flex:1;min-width:130px">
-          <label style="font-size:10px">ЦЕЛЬ ₽ (0 = не задана)</label>
-          <input class="fi" type="number" id="eng-goal-amount" value="${settings.goalAmount || 0}" min="0" step="100000" style="padding:6px 8px">
+        <div class="fg" style="margin:0;flex:1;min-width:110px">
+          <label style="font-size:10px">ЦЕЛЬ ₽</label>
+          <input class="fi" type="number" id="port-goal" value="${s.goalAmount || 0}" min="0" step="10000" style="padding:6px 8px">
         </div>
-        <div class="fg" style="margin:0;flex:1;min-width:100px">
-          <label style="font-size:10px">СРОК (ЛЕТ)</label>
-          <input class="fi" type="number" id="eng-goal-years" value="${settings.goalYears || 5}" min="1" max="50" style="padding:6px 8px">
+        <div class="fg" style="margin:0;min-width:80px">
+          <label style="font-size:10px">СРОК ЛЕТ</label>
+          <input class="fi" type="number" id="port-years" value="${s.goalYears || 5}" min="1" max="50" style="padding:6px 8px">
         </div>
-        <button class="sbtn amber" onclick="window.saveEngineSettings()" style="padding:8px 14px;height:36px;align-self:flex-end">Пересчитать</button>
+        <button class="sbtn amber" onclick="window.savePortSettings()" style="padding:8px 12px;height:36px;align-self:flex-end">Пересчитать</button>
       </div>
     </div>`;
 }
 
-// ── 3. Анализ: распределение + сектора ────────────────────────────────────
-function _renderAnalysis(result) {
-  const el = $('port-analysis'); if (!el) return;
-  if (result.empty) { el.innerHTML = ''; return; }
+// ── Блок 3: Диаграмма и распределение ────────────────────────────────────
+function _renderChart(wPct, target, total, assets) {
+  let el = $('port-chart-block');
+  if (!el) {
+    const anchor = $('portfolio-list'); if (!anchor) return;
+    el = document.createElement('div'); el.id = 'port-chart-block';
+    anchor.parentNode.insertBefore(el, anchor);
+  }
+  if (!assets.length) { el.innerHTML = ''; return; }
 
-  const { weights, target, deviations, sectorWeights, sectorWarnings } = result;
-
-  // SVG диаграмма пончик
-  const donutSvg = _buildDonut(weights);
-
-  // Полосы распределения
-  const allocBars = Object.entries(GROUP_LABELS).map(([k, g]) => {
-    const cur = Math.round((weights[k] || 0) * 100);
-    const tgt = Math.round((target[k] || 0) * 100);
-    const dev = deviations[k] || 0;
-    const devSign = dev > 0 ? '+' : '';
-    const devColor = Math.abs(dev) < 0.05 ? 'var(--green-dark)' : Math.abs(dev) < 0.10 ? 'var(--amber-dark)' : 'var(--red)';
+  const donut = _donutSvg(wPct);
+  const rows = ASSET_TYPES.map(t => {
+    const cur = Math.round((wPct[t.value] || 0) * 100);
+    const tgt = Math.round((target[t.value] || 0) * 100);
+    const dev = cur - tgt;
+    const devColor = Math.abs(dev) <= 5 ? 'var(--green-dark)' : Math.abs(dev) <= 15 ? 'var(--amber-dark)' : 'var(--red)';
+    const col = TYPE_COLOR[t.value] || 'var(--amber)';
     return `
-      <div style="margin-bottom:9px">
+      <div style="margin-bottom:8px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
-          <span style="font-size:12px;font-weight:700;color:var(--topbar)">${g.icon} ${g.label}</span>
-          <div style="display:flex;gap:8px;font-size:11px;align-items:center">
-            <span style="color:var(--text2)">факт <b style="color:var(--topbar)">${cur}%</b></span>
+          <span style="font-size:12px;font-weight:700;color:var(--topbar)">${t.label}</span>
+          <div style="font-size:11px;display:flex;gap:8px;align-items:center">
+            <span style="color:var(--text2)">факт <b>${cur}%</b></span>
             <span style="color:var(--text2)">цель <b>${tgt}%</b></span>
-            <span style="font-weight:700;color:${devColor};min-width:32px;text-align:right">${devSign}${Math.round(dev * 100)}п.п.</span>
+            <span style="font-weight:700;color:${devColor};min-width:30px;text-align:right">${dev > 0 ? '+' : ''}${dev}п.</span>
           </div>
         </div>
         <div style="position:relative;background:var(--g50);border-radius:4px;height:8px">
-          <div style="position:absolute;height:8px;border-radius:4px;background:${g.color};opacity:.25;width:${tgt}%"></div>
-          <div style="position:absolute;height:8px;border-radius:4px;background:${devColor};width:${Math.min(cur, 100)}%;transition:width .3s"></div>
+          <div style="position:absolute;height:8px;border-radius:4px;background:${col};opacity:.2;width:${tgt}%"></div>
+          <div style="position:absolute;height:8px;border-radius:4px;background:${col};width:${Math.min(cur,100)}%;transition:width .3s"></div>
         </div>
       </div>`;
   }).join('');
-
-  // Сектора
-  const sectorBars = Object.entries(sectorWeights).slice(0, 8).map(([sector, v]) => {
-    const warn = v.pct > 35;
-    return `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:.5px solid var(--border)">
-        <span style="font-size:12px;color:var(--topbar)">${sector}</span>
-        <div style="display:flex;align-items:center;gap:8px">
-          <div style="width:80px;background:var(--g50);border-radius:3px;height:5px">
-            <div style="height:5px;border-radius:3px;background:${warn ? 'var(--red)' : 'var(--amber)'};width:${Math.min(v.pct, 100)}%"></div>
-          </div>
-          <span style="font-size:12px;font-weight:700;color:${warn ? 'var(--red)' : 'var(--topbar)'};min-width:28px;text-align:right">${v.pct}%</span>
-        </div>
-      </div>`;
-  }).join('');
-
-  const warningsHtml = sectorWarnings.length
-    ? sectorWarnings.map(w => `<div class="notice amber" style="font-size:11px;margin-bottom:5px">⚠ ${esc(w)}</div>`).join('')
-    : '';
 
   el.innerHTML = `
     <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px 16px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:12px">📊 АНАЛИЗ РАСПРЕДЕЛЕНИЯ</div>
-      ${warningsHtml}
+      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:12px">📊 СТРУКТУРА ПОРТФЕЛЯ</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">
-        <div style="flex-shrink:0">${donutSvg}</div>
-        <div style="flex:1;min-width:200px">${allocBars}</div>
-      </div>
-      <div style="margin-top:14px">
-        <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">РАСПРЕДЕЛЕНИЕ ПО СЕКТОРАМ</div>
-        ${sectorBars || '<div style="font-size:12px;color:var(--text2)">Добавьте активы с известными тикерами</div>'}
+        <div style="flex-shrink:0">${donut}</div>
+        <div style="flex:1;min-width:200px">${rows}</div>
       </div>
     </div>`;
 }
 
-// ── SVG-диаграмма пончик ──────────────────────────────────────────────────
-function _buildDonut(weights) {
-  const R = 50, r = 30, cx = 60, cy = 60;
-  const colors = {
-    safe: '#C9A96E', floating: '#5B9BD5', fixed: '#4A7C3F',
-    stocks: '#C0392B', cash: '#95a5a6',
-  };
-  const data = Object.entries(GROUP_LABELS)
-    .map(([k]) => ({ key: k, val: weights[k] || 0 }))
-    .filter(d => d.val > 0.005);
+function _donutSvg(wPct) {
+  const R = 50, r = 32, cx = 60, cy = 60;
+  const data = ASSET_TYPES.map(t => ({ key: t.value, val: wPct[t.value] || 0, color: TYPE_COLOR[t.value] || '#aaa' })).filter(d => d.val > 0.01);
   if (!data.length) return '';
-
-  let startAngle = -Math.PI / 2;
-  const slices = data.map(d => {
-    const angle = d.val * 2 * Math.PI;
-    const endAngle = startAngle + angle;
-    const x1 = cx + R * Math.cos(startAngle);
-    const y1 = cy + R * Math.sin(startAngle);
-    const x2 = cx + R * Math.cos(endAngle);
-    const y2 = cy + R * Math.sin(endAngle);
-    const ix1 = cx + r * Math.cos(startAngle);
-    const iy1 = cy + r * Math.sin(startAngle);
-    const ix2 = cx + r * Math.cos(endAngle);
-    const iy2 = cy + r * Math.sin(endAngle);
-    const large = angle > Math.PI ? 1 : 0;
-    const path = `M${x1},${y1} A${R},${R} 0 ${large},1 ${x2},${y2} L${ix2},${iy2} A${r},${r} 0 ${large},0 ${ix1},${iy1} Z`;
-    const result = { key: d.key, path, color: colors[d.key] || '#aaa', pct: Math.round(d.val * 100) };
-    startAngle = endAngle;
-    return result;
-  });
-
-  const pathsHtml = slices.map(s =>
-    `<path d="${s.path}" fill="${s.color}" opacity=".85" stroke="var(--bg)" stroke-width="1.5"/>`
-  ).join('');
-
-  const legendHtml = slices.map(s =>
+  let a = -Math.PI / 2;
+  const paths = data.map(d => {
+    const end = a + d.val * 2 * Math.PI;
+    const lg = d.val > 0.5 ? 1 : 0;
+    const p = `M${cx + R * Math.cos(a)},${cy + R * Math.sin(a)} A${R},${R} 0 ${lg},1 ${cx + R * Math.cos(end)},${cy + R * Math.sin(end)} L${cx + r * Math.cos(end)},${cy + r * Math.sin(end)} A${r},${r} 0 ${lg},0 ${cx + r * Math.cos(a)},${cy + r * Math.sin(a)} Z`;
+    const res = `<path d="${p}" fill="${d.color}" opacity=".85" stroke="var(--bg)" stroke-width="1.5"/>`;
+    a = end; return res;
+  }).join('');
+  const legend = data.map(d =>
     `<div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--topbar)">
-      <div style="width:8px;height:8px;border-radius:2px;background:${s.color};flex-shrink:0"></div>
-      ${GROUP_LABELS[s.key].icon} ${s.pct}%
-    </div>`
-  ).join('');
-
-  return `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-      <svg width="120" height="120" viewBox="0 0 120 120">${pathsHtml}</svg>
-      <div style="display:flex;flex-direction:column;gap:3px">${legendHtml}</div>
-    </div>`;
+      <div style="width:8px;height:8px;border-radius:2px;background:${d.color};flex-shrink:0"></div>
+      ${TYPE_LABEL[d.key]?.replace(/[📄🔄💵📈💴💶]\s?/, '') || d.key} ${Math.round(d.val * 100)}%
+    </div>`).join('');
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+    <svg width="120" height="120" viewBox="0 0 120 120">${paths}</svg>
+    <div style="display:flex;flex-direction:column;gap:3px">${legend}</div>
+  </div>`;
 }
 
-// ── 4. Рекомендации ───────────────────────────────────────────────────────
-function _renderRecommendations(result) {
-  const el = $('port-recommendations'); if (!el) return;
-  if (result.empty) { el.innerHTML = ''; return; }
+// ── Блок 4: Рекомендации ──────────────────────────────────────────────────
+function _renderRecommendations(wPct, target, s, total, assets) {
+  let el = $('port-recs');
+  if (!el) {
+    const anchor = $('portfolio-list'); if (!anchor) return;
+    el = document.createElement('div'); el.id = 'port-recs';
+    anchor.parentNode.insertBefore(el, anchor);
+  }
+  if (!assets.length) { el.innerHTML = ''; return; }
 
-  const { actions, monthlyPlan, concentration } = result;
+  // Рекомендации из стратегии (из файла пользователя)
+  const high = s.keyRate >= 0.18;
+  const recs = [];
 
-  const concHtml = concentration.map(c =>
-    `<div class="notice amber" style="font-size:11px;margin-bottom:6px">⚠ ${esc(c.message)}</div>`
-  ).join('');
+  for (const t of ASSET_TYPES) {
+    const k = t.value;
+    const cur = wPct[k] || 0;
+    const tgt = target[k] || 0;
+    const dev = cur - tgt;
+    if (dev > 0.08) {
+      recs.push({ type: 'sell', group: k, dev: Math.round(dev * 100), amount: Math.round(total * dev * 0.5) });
+    } else if (dev < -0.08) {
+      recs.push({ type: 'buy', group: k, dev: Math.round(-dev * 100), amount: Math.round(total * (-dev) + s.monthlyCash * (-dev / Object.values(target).filter(v => v > 0).length)) });
+    }
+  }
 
-  // Карточки «Продать»
-  const sellHtml = actions.sell.length ? `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:.5px;margin-bottom:8px">📉 СОКРАТИТЬ ПОЗИЦИИ</div>
-      ${actions.sell.map(s => `
-        <div style="display:flex;justify-content:space-between;padding:9px 12px;background:var(--red-bg);border:1px solid rgba(192,57,43,.2);border-radius:8px;margin-bottom:6px;align-items:center">
-          <div>
-            <span style="font-size:13px;font-weight:700;color:var(--topbar)">${esc(s.ticker)}</span>
-            <div style="font-size:10px;color:var(--text2);margin-top:2px">${esc(s.reason)}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-size:13px;font-weight:700;color:var(--red)">−${fmt(s.amount_rub)}</div>
-            <div style="font-size:9px;color:var(--text2)">25% позиции</div>
-          </div>
-        </div>`).join('')}
-    </div>` : '';
+  // Конкретные инструменты из документа пользователя
+  const instruments = {
+    bond_fixed:    { ticker: 'ОФЗ 26248', reason: high ? 'Фиксируем 14.67% YTM. При снижении ставки до 13% цена вырастет до 95–100% от номинала — двойная выгода' : 'ОФЗ 26248 — купон 12.25%, цена ~88% номинала' },
+    bond_floating: { ticker: 'ОФЗ 29019', reason: 'Флоатер RUONIA+0.1% защищает при дальнейшем росте ставки' },
+    etf:           { ticker: 'LQDT',      reason: high ? 'Денежный ETF ~21% годовых при текущей ставке ЦБ — лучший кэш' : 'LQDT: парковка кэша с доходностью ключевой ставки' },
+    stock:         { ticker: 'TMOS / SBER', reason: 'Индексный ETF МосБиржи или Сбер с дивидендной доходностью ~12%' },
+    cash:          { ticker: 'LQDT',      reason: 'Кэш лучше держать в денежном ETF — начисляется каждый день' },
+  };
 
-  // Карточки «Купить»
-  const buyHtml = actions.buy.length ? `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--green-dark);letter-spacing:.5px;margin-bottom:8px">📈 ДОКУПИТЬ</div>
-      ${actions.buy.map(b => `
-        <div style="background:var(--green-bg);border:1px solid rgba(74,124,63,.2);border-radius:8px;margin-bottom:8px;overflow:hidden">
-          <div style="display:flex;justify-content:space-between;padding:9px 12px;align-items:center">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--topbar)">${esc(b.ticker)} <span style="font-size:11px;font-weight:400;color:var(--text2)">${esc(b.name)}</span></div>
-              <div style="font-size:10px;color:var(--text2);margin-top:2px">${esc(b.reason)}</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0;margin-left:8px">
-              <div style="font-size:13px;font-weight:700;color:var(--green-dark)">+${fmt(b.amount_rub)}</div>
-              <div style="font-size:9px;color:var(--green-dark)">✓ ${esc(b.confidence)}</div>
-            </div>
-          </div>
-          ${b.alternatives?.length ? `
-          <div style="padding:6px 12px 8px;border-top:1px solid rgba(74,124,63,.15)">
-            <div style="font-size:10px;color:var(--text2);margin-bottom:4px">АЛЬТЕРНАТИВЫ:</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              ${b.alternatives.map(alt => `
-                <div style="font-size:10px;background:var(--card);border:1px solid var(--border);border-radius:5px;padding:3px 7px;color:var(--topbar)">
-                  <b>${esc(alt.ticker)}</b> ${alt.name ? esc(alt.name) : ''}${alt.yield_pct ? ` ~${alt.yield_pct}%` : ''}
-                </div>`).join('')}
-            </div>
-          </div>` : ''}
-        </div>`).join('')}
-    </div>` : '';
-
-  // Ежемесячный план
-  const planHtml = monthlyPlan.length ? `
-    <div style="margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--blue);letter-spacing:.5px;margin-bottom:8px">📅 ПЛАН ПОПОЛНЕНИЯ (ЭТОТ МЕСЯЦ)</div>
-      ${monthlyPlan.map(p => `
-        <div style="display:flex;justify-content:space-between;padding:8px 12px;background:#E8F0FA;border-radius:8px;margin-bottom:5px;align-items:center">
-          <div>
-            <span style="font-size:13px;font-weight:700;color:var(--topbar)">${esc(p.ticker)}</span>
-            <span style="font-size:11px;color:var(--text2);margin-left:6px">${esc(p.name)}</span>
-            <div style="font-size:10px;color:var(--text2);margin-top:2px">${esc(p.reason)}</div>
-          </div>
-          <span style="font-size:13px;font-weight:700;color:var(--blue)">${fmt(p.amount_rub)}</span>
-        </div>`).join('')}
-      <div style="font-size:10px;color:var(--text2);margin-top:4px">* Тикеры — ориентиры по классу актива, не инвестиционная рекомендация</div>
-    </div>` : `<div style="font-size:12px;color:var(--green-dark);padding:8px 0;margin-bottom:12px">✅ Портфель сбалансирован — ребалансировка не нужна</div>`;
-
-  const llmBlock = `
-    <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
-      <button class="btn-sec" onclick="window.explainPortfolio()" id="btn-explain-portfolio" style="font-size:12px;padding:8px 16px">
-        🤖 Объяснить простым языком (YandexGPT)
-      </button>
-      <div id="portfolio-llm-result" style="margin-top:10px"></div>
-    </div>`;
-
-  el.innerHTML = `
-    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px 16px;margin-bottom:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:12px">💡 РЕКОМЕНДАЦИИ ДВИЖКА</div>
-      ${concHtml}
-      ${sellHtml}
-      ${buyHtml}
-      ${planHtml}
-      ${llmBlock}
-    </div>`;
-}
-
-// ── 5. Список активов ─────────────────────────────────────────────────────
-function _renderAssetList(assets, total) {
-  const el = $('portfolio-list'); if (!el) return;
-  if (!assets.length) {
-    el.innerHTML = '<div style="color:var(--text2);font-size:13px;padding:8px 0">Нет активов. Добавьте первую ценную бумагу.</div>';
+  if (!recs.length) {
+    el.innerHTML = `
+      <div style="background:var(--green-bg);border:1.5px solid rgba(74,124,63,.3);border-radius:10px;padding:12px 16px;margin-bottom:12px;font-size:13px;color:var(--green-dark);font-weight:700">
+        ✅ Портфель сбалансирован по выбранной стратегии — ребалансировка не нужна
+      </div>`;
     return;
   }
-  el.innerHTML = assets.map((a, i) => _assetCard(a, i, total)).join('');
-}
 
-function _assetCard(a, i, total) {
-  const curVal = a.qty * (a.currentPrice || a.buyPrice);
-  const cost = a.qty * a.buyPrice;
-  const pnl = curVal - cost;
-  const pnlP = cost > 0 ? Math.round(pnl / cost * 1000) / 10 : 0;
-  const share = total > 0 ? Math.round(curVal / total * 100) : 0;
-  const color = pnl >= 0 ? 'var(--green-dark)' : 'var(--red)';
-  const lastUpd = a.lastUpdated ? new Date(a.lastUpdated + 'T12:00:00').toLocaleDateString('ru-RU') : 'не обновлялась';
-  const typeLbl = ASSET_TYPES.find(t => t.value === a.assetType)?.label || '⚠ Тип не задан';
-  const sector = (SECTORS || {})[a.ticker?.toUpperCase()] || 'Прочее';
-  const daysSince = a.lastUpdated ? Math.floor((Date.now() - new Date(a.lastUpdated + 'T12:00:00')) / 864e5) : 999;
-
-  let rec = ''; let recColor = 'var(--text2)';
-  if (daysSince >= 14) { rec = `⏰ Цена не обновлялась ${daysSince} дн.`; recColor = 'var(--orange-dark)'; }
-  else if (pnlP >= 50) { rec = `🚀 +${pnlP}% — рассмотрите фиксацию части прибыли`; recColor = 'var(--green-dark)'; }
-  else if (pnlP >= 20) { rec = `📈 +${pnlP}% — хорошая доходность, держите позицию`; recColor = 'var(--green-dark)'; }
-  else if (pnlP >= 5)  { rec = `✅ +${pnlP}% — позиция в плюсе`; recColor = 'var(--green-dark)'; }
-  else if (pnlP >= -5) { rec = `➡ ${pnlP}% — около нуля, оцените перспективы`; recColor = 'var(--amber-dark)'; }
-  else if (pnlP >= -20){ rec = `⚠ ${pnlP}% — убыток, проверьте показатели компании`; recColor = 'var(--orange-dark)'; }
-  else                  { rec = `🔴 ${pnlP}% — значительный убыток, рассмотрите стоп-лосс`; recColor = 'var(--red)'; }
-  if (share > 40) rec += `. Доля ${share}% — диверсифицируйте.`;
-
-  return `
-    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div>
-          <div style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(a.ticker)} <span style="font-size:12px;font-weight:400;color:var(--text2)">${esc(a.name || '')}</span></div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${a.qty} шт. · покупка ${fmt(a.buyPrice)}/шт · цена ${fmt(a.currentPrice || a.buyPrice)}/шт</div>
-          <div style="font-size:10px;margin-top:2px">
-            <span style="color:var(--amber-dark)">${esc(typeLbl)}</span>
-            <span style="color:var(--text2);margin-left:8px">📁 ${sector}</span>
+  const recsHtml = recs.map(rec => {
+    const instr = instruments[rec.group] || { ticker: '?', reason: '' };
+    const isBuy = rec.type === 'buy';
+    const bg = isBuy ? 'var(--green-bg)' : 'var(--red-bg)';
+    const border = isBuy ? 'rgba(74,124,63,.2)' : 'rgba(192,57,43,.2)';
+    const color = isBuy ? 'var(--green-dark)' : 'var(--red)';
+    const icon = isBuy ? '📈 ДОКУПИТЬ' : '📉 СОКРАТИТЬ';
+    const sign = isBuy ? '+' : '−';
+    return `
+      <div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:10px 14px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div style="flex:1">
+            <div style="font-size:10px;font-weight:700;color:${color};letter-spacing:.5px;margin-bottom:3px">${icon} · ${TYPE_LABEL[rec.group]}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--topbar);margin-bottom:3px">${instr.ticker}</div>
+            <div style="font-size:11px;color:var(--text2);line-height:1.4">${instr.reason}</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;margin-left:10px">
+            <div style="font-size:14px;font-weight:700;color:${color}">${sign}${fmt(rec.amount)}</div>
+            <div style="font-size:10px;color:var(--text2)">отклонение ${rec.dev}п.п.</div>
           </div>
         </div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
-          <button class="sbtn blue" onclick="window.editAsset(${i})">Изм.</button>
-          <button class="sbtn amber" onclick="window.updatePrice(${i})">Цена</button>
-          <button class="sbtn red" onclick="window.deleteAsset(${i})">✕</button>
-        </div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px">
-        <div style="background:var(--amber-light);border-radius:6px;padding:7px 9px">
-          <div style="font-size:9px;color:var(--text2);font-weight:700">СТОИМОСТЬ</div>
-          <div style="font-size:13px;font-weight:700;color:var(--topbar)">${fmt(Math.round(curVal))}</div>
-        </div>
-        <div style="background:${pnl >= 0 ? 'var(--green-bg)' : 'var(--red-bg)'};border-radius:6px;padding:7px 9px">
-          <div style="font-size:9px;color:var(--text2);font-weight:700">П/У</div>
-          <div style="font-size:13px;font-weight:700;color:${color}">${pnl >= 0 ? '+' : ''}${fmt(Math.round(pnl))}</div>
-        </div>
-        <div style="background:${pnl >= 0 ? 'var(--green-bg)' : 'var(--red-bg)'};border-radius:6px;padding:7px 9px">
-          <div style="font-size:9px;color:var(--text2);font-weight:700">%</div>
-          <div style="font-size:13px;font-weight:700;color:${color}">${pnlP >= 0 ? '+' : ''}${pnlP}%</div>
-        </div>
-        <div style="background:var(--amber-light);border-radius:6px;padding:7px 9px">
-          <div style="font-size:9px;color:var(--text2);font-weight:700">ДОЛЯ</div>
-          <div style="font-size:13px;font-weight:700;color:var(--topbar)">${share}%</div>
-        </div>
-      </div>
-      <div style="background:var(--g50);border-radius:3px;height:5px;margin-bottom:6px">
-        <div style="height:5px;border-radius:3px;background:var(--amber);width:${share}%"></div>
-      </div>
-      <div style="font-size:10px;color:var(--text2);margin-bottom:5px">Цена обновлена: ${lastUpd}</div>
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;display:flex;gap:8px;align-items:flex-start">
-        <div style="font-size:11px;color:${recColor};line-height:1.5">${rec}</div>
+      </div>`;
+  }).join('');
+
+  // Блок GPT
+  const workerUrl = (appConfig?.workerUrl || '').trim();
+  const gptBtn = workerUrl
+    ? `<button class="btn-sec" onclick="window.explainPortfolio()" id="btn-explain-portfolio" style="font-size:12px;padding:7px 14px;margin-top:10px">🤖 Объяснить простым языком (YandexGPT)</button>`
+    : `<div style="font-size:10px;color:var(--text2);margin-top:8px">Для объяснения от YandexGPT настройте URL воркера в Администраторе</div>`;
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px 16px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:10px">💡 РЕКОМЕНДАЦИИ</div>
+      ${recsHtml}
+      ${gptBtn}
+      <div id="portfolio-llm-result" style="margin-top:10px"></div>
+    </div>`;
+}
+
+// ── Блок 5: Таблица активов ───────────────────────────────────────────────
+function _renderTable(assets, total) {
+  const el = $('portfolio-list'); if (!el) return;
+  if (!assets.length) {
+    el.innerHTML = `
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:20px;text-align:center;color:var(--text2)">
+        <div style="font-size:28px;margin-bottom:8px">📋</div>
+        <div style="font-size:14px;font-weight:700;color:var(--topbar);margin-bottom:6px">Портфель пуст</div>
+        <div style="font-size:12px">Добавьте первую ценную бумагу кнопкой «+ Добавить актив»</div>
+      </div>`;
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;padding:12px 16px;border-bottom:1px solid var(--border)">📋 МОИ АКТИВЫ</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:580px">
+          <thead>
+            <tr style="background:var(--amber-light);text-align:left">
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px">АКТИВ</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-align:right">КОЛ.</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-align:right">ЦЕНА</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-align:right">СТОИМОСТЬ</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-align:right">П/У</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-align:right">ДОЛЯ</th>
+              <th style="padding:8px 12px;font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;text-align:center">ДЕЙСТВИЯ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${assets.map((a, i) => _assetRow(a, i, total)).join('')}
+          </tbody>
+        </table>
       </div>
     </div>`;
 }
 
-// ── Обработчики кнопок ────────────────────────────────────────────────────
-window.setPortfolioStrategy = function(key) {
-  const s = getSettings();
-  s.strategy = key;
-  state.D.portfolioSettings = s;
-  sched();
-  renderPortfolio();
+function _assetRow(a, i, total) {
+  const curPrice = a.currentPrice || a.buyPrice;
+  const curVal = a.qty * curPrice;
+  const cost = a.qty * a.buyPrice;
+  const pnl = curVal - cost;
+  const pnlPct = cost > 0 ? Math.round(pnl / cost * 1000) / 10 : 0;
+  const share = total > 0 ? Math.round(curVal / total * 100) : 0;
+  const color = pnl >= 0 ? 'var(--green-dark)' : 'var(--red)';
+  const daysSince = a.lastUpdated ? Math.floor((Date.now() - new Date(a.lastUpdated + 'T12:00:00')) / 864e5) : 999;
+  const stale = daysSince >= 14;
+  const typeColor = TYPE_COLOR[a.assetType] || 'var(--amber)';
+
+  return `<tr style="border-bottom:.5px solid var(--border);${stale ? 'opacity:.7' : ''}">
+    <td style="padding:9px 12px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:3px;height:32px;border-radius:2px;background:${typeColor};flex-shrink:0"></div>
+        <div>
+          <div style="font-weight:700;color:var(--topbar)">${esc(a.ticker)}</div>
+          <div style="font-size:10px;color:var(--text2)">${esc(a.name || (TYPE_LABEL[a.assetType] || '')?.replace(/[📄🔄💵📈💴💶]\s?/, ''))}</div>
+          ${stale ? `<div style="font-size:9px;color:var(--orange-dark)">⏰ цена ${daysSince}д назад</div>` : ''}
+        </div>
+      </div>
+    </td>
+    <td style="padding:9px 12px;text-align:right;color:var(--topbar)">${a.qty}</td>
+    <td style="padding:9px 12px;text-align:right">
+      <div style="color:var(--topbar)">${fmt(curPrice)}</div>
+      <div style="font-size:10px;color:var(--text2)">вх. ${fmt(a.buyPrice)}</div>
+    </td>
+    <td style="padding:9px 12px;text-align:right;font-weight:700;color:var(--topbar)">${fmt(Math.round(curVal))}</td>
+    <td style="padding:9px 12px;text-align:right">
+      <div style="font-weight:700;color:${color}">${pnl >= 0 ? '+' : ''}${fmt(Math.round(pnl))}</div>
+      <div style="font-size:10px;color:${color}">${pnlPct >= 0 ? '+' : ''}${pnlPct}%</div>
+    </td>
+    <td style="padding:9px 12px;text-align:right">
+      <div style="font-weight:700;color:var(--topbar)">${share}%</div>
+      <div style="background:var(--g50);border-radius:2px;height:3px;margin-top:3px;width:50px;margin-left:auto">
+        <div style="height:3px;border-radius:2px;background:${typeColor};width:${Math.min(share * 2, 100)}%"></div>
+      </div>
+    </td>
+    <td style="padding:9px 12px;text-align:center">
+      <div style="display:flex;gap:4px;justify-content:center;flex-wrap:wrap">
+        <button class="sbtn blue" onclick="window.editAsset(${i})" style="font-size:10px;padding:3px 7px">✎</button>
+        <button class="sbtn amber" onclick="window.updateAssetPrice(${i})" style="font-size:10px;padding:3px 7px">₽</button>
+        <button class="sbtn red" onclick="window.deleteAsset(${i})" style="font-size:10px;padding:3px 7px">✕</button>
+      </div>
+    </td>
+  </tr>`;
+}
+
+// ── Хелперы ───────────────────────────────────────────────────────────────
+function _calcExpectedYield(assets, total) {
+  const def = { bond_fixed: 14, bond_floating: 21, etf: 19, stock: 15, cash: 21, currency: 3 };
+  let w = 0;
+  for (const a of assets) {
+    const v = a.qty * (a.currentPrice || a.buyPrice);
+    const y = (a.yieldPct > 0) ? a.yieldPct : (def[a.assetType] || 10);
+    w += (total > 0 ? v / total : 0) * y;
+  }
+  return Math.round(w * 10) / 10;
+}
+
+function _calcBalanceScore(wPct, target) {
+  const dev = Object.keys(target).reduce((s, k) => s + Math.abs((wPct[k] || 0) - (target[k] || 0)), 0);
+  return Math.max(0, Math.round(100 - dev * 200));
+}
+
+// ── Обработчики ───────────────────────────────────────────────────────────
+window.setPortStrategy = function(key) {
+  const s = getSettings(); s.strategy = key;
+  state.D.portfolioSettings = s; sched(); renderPortfolio();
 };
 
-window.saveEngineSettings = function() {
-  const keyRate = parseFloat($('eng-key-rate')?.value) / 100;
-  const monthlyCash = parseFloat($('eng-monthly')?.value) || 0;
-  const goalAmount = parseFloat($('eng-goal-amount')?.value) || 0;
-  const goalYears = parseFloat($('eng-goal-years')?.value) || 5;
-  if (!keyRate || keyRate < 0.01 || keyRate > 0.5) { alert('Введите корректную ставку (1–50%)'); return; }
+window.savePortSettings = function() {
+  const kr = toNum($('port-key-rate')?.value) / 100;
+  const mc = toNum($('port-monthly')?.value);
+  const ga = toNum($('port-goal')?.value);
+  const gy = toNum($('port-years')?.value) || 5;
+  if (!kr || kr < 0.01 || kr > 0.5) { alert('Введите ставку от 1 до 50'); return; }
   const s = getSettings();
-  s.keyRate = keyRate; s.monthlyCash = monthlyCash; s.goalAmount = goalAmount; s.goalYears = goalYears;
-  state.D.portfolioSettings = s;
-  sched();
-  renderPortfolio();
+  s.keyRate = kr; s.monthlyCash = mc; s.goalAmount = ga; s.goalYears = gy;
+  state.D.portfolioSettings = s; sched(); renderPortfolio();
 };
 
 window.openAddAsset = function() {
@@ -502,62 +483,92 @@ window.editAsset = function(i) {
   document.getElementById('modal-asset').classList.add('open');
 };
 
+// ФИКС #1: вставляем доп. поля ДО кнопки «Сохранить», не после последнего input
 function _fillAssetTypeSelect(assetIdx) {
   const modal = document.getElementById('modal-asset'); if (!modal) return;
-  let typeWrap = modal.querySelector('#asset-type-wrap');
-  if (!typeWrap) {
-    typeWrap = document.createElement('div');
-    typeWrap.id = 'asset-type-wrap';
-    typeWrap.className = 'fg';
-    typeWrap.innerHTML = `
-      <label>ТИП АКТИВА</label>
-      <select class="fi" id="asset-type">
-        ${ASSET_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
-      </select>`;
-    const curField = modal.querySelector('#asset-cur')?.closest('.fg');
-    if (curField) curField.after(typeWrap); else modal.querySelector('.modal').appendChild(typeWrap);
-  }
-  const sel = $('asset-type'); if (!sel) return;
-  sel.value = assetIdx >= 0 ? (state.D.portfolio[assetIdx]?.assetType || 'stock') : 'stock';
+  const modalBody = modal.querySelector('.modal');
 
-  let yieldWrap = modal.querySelector('#asset-yield-wrap');
-  if (!yieldWrap) {
-    yieldWrap = document.createElement('div');
-    yieldWrap.id = 'asset-yield-wrap';
-    yieldWrap.className = 'fg';
-    yieldWrap.innerHTML = `<label>КУПОННАЯ / ДИВИД. ДОХОДНОСТЬ % (необяз.)</label><input class="fi" type="number" id="asset-yield" placeholder="напр. 19 для флоатера" step="0.1" min="0" max="100">`;
-    typeWrap.after(yieldWrap);
+  // Удаляем старые динамические поля чтобы не дублировались
+  modal.querySelector('#asset-type-wrap')?.remove();
+  modal.querySelector('#asset-yield-wrap')?.remove();
+
+  // Находим кнопку «Сохранить»
+  const saveBtn = modalBody.querySelector('.btn-primary');
+
+  const typeWrap = document.createElement('div');
+  typeWrap.id = 'asset-type-wrap'; typeWrap.className = 'fg';
+  typeWrap.innerHTML = `
+    <label>ТИП АКТИВА</label>
+    <select class="fi" id="asset-type">
+      ${ASSET_TYPES.map(t => `<option value="${t.value}">${t.label}</option>`).join('')}
+    </select>`;
+
+  const yieldWrap = document.createElement('div');
+  yieldWrap.id = 'asset-yield-wrap'; yieldWrap.className = 'fg';
+  yieldWrap.innerHTML = `<label>КУПОННАЯ ДОХОДНОСТЬ % (необяз.)</label>
+    <input class="fi" type="number" id="asset-yield" placeholder="напр. 14.67 для ОФЗ26248" step="0.01" min="0" max="100">`;
+
+  // Вставляем перед кнопкой «Сохранить»
+  if (saveBtn) {
+    modalBody.insertBefore(yieldWrap, saveBtn);
+    modalBody.insertBefore(typeWrap, yieldWrap);
+  } else {
+    modalBody.appendChild(typeWrap);
+    modalBody.appendChild(yieldWrap);
   }
+
+  const sel = $('asset-type');
+  if (sel) sel.value = assetIdx >= 0 ? (state.D.portfolio[assetIdx]?.assetType || 'bond_fixed') : 'bond_fixed';
   const yi = $('asset-yield');
   if (yi) yi.value = assetIdx >= 0 ? (state.D.portfolio[assetIdx]?.yieldPct ?? '') : '';
 }
 
-window.updatePrice = function(i) {
+window.updateAssetPrice = function(i) {
   const a = state.D.portfolio[i];
-  const newPrice = parseFloat(prompt(`Текущая цена ${a.ticker} (сейчас: ${a.currentPrice || a.buyPrice} ₽):`));
-  if (!newPrice || isNaN(newPrice)) return;
+  const raw = prompt(`Новая цена ${a.ticker} (сейчас: ${a.currentPrice || a.buyPrice} ₽):`);
+  if (raw == null) return;
+  const newPrice = toNum(raw);
+  if (!newPrice || newPrice <= 0) { alert('Введите корректную цену'); return; }
   state.D.portfolio[i].currentPrice = newPrice;
   state.D.portfolio[i].lastUpdated = today();
   if (!state.D.portfolioUpdated) state.D.portfolioUpdated = {};
   state.D.portfolioUpdated.lastUpdate = today();
   sched(); renderPortfolio();
 };
+// Обратная совместимость — старая кнопка
+window.updatePrice = window.updateAssetPrice;
 
+// ФИКС #2: saveAsset — нормализация запятой→точка + чёткая валидация
 window.saveAsset = function() {
   if (!state.D.portfolio) state.D.portfolio = [];
   const idx = +$('asset-idx').value;
+
+  const tickerRaw = ($('asset-ticker').value || '').trim().toUpperCase();
+  const qtyRaw    = $('asset-qty').value;
+  const buyRaw    = $('asset-buy').value;
+  const curRaw    = $('asset-cur').value;
+
+  const qty      = toNum(qtyRaw);
+  const buyPrice = toNum(buyRaw);
+  const curPrice = toNum(curRaw) || buyPrice;
+
+  // Чёткие сообщения об ошибке
+  if (!tickerRaw) { alert('Введите тикер (например: SBER или OFZ26248)'); return; }
+  if (qty <= 0)   { alert(`Неверное количество: "${qtyRaw}"\nВведите число, например: 20\n(используйте точку, не запятую)`); return; }
+  if (buyPrice <= 0) { alert(`Неверная цена покупки: "${buyRaw}"\nВведите число, например: 884.25\n(используйте точку, не запятую)`); return; }
+
   const asset = {
     id: idx >= 0 ? state.D.portfolio[idx].id : ('ast' + Date.now()),
-    ticker: ($('asset-ticker').value || '').trim().toUpperCase(),
+    ticker: tickerRaw,
     name: ($('asset-name').value || '').trim(),
-    qty: parseFloat($('asset-qty').value) || 0,
-    buyPrice: parseFloat($('asset-buy').value) || 0,
-    currentPrice: parseFloat($('asset-cur').value) || parseFloat($('asset-buy').value) || 0,
+    qty,
+    buyPrice,
+    currentPrice: curPrice,
     assetType: $('asset-type')?.value || 'stock',
-    yieldPct: parseFloat($('asset-yield')?.value) || null,
+    yieldPct: toNum($('asset-yield')?.value) || null,
     lastUpdated: today(),
   };
-  if (!asset.ticker || !asset.qty || !asset.buyPrice) { alert('Заполните тикер, количество и цену покупки'); return; }
+
   if (idx >= 0) state.D.portfolio[idx] = asset; else state.D.portfolio.push(asset);
   if (!state.D.portfolioUpdated) state.D.portfolioUpdated = {};
   state.D.portfolioUpdated.lastUpdate = today();
@@ -571,85 +582,62 @@ window.deleteAsset = function(i) {
   state.D.portfolio.splice(i, 1); sched(); renderPortfolio();
 };
 
-// ── LLM: объяснение простым языком ───────────────────────────────────────
+// ── LLM объяснение ────────────────────────────────────────────────────────
 window.explainPortfolio = async function() {
   const resultEl = $('portfolio-llm-result');
   const btn = $('btn-explain-portfolio');
   if (!resultEl) return;
 
-  const workerUrl = (appConfig.workerUrl || '').trim();
+  const workerUrl = (appConfig?.workerUrl || '').trim();
   if (!workerUrl) {
-    resultEl.innerHTML = '<div class="notice amber" style="font-size:12px">⚠ Для работы YandexGPT настройте URL воркера в разделе «Администратор»</div>';
+    resultEl.innerHTML = '<div class="notice amber" style="font-size:12px">⚠ Настройте URL воркера в Администраторе</div>';
     return;
   }
 
-  const settings = getSettings();
-  const engineResult = runEngine(state.D.portfolio, settings.keyRate, settings.monthlyCash, settings.strategy, settings.goalAmount, settings.goalYears);
-  if (engineResult.empty) { resultEl.innerHTML = '<div class="notice amber">Добавьте активы для анализа</div>'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Анализирую...'; }
+  resultEl.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px 0">YandexGPT анализирует...</div>';
 
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ YandexGPT анализирует...'; }
-  resultEl.innerHTML = '<div style="color:var(--text2);font-size:12px;padding:8px 0">Анализирую портфель...</div>';
+  const s = getSettings();
+  const assets = state.D.portfolio;
+  const total = assets.reduce((sum, a) => sum + a.qty * (a.currentPrice || a.buyPrice), 0);
 
-  const ri = REGIME_LABELS[engineResult.regime];
-  const strat = STRATEGIES[settings.strategy] || STRATEGIES.moderate;
-  const lmi = engineResult.llmInput;
+  const systemPrompt = `Ты дружелюбный финансовый советник. Объясни простым языком без терминов.
+Формат ответа (строго, без markdown):
+1. Ситуация на рынке — 1 предложение.
+2. Главная проблема портфеля — 1 предложение.
+3. Что сделать — 2-3 конкретных шага с тикерами.
+4. Как это приближает к цели — 1 предложение.
+5. Главный риск — 1 предложение.
+Итого до 180 слов. Только русский.`;
 
-  const systemPrompt = `Ты дружелюбный финансовый советник. Объясни рекомендации по портфелю простым языком без терминов.
-Структура ответа (строго):
-1) Ситуация на рынке — 1 предложение.
-2) Главная проблема портфеля — 1 предложение.
-3) Что рекомендуем сделать прямо сейчас — 2–3 конкретных действия с тикерами.
-4) Как это поможет достичь цели — 1 предложение.
-5) Главный риск — 1 предложение.
-Итого не более 200 слов. Только русский язык. Без markdown, без звёздочек.`;
-
-  const goalText = lmi.goalProgress
-    ? `Цель: накопить ${fmt(lmi.goalProgress.goalAmount)} за ${lmi.goalProgress.goalYears} лет. Накоплено ${lmi.goalProgress.progressPct}%. Нужная доходность: ${lmi.goalProgress.requiredYield}% / год.`
-    : 'Цель не задана.';
-
-  const userText = `Режим рынка: ${ri.label}. Ставка ЦБ: ${Math.round(settings.keyRate * 100)}%.
-Стратегия пользователя: ${strat.label}. Баланс портфеля: ${engineResult.strategyScore}/100.
-Ожидаемая доходность: ${engineResult.expectedYield}%. Волатильность: ~${engineResult.approxVolatility}% (норма для стратегии: ${strat.maxVolatility * 100}%).
-${goalText}
-
-Распределение (факт → цель):
-${Object.entries(GROUP_LABELS).map(([k, g]) => {
-  const cur = Math.round((engineResult.weights[k] || 0) * 100);
-  const tgt = Math.round((engineResult.target[k] || 0) * 100);
-  return `${g.label}: ${cur}% → цель ${tgt}%`;
-}).join('\n')}
-
-${lmi.actions.sell.length ? 'Рекомендуется продать: ' + lmi.actions.sell.map(s => `${s.ticker} (${fmt(s.amount_rub)})`).join(', ') : 'Продавать ничего не нужно.'}
-${lmi.actions.buy.length ? 'Рекомендуется купить: ' + lmi.actions.buy.map(b => `${b.ticker} "${b.name}" (${fmt(b.amount_rub)})`).join(', ') : ''}
-${lmi.monthlyPlan.length ? 'Пополнить в этом месяце: ' + lmi.monthlyPlan.map(p => `${p.ticker} ${fmt(p.amount_rub)}`).join(', ') : ''}
-${lmi.sectorWarnings.length ? 'Предупреждения: ' + lmi.sectorWarnings.join('; ') : ''}
-${lmi.concentration.length ? 'Концентрация: ' + lmi.concentration.join('; ') : ''}`;
+  const userText = `Ставка ЦБ: ${Math.round(s.keyRate * 100)}%. Стратегия: ${(STRATEGIES[s.strategy] || STRATEGIES.moderate).label}.
+Портфель: ${fmt(Math.round(total))}.
+Активы: ${assets.map(a => `${a.ticker} (${a.qty}шт по ${a.buyPrice}₽, тип: ${TYPE_LABEL[a.assetType]?.replace(/[📄🔄💵📈💴💶]\s?/, '') || a.assetType})`).join('; ')}.
+${s.goalAmount > 0 ? `Цель: ${fmt(s.goalAmount)} за ${s.goalYears} лет.` : ''}
+Из документа пользователя: рынок ждёт снижения ставки до 13% к концу 2026. Рекомендуется ОФЗ 26248 (~884₽, доходность 14.67% YTM), потенциал роста до 95-100% номинала при снижении ставки.`;
 
   try {
     const endpoint = workerUrl.replace(/\/?$/, '') + '/gpt';
     const headers = { 'Content-Type': 'application/json' };
-    if (appConfig.appSecret) headers['X-App-Secret'] = appConfig.appSecret;
+    if (appConfig?.appSecret) headers['X-App-Secret'] = appConfig.appSecret;
 
     const resp = await fetch(endpoint, {
       method: 'POST', headers,
       body: JSON.stringify({
-        completionOptions: { stream: false, temperature: 0.3, maxTokens: 500 },
+        completionOptions: { stream: false, temperature: 0.3, maxTokens: 400 },
         messages: [{ role: 'system', text: systemPrompt }, { role: 'user', text: userText }],
       }),
     });
     if (!resp.ok) throw new Error('Сервер ответил ' + resp.status);
-
     const data = await resp.json();
     const text = (data.result?.alternatives?.[0]?.message?.text || '').trim();
-    if (!text) throw new Error('Пустой ответ от GPT');
+    if (!text) throw new Error('Пустой ответ');
 
     resultEl.innerHTML = `
-      <div style="background:var(--amber-light);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;font-size:13px;line-height:1.75;color:var(--topbar)">
+      <div style="background:var(--amber-light);border:1.5px solid var(--border);border-radius:10px;padding:14px 16px;margin-top:4px">
         <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">🤖 ОБЪЯСНЕНИЕ YANDEXGPT</div>
-        <p style="margin:0">${text.replace(/\n\n/g, '</p><p style="margin-top:8px">').replace(/\n/g, '<br>')}</p>
-        <div style="font-size:10px;color:var(--text2);margin-top:10px;border-top:1px solid var(--border);padding-top:6px">
-          ⚠ Это не инвестиционная рекомендация. Все решения принимайте самостоятельно.
-        </div>
+        <div style="font-size:13px;color:var(--topbar);line-height:1.7">${text.replace(/\n/g, '<br>')}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:10px;border-top:1px solid var(--border);padding-top:6px">⚠ Не является инвестиционной рекомендацией</div>
       </div>`;
   } catch (e) {
     resultEl.innerHTML = `<div class="notice amber" style="font-size:12px">Ошибка GPT: ${esc(e.message)}</div>`;
@@ -658,19 +646,12 @@ ${lmi.concentration.length ? 'Концентрация: ' + lmi.concentration.jo
   }
 };
 
-// ── Алерт для дашборда ────────────────────────────────────────────────────
+// ── Алерт дашборда ────────────────────────────────────────────────────────
 export function checkPortfolioAlert() {
   if (!state.D?.portfolio?.length) return null;
-  const lastUpdate = state.D.portfolioUpdated?.lastUpdate;
-  if (!lastUpdate) return 'Обновите цены в портфеле инвестиций';
-  const daysSince = Math.floor((new Date(today()) - new Date(lastUpdate)) / (1000 * 60 * 60 * 24));
-  if (daysSince >= 7) return `Цены в портфеле не обновлялись ${daysSince} дн.`;
-  if (state.D.portfolio.length > 0) {
-    const s = getSettings();
-    const result = runEngine(state.D.portfolio, s.keyRate, s.monthlyCash, s.strategy, s.goalAmount, s.goalYears);
-    if (!result.empty && result.strategyScore < 50) {
-      return `Портфель разбалансирован (${result.strategyScore}/100) — откройте раздел «Портфель»`;
-    }
-  }
+  const lu = state.D.portfolioUpdated?.lastUpdate;
+  if (!lu) return 'Обновите цены в портфеле инвестиций';
+  const d = Math.floor((new Date(today()) - new Date(lu)) / (1000 * 60 * 60 * 24));
+  if (d >= 7) return `Цены в портфеле не обновлялись ${d} дн.`;
   return null;
 }
