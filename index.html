@@ -649,6 +649,7 @@
         <button class="sbtn amber" onclick="window.openAddAsset()">+ Добавить актив</button>
       </div>
       <div id="portfolio-summary" style="flex-shrink:0"></div>
+      <div class="notice blue" style="flex-shrink:0">Обновляйте текущие цены раз в неделю — нажмите «Цена» рядом с активом. Данные хранятся локально, котировки не подтягиваются автоматически.</div>
       <div id="portfolio-list"></div>
     </div>
   </div>
@@ -941,6 +942,10 @@ window.saveVoiceSettingsUI=async function(){
     alert('Ошибка сохранения. Проверьте правила Firestore:\n/config/app — разрешите write для adminUids.');
   }
   updateVoiceStatus();
+  let msg='Настройки голосового ввода сохранены.';
+  if(!proxyUrl||!iamToken||!folderId)msg+='\nЗаполните все три поля для работы.';
+  else msg+='\nЭлементы с кнопкой 🎤 готовы к использованию.';
+  alert(msg);
 };
 
 function _loadVoiceToSettings(){
@@ -1848,15 +1853,14 @@ window._renderPlanInGoals = function(){
 
 <!-- MODAL: voice intent confirmation -->
 <div class="modal-overlay" id="modal-voice-intent">
-  <div class="modal" style="max-width:380px">
+  <div class="modal" style="max-width:440px">
     <div class="modal-hdr">
       <span class="modal-title vi-title">ГОЛОСОВАЯ КОМАНДА</span>
       <button class="modal-close" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">&#10005;</button>
     </div>
-    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.6;color:var(--topbar)" class="vi-body"></div>
-    <div class="notice blue" style="margin-bottom:12px;font-size:11px">Проверьте правильность и подтвердите или откройте форму редактирования</div>
+    <div class="vi-body" style="margin-bottom:12px"></div>
     <button class="btn-primary vi-confirm">Подтвердить</button>
-    <button class="btn-sec vi-edit" style="margin-top:8px">Редактировать вручную</button>
+    <button class="btn-sec vi-edit" style="margin-top:8px">Открыть полную форму</button>
     <button class="btn-sec" style="margin-top:6px" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">Отмена</button>
   </div>
 </div>
