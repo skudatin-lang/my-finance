@@ -648,7 +648,7 @@
         <div style="font-size:16px;font-weight:700;color:var(--topbar)">Инвестиционный портфель</div>
         <button class="sbtn amber" onclick="window.openAddAsset()">+ Добавить актив</button>
       </div>
-      <div id="portfolio-summary" style="display:none"></div>
+      <div id="portfolio-summary" style="flex-shrink:0"></div>
       <div id="portfolio-list"></div>
     </div>
   </div>
@@ -1769,7 +1769,6 @@ window._renderPlanInGoals = function(){
       <div class="fg"><label>ЦЕНА ПОКУПКИ ₽</label><input class="fi" type="number" id="asset-buy" placeholder="0"></div>
     </div>
     <div class="fg"><label>ТЕКУЩАЯ ЦЕНА ₽ (необяз.)</label><input class="fi" type="number" id="asset-cur" placeholder="= цене покупки"></div>
-    <!-- Тип и доходность вставляются динамически portfolio.js через _fillAssetTypeSelect() -->
     <input type="hidden" id="asset-idx" value="-1">
     <button class="btn-primary" onclick="window.saveAsset()">Сохранить</button>
     <button class="btn-sec" onclick="document.getElementById('modal-asset').classList.remove('open')">Отмена</button>

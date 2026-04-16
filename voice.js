@@ -2,11 +2,11 @@
  * voice.js — Yandex SpeechKit STT + GPT intent parsing
  *
  * КЛЮЧЕВЫЕ УЛУЧШЕНИЯ:
- * 1. GPT получает ВСЕ данные системы: кошельки, категории, — и делает fuzzy-match
- * 2. Модалка подтверждения показывает РЕДАКТИРУЕМЫЕ поля — прямо там можно
- *    исправить сумму, кошелёк, категорию до подтверждения
- * 3. Умный fallback — работает без GPT с теми же данными системы
- * 4. PCM конвертация — работает во всех браузерах
+ * 1. З/П ЖЕНЫ: специальная логика — «зарплата жены», «з/п жены» → add_expense
+ *    (категория «З/П жены»), а НЕ add_income и НЕ add_transfer
+ * 2. GPT получает ВСЕ данные системы + fuzzy-match инструкции
+ * 3. Редактируемая модалка подтверждения — поля можно исправить прямо там
+ * 4. PCM конвертация — работает в Safari и Chrome
  * 5. Зависание исправлено — _isRecording сбрасывается в любом случае
  */
 import{state,sched,fmt,today}from'./core.js';
@@ -54,7 +54,6 @@ async function _toPCM(blob){
   for(let i=0;i<s.length;i++){const c=Math.max(-1,Math.min(1,s[i]));p[i]=c<0?c*0x8000:c*0x7FFF;}
   return p.buffer;
 }
-
 function _pickMime(){
   const c=['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/webm','audio/mp4;codecs=mp4a.40.2','audio/mp4'];
   for(const f of c)if(MediaRecorder.isTypeSupported(f))return f;
@@ -120,76 +119,85 @@ async function _sendPCM(pcmBuf){
   }catch(e){_showToast('Нет связи: '+e.message);return null;}
 }
 
-// ── GPT: разбор с РЕАЛЬНЫМИ данными системы ──────────────────────────────
+// ── КЛЮЧЕВАЯ ФУНКЦИЯ: определение З/П жены ────────────────────────────────
+// З/П жены — это РАСХОД (деньги уходят из семейного бюджета на жену)
+// Признаки: «зарплата жены», «з/п жены», «жене зарплата», «жена получила»
+function _isWifeSalary(text){
+  const t=text.toLowerCase();
+  return t.match(/(?:зарплат|з\/п|жалованье|зп)\s*(?:жен|супруг)|(?:жен|супруг)[ыеа]\s*(?:зарплат|з\/п|жалованье|получила|начислили)/);
+}
+
+// ── Fuzzy match строки со списком ─────────────────────────────────────────
+function _bestMatch(query,list){
+  if(!query||!list||!list.length)return'';
+  const q=query.toLowerCase().trim();
+  const exact=list.find(x=>x.toLowerCase()===q);if(exact)return exact;
+  const contains=list.find(x=>x.toLowerCase().includes(q));if(contains)return contains;
+  const contained=list.find(x=>q.includes(x.toLowerCase()));if(contained)return contained;
+  const qw=q.split(/\s+/).filter(w=>w.length>2);
+  let best='',score=0;
+  for(const item of list){
+    const iL=item.toLowerCase();
+    let sc=0;
+    for(const w of qw){if(iL.includes(w))sc+=w.length;}
+    if(sc>score){score=sc;best=item;}
+  }
+  return score>=2?best:'';
+}
+
+// ── GPT разбор с РЕАЛЬНЫМИ данными системы ───────────────────────────────
 export async function parseIntent(spokenText){
   if(!state.D)return _fallback(spokenText);
 
-  // Передаём ВСЕ кошельки и ВСЕ категории из системы
+  // ПРОВЕРКА З/П ЖЕНЫ ДО GPT
+  if(_isWifeSalary(spokenText)){
+    const wifeCat=state.D.expenseCats.find(c=>c.name&&c.name.toLowerCase().includes('ж'));
+    const amtM=spokenText.match(/(\d[\d\s]*(?:[.,]\d{1,2})?)/);
+    const amount=amtM?parseFloat(amtM[1].replace(/\s/g,'').replace(',','.')):0;
+    const wallets=state.D.wallets.map(w=>w.name);
+    const wallet=_bestMatch(spokenText.toLowerCase(),wallets);
+    return{
+      intent:'add_expense',
+      amount,
+      category:wifeCat?wifeCat.name:'З/П жены',
+      wallet,
+      note:'зарплата жены',
+    };
+  }
+
   const wallets=state.D.wallets.map(w=>w.name);
   const expCats=state.D.expenseCats.map(c=>c.name);
   const incCats=state.D.incomeCats;
 
-  const sys=`Ты ассистент финансового приложения. Пользователь говорит голосом — он НЕ обязан называть точные названия кошельков и категорий.
-Твоя задача: понять смысл фразы и подобрать наилучшее совпадение из списков системы.
-Верни ТОЛЬКО JSON без markdown.
+  const sys=`Ты ассистент финансового приложения. Пользователь говорит голосом — он НЕ обязан называть точные названия.
+Подбери наилучшее совпадение из списков системы. Верни ТОЛЬКО JSON без markdown.
 
-КОШЕЛЬКИ В СИСТЕМЕ (выбирай ближайший по смыслу):
+КОШЕЛЬКИ:
 ${wallets.map((w,i)=>`${i+1}. "${w}"`).join('\n')}
 
-КАТЕГОРИИ РАСХОДОВ (выбирай ближайшую по смыслу):
+КАТЕГОРИИ РАСХОДОВ:
 ${expCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
 
 КАТЕГОРИИ ДОХОДОВ:
 ${incCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
 
-ПРАВИЛА ОПРЕДЕЛЕНИЯ ТИПА ОПЕРАЦИИ:
-- add_expense: потратил / заплатил / купил / списал / снял / расход
-- add_income: получил / пришло / зарплата / аванс / заработал / доход
-- add_transfer: перевел / отдал / перекинул / перевод [кому-то] — деньги уходят от меня
-- add_shopping: купить / список / нужно / напомни купить
-- check_balance: баланс / сколько / остаток
+ПРАВИЛА:
+- add_expense: потратил/заплатил/купил/списал/снял
+- add_income: получил/пришло/зарплата МОЯ/аванс/заработал
+- add_transfer: перевел/отдал/скинул [кому-то]
+- add_shopping: купить/список/нужно
+- check_balance: баланс/сколько
+- ВАЖНО: "зарплата жены/супруги" = add_expense категория "З/П жены" (это РАСХОД семейного бюджета)
+- ВАЖНО: "перевел жене/маме/другу" = add_transfer (деньги уходят)
+- ВАЖНО: fuzzy-match кошельков: "тинькофф/тинк/блэк/black" → подходящий кошелёк из списка
 
-ВАЖНО про кошельки — примеры fuzzy-match:
-- "тинькофф" / "тинк" / "блэк" / "black" / "тинькофф блэк" → найди кошелёк содержащий эти слова
-- "наличка" / "кэш" / "налом" → кошелёк "Наличные"
-- "сбер" → кошелёк со "Сбер" в названии
-- "карта" (без уточнения) → первый подходящий кошелёк-карта
+Примеры:
+"потратил 500 бензин тинькофф" → {"intent":"add_expense","amount":500,"category":"${_bestMatch('бензин',expCats)}","wallet":"${_bestMatch('тинькофф',wallets)}","note":""}
+"зп жены 50000 блэк" → {"intent":"add_expense","amount":50000,"category":"${expCats.find(c=>c.toLowerCase().includes('жен'))||'З/П жены'}","wallet":"${_bestMatch('блэк',wallets)}","note":"зарплата жены"}
+"перевел маме 5000 наличными" → {"intent":"add_transfer","amount":5000,"from_wallet":"${_bestMatch('наличные',wallets)}","to_wallet":""}
+"пришла зп 80000 тинькофф" → {"intent":"add_income","amount":80000,"category":"Зарплата","wallet":"${_bestMatch('тинькофф',wallets)}","note":""}
 
-ВАЖНО про категории — примеры fuzzy-match:
-- "бензин" / "заправка" / "топливо" → ближайшая категория транспорт или бензин
-- "еда" / "продукты" / "магазин" → "Продукты"
-- "кафе" / "ресторан" / "обед" / "кофе" → "Кафе и рестораны"
-
-КРИТИЧЕСКИ ВАЖНО — категория "З/П жены" (если есть в списке расходов):
-- Это РАСХОД (add_expense), НЕ доход и НЕ перевод
-- Фразы: "з/п жены", "зарплата жены", "зарплата супруги", "жена получила зарплату", "выдали жене зарплату"
-- Все эти фразы = {"intent":"add_expense","category":"${_bestMatch('жены',expCats)||_bestMatch('жена',expCats)||expCats[0]}"}
-- Пояснение: пользователь ТРАТИТ деньги на з/п жены (выдаёт жене из семейного бюджета)
-
-ОТЛИЧИЯ перевод vs расход:
-- "перевел жене 5000" → add_transfer (деньги идут на её счёт/кошелёк)
-- "з/п жены 50000" / "зарплата жены 50000" → add_expense с категорией "З/П жены"
-
-Сегодня: ${today()}
-
-Формат JSON:
-{"intent":"add_expense|add_income|add_transfer|add_shopping|check_balance|unknown",
- "amount": число или 0,
- "category": "точное название из списка или пустая строка",
- "wallet": "точное название из списка или пустая строка",
- "note": "дополнительный контекст из фразы",
- "from_wallet": "для transfer",
- "to_wallet": "для transfer",
- "items": [{"name":"...","qty":1,"price":0}] для shopping
-}
-
-Примеры (пользователь говорит → результат):
-"потратил 500 на бензин с тинькофф блэк" → {"intent":"add_expense","amount":500,"category":"${_bestMatch('бензин',expCats)}","wallet":"${_bestMatch('тинькофф блэк',wallets)}","note":""}
-"з/п жены 50000" → {"intent":"add_expense","amount":50000,"category":"${_bestMatch('жены',expCats)||expCats[0]}","wallet":"","note":""}
-"зарплата жены пришла 80000" → {"intent":"add_expense","amount":80000,"category":"${_bestMatch('жены',expCats)||expCats[0]}","wallet":"","note":""}
-"перевел жене 10000 с наличных" → {"intent":"add_transfer","amount":10000,"from_wallet":"${_bestMatch('наличные',wallets)}","to_wallet":""}
-"получил зарплату 80000 на карту" → {"intent":"add_income","amount":80000,"category":"${_bestMatch('зарплата',incCats)}","wallet":"${_bestMatch('карта',wallets)}","note":""}
-"купил продукты в пятёрочке на 800 наличными" → {"intent":"add_expense","amount":800,"category":"${_bestMatch('продукты',expCats)}","wallet":"${_bestMatch('наличные',wallets)}","note":"пятёрочка"}`;
+JSON поля: intent, amount, category, wallet, note, from_wallet, to_wallet, items`;
 
   const base=(_gptUrl||_sttUrl).replace(/\/?$/,'');
   const ep=base.endsWith('/gpt')?base:base+'/gpt';
@@ -199,7 +207,7 @@ ${incCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
 
   try{
     const resp=await fetch(ep,{method:'POST',headers:h,body:JSON.stringify({
-      completionOptions:{stream:false,temperature:0.1,maxTokens:400},
+      completionOptions:{stream:false,temperature:0.1,maxTokens:300},
       messages:[{role:'system',text:sys},{role:'user',text:spokenText}]
     })});
     if(!resp.ok){console.warn('[GPT]',resp.status);return _fallback(spokenText);}
@@ -208,7 +216,7 @@ ${incCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
     if(!t)return _fallback(spokenText);
     try{
       const parsed=JSON.parse(t);
-      // Нормализуем: убеждаемся что кошелёк/категория есть в системе
+      // Нормализуем результат GPT через bestMatch
       if(parsed.wallet)parsed.wallet=_bestMatch(parsed.wallet,wallets)||parsed.wallet;
       if(parsed.category&&parsed.intent==='add_expense')parsed.category=_bestMatch(parsed.category,expCats)||parsed.category;
       if(parsed.category&&parsed.intent==='add_income')parsed.category=_bestMatch(parsed.category,incCats)||parsed.category;
@@ -219,42 +227,7 @@ ${incCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
   }catch(e){console.warn('[GPT]',e.message);return _fallback(spokenText);}
 }
 
-// ── Нечёткое совпадение строки с элементом списка ────────────────────────
-function _bestMatch(query,list){
-  if(!query||!list||!list.length)return '';
-  const q=query.toLowerCase().trim();
-
-  // Точное совпадение
-  const exact=list.find(x=>x.toLowerCase()===q);
-  if(exact)return exact;
-
-  // Список содержит запрос
-  const contains=list.find(x=>x.toLowerCase().includes(q));
-  if(contains)return contains;
-
-  // Запрос содержит элемент списка
-  const contained=list.find(x=>q.includes(x.toLowerCase()));
-  if(contained)return contained;
-
-  // Совпадение по словам (хотя бы одно слово)
-  const qWords=q.split(/\s+/).filter(w=>w.length>2);
-  let best='',bestScore=0;
-  for(const item of list){
-    const iLow=item.toLowerCase();
-    const iWords=iLow.split(/[\s/]+/);
-    let score=0;
-    for(const qw of qWords){
-      if(iLow.includes(qw))score+=qw.length;
-      for(const iw of iWords){
-        if(iw.startsWith(qw.slice(0,3))||qw.startsWith(iw.slice(0,3)))score+=2;
-      }
-    }
-    if(score>bestScore){bestScore=score;best=item;}
-  }
-  return bestScore>=2?best:'';
-}
-
-// ── Fallback без GPT ──────────────────────────────────────────────────────
+// ── Умный fallback без GPT ────────────────────────────────────────────────
 function _fallback(text){
   if(!text)return{intent:'unknown',raw_text:''};
   const t=text.toLowerCase();
@@ -262,30 +235,27 @@ function _fallback(text){
   const expCats=state.D?.expenseCats?.map(c=>c.name)||[];
   const incCats=state.D?.incomeCats||[];
 
-  // Сумма
   const amtM=text.match(/(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:руб|р\b|₽)?/i);
   const amount=amtM?parseFloat(amtM[1].replace(/\s/g,'').replace(',','.')):0;
 
-  // Кошелёк — fuzzy match по словам из фразы
+  // ПЕРВЫЙ ПРИОРИТЕТ: З/П жены
+  if(_isWifeSalary(text)){
+    const wifeCat=expCats.find(c=>c.toLowerCase().includes('жен'))||expCats[0]||'З/П жены';
+    return{intent:'add_expense',amount,category:wifeCat,wallet:_bestMatch(t,wallets),note:'зарплата жены'};
+  }
+
+  // Кошелёк
   let wallet=_bestMatch(t,wallets);
-  // Дополнительные синонимы
   if(!wallet){
-    if(t.match(/налич|кэш|кеш|нал\b/))wallet=_bestMatch('наличные',wallets);
-    else if(t.match(/тинькофф|тинк|тиньк|блэк|black|platinum|платинум|капитал/))wallet=_bestMatch('тинькофф',wallets)||_bestMatch('т-банк',wallets)||_bestMatch('black',wallets);
+    if(t.match(/налич|кэш|нал\b/))wallet=_bestMatch('наличные',wallets);
+    else if(t.match(/тинькофф|тинк|блэк|black|platinum|платинум|капитал/))wallet=_bestMatch('тинькофф',wallets)||_bestMatch('black',wallets)||_bestMatch('т-банк',wallets);
     else if(t.match(/сбер/))wallet=_bestMatch('сбер',wallets);
     else if(t.match(/альфа/))wallet=_bestMatch('альфа',wallets);
   }
 
-  // ПЕРЕВОД — проверяем первым
-  if(t.match(/перевод|перевел|перекинул|скинул|отдал/)){
+  // ПЕРЕВОД — второй приоритет
+  if(t.match(/перевод|перевел|перекинул|скинул/)){
     return{intent:'add_transfer',amount,from_wallet:wallet||'',to_wallet:''};
-  }
-
-  // З/П ЖЕНЫ — специальный случай: это РАСХОД, не доход и не перевод
-  // Ищем в expCats категорию содержащую "жен" / "супруг"
-  const wifeCat=expCats.find(c=>c.toLowerCase().match(/жен|супруг/));
-  if(wifeCat&&t.match(/жен[ае]?\s|супруг[аи]?\s|з[\/\-]п жен|зарплат[ао]?\s+жен|жен[аы]\s+зарплат/)){
-    return{intent:'add_expense',amount,category:wifeCat,wallet,note:''};
   }
 
   // Список покупок
@@ -293,32 +263,28 @@ function _fallback(text){
     return{intent:'add_shopping',items:[{name:text.replace(/\d+[.,]?\d*/g,'').trim()||text,qty:1,price:0}]};
   }
 
-  // Категория расхода — fuzzy match
+  // Категория расхода
   let category=_bestMatch(t,expCats);
   if(!category){
-    // Синонимы категорий
     const synMap=[
-      {k:/бензин|заправк|азс|топливо|горюч/,c:'бензин'},
-      {k:/продукт|еда|магазин|пятёрочк|перекрёст|ашан|лента|дикси|супермаркет/,c:'продукты'},
-      {k:/кафе|кофе|ресторан|обед|ужин|завтрак|пицца|суши|кофейн/,c:'кафе'},
-      {k:/транспорт|метро|автобус|такси|убер|маршрутк/,c:'транспорт'},
-      {k:/аптек|лекарств|таблетк|врач|клиник/,c:'здоровье'},
-      {k:/одежд|обувь|шмотк/,c:'одежда'},
-      {k:/коммунал|квартплат|жкх|свет|газ|вода|электр/,c:'квартплата'},
-      {k:/связь|телефон|интернет|мобильн/,c:'связь'},
+      {k:/бензин|заправк|азс|топливо/,c:'бензин'},
+      {k:/продукт|еда|магазин|пятёрочк/,c:'продукты'},
+      {k:/кафе|кофе|ресторан|обед|ужин/,c:'кафе'},
+      {k:/транспорт|метро|автобус|такси/,c:'транспорт'},
+      {k:/аптек|лекарств|врач/,c:'здоровье'},
+      {k:/коммунал|квартплат|жкх/,c:'квартплата'},
+      {k:/связь|телефон|интернет/,c:'связь'},
       {k:/кредит|долг|займ/,c:'кредит'},
-      {k:/жена|жены|супруг/,c:'жены'},
     ];
-    for(const{k,c}of synMap){if(t.match(k)){category=_bestMatch(c,expCats);if(category)break;}}
+    for(const{k,c}of synMap){if(t.match(k)){category=_bestMatch(c,expCats)||expCats.find(ec=>ec.toLowerCase().includes(c));if(category)break;}}
   }
 
   // Доход
-  if(t.match(/зарплат|аванс|получил|пришл[оа]|начислил|бонус|доход/)){
-    const incCat=_bestMatch(t,incCats)||incCats[0]||'Прочее';
-    return{intent:'add_income',amount,category:incCat,wallet,note:''};
+  if(t.match(/зарплат|аванс|получил|пришл[оа]|начислили|бонус/)){
+    return{intent:'add_income',amount,category:_bestMatch(t,incCats)||incCats[0]||'Прочее',wallet,note:''};
   }
 
-  // Расход
+  // Расход (или просто сумма)
   if(t.match(/потратил|трат|расход|заплатил|купил|оплатил|снял|списал/)||amount>0){
     return{intent:'add_expense',amount,category:category||expCats[1]||'Прочее',wallet,note:''};
   }
@@ -326,11 +292,10 @@ function _fallback(text){
   return{intent:'unknown',raw_text:text};
 }
 
-// ── МОДАЛКА ПОДТВЕРЖДЕНИЯ С РЕДАКТИРУЕМЫМИ ПОЛЯМИ ────────────────────────
+// ── МОДАЛКА С РЕДАКТИРУЕМЫМИ ПОЛЯМИ ──────────────────────────────────────
 export function handleVoiceIntent(intent,onConfirm){
   const modal=document.getElementById('modal-voice-intent');
   if(!modal){onConfirm&&onConfirm(intent);return;}
-
   const titleEl=modal.querySelector('.vi-title');
   const bodyEl=modal.querySelector('.vi-body');
   const confirmBtn=modal.querySelector('.vi-confirm');
@@ -340,118 +305,87 @@ export function handleVoiceIntent(intent,onConfirm){
   const titles={add_expense:'Расход',add_income:'Доход',add_shopping:'Покупки',add_transfer:'Перевод',check_balance:'Баланс',add_goal:'Цель',unknown:'Не распознано'};
   titleEl.textContent=(icons[intent.intent]||'🎤')+' '+(titles[intent.intent]||'Команда');
 
-  // Формируем редактируемое тело модалки
   bodyEl.innerHTML=_buildEditableBody(intent);
 
-  // Кнопка «Добавить» читает актуальные значения из полей модалки
   const L={add_expense:'✅ Добавить расход',add_income:'✅ Добавить доход',add_shopping:'✅ Добавить в список',add_transfer:'✅ Выполнить перевод',check_balance:'Закрыть',add_goal:'✅ Создать цель',unknown:'Ввести вручную'};
   confirmBtn.textContent=L[intent.intent]||'Подтвердить';
 
   confirmBtn.onclick=()=>{
-    // Читаем актуальные значения из редактируемых полей модалки
     const updated=_readModalValues(intent);
     modal.classList.remove('open');
     onConfirm&&onConfirm(updated);
   };
-
-  // Кнопка «Редактировать вручную» — открывает полную форму операции
   editBtn.onclick=()=>{
     const updated=_readModalValues(intent);
     modal.classList.remove('open');
     _openFullForm(updated);
   };
-
   modal.classList.add('open');
 }
 
-// ── Строим редактируемое тело модалки ────────────────────────────────────
+// ── Редактируемые поля в модалке ──────────────────────────────────────────
 function _buildEditableBody(intent){
-  if(!state.D)return '';
+  if(!state.D)return'';
   const wallets=state.D.wallets;
   const expCats=state.D.expenseCats.map(c=>c.name);
   const incCats=state.D.incomeCats;
 
-  const walletOpts=wallets.map(w=>`<option value="${w.id}" ${intent.wallet===w.name?'selected':''}>${w.name}</option>`).join('');
-  const walletByName=(name)=>wallets.find(w=>w.name===name||w.name.toLowerCase()===name?.toLowerCase());
-
-  const fld=(label,html)=>`
-    <div style="margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">${label}</div>
-      ${html}
-    </div>`;
-
-  const inp=(id,val,type='text')=>`<input id="vi-${id}" type="${type}" value="${val||''}"
-    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;
-    background:var(--bg);color:var(--topbar);font-size:14px;font-weight:600;box-sizing:border-box">`;
-
-  const sel=(id,opts,val)=>`<select id="vi-${id}"
-    style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;
-    background:var(--bg);color:var(--topbar);font-size:13px;box-sizing:border-box">${opts}</select>`;
+  const fld=(label,html)=>`<div style="margin-bottom:10px"><div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:4px">${label}</div>${html}</div>`;
+  const inp=(id,val,type='text')=>`<input id="vi-${id}" type="${type}" value="${String(val||'').replace(/"/g,'&quot;')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg);color:var(--topbar);font-size:14px;font-weight:600;box-sizing:border-box">`;
+  const sel=(id,opts)=>`<select id="vi-${id}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;background:var(--bg);color:var(--topbar);font-size:13px;box-sizing:border-box">${opts}</select>`;
+  const wOpts=(selName)=>wallets.map(w=>`<option value="${w.id}" ${w.name===selName?'selected':''}>${w.name}</option>`).join('');
 
   switch(intent.intent){
     case'add_expense':case'add_income':{
       const cats=intent.intent==='add_expense'?expCats:incCats;
       const catOpts=cats.map(c=>`<option value="${c}" ${c===intent.category?'selected':''}>${c}</option>`).join('');
-      // Находим ID кошелька
-      const wObj=walletByName(intent.wallet);
-      const wOpts=wallets.map(w=>`<option value="${w.id}" ${wObj?.id===w.id?'selected':''}>${w.name}</option>`).join('');
+      const wObj=wallets.find(w=>w.name===intent.wallet);
+      const walletOpts=wallets.map(w=>`<option value="${w.id}" ${wObj?.id===w.id?'selected':''}>${w.name}</option>`).join('');
       return fld('СУММА ₽',inp('amount',intent.amount,'number'))
-        +fld(intent.intent==='add_expense'?'КАТЕГОРИЯ РАСХОДА':'КАТЕГОРИЯ ДОХОДА',sel('category',catOpts,intent.category))
-        +fld('КОШЕЛЁК',sel('wallet',wOpts,wObj?.id))
-        +fld('ЗАМЕТКА (необязательно)',inp('note',intent.note||''));
+        +fld(intent.intent==='add_expense'?'КАТЕГОРИЯ РАСХОДА':'КАТЕГОРИЯ ДОХОДА',sel('category',catOpts))
+        +fld('КОШЕЛЁК',sel('wallet',walletOpts))
+        +fld('ЗАМЕТКА',inp('note',intent.note||''));
     }
     case'add_transfer':{
-      const fromObj=walletByName(intent.from_wallet);
-      const toObj=walletByName(intent.to_wallet);
+      const fromObj=wallets.find(w=>w.name===intent.from_wallet);
+      const toObj=wallets.find(w=>w.name===intent.to_wallet);
       const fromOpts=wallets.map(w=>`<option value="${w.id}" ${fromObj?.id===w.id?'selected':''}>${w.name}</option>`).join('');
       const toOpts=wallets.map(w=>`<option value="${w.id}" ${toObj?.id===w.id?'selected':''}>${w.name}</option>`).join('');
       return fld('СУММА ₽',inp('amount',intent.amount,'number'))
-        +fld('ОТКУДА',sel('from_wallet',fromOpts,fromObj?.id))
-        +fld('КУДА',sel('to_wallet',toOpts,toObj?.id));
+        +fld('ОТКУДА',sel('from_wallet',fromOpts))
+        +fld('КУДА',sel('to_wallet',toOpts));
     }
-    case'add_shopping':{
-      const items=(intent.items||[]).map(i=>i.name).join(', ');
-      return fld('ПОЗИЦИИ (через запятую)',inp('items',items));
-    }
+    case'add_shopping':
+      return fld('ПОЗИЦИИ (через запятую)',inp('items',(intent.items||[]).map(i=>i.name).join(', ')));
     case'check_balance':{
       const total=state.D.wallets.reduce((s,w)=>s+w.balance,0);
-      return `<div style="font-size:16px;font-weight:700;color:var(--topbar);margin-bottom:8px">Общий: ${fmt(total)}</div>`
-        +state.D.wallets.map(w=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px"><span>${w.name}</span><b>${fmt(w.balance)}</b></div>`).join('');
+      return`<div style="font-size:16px;font-weight:700;color:var(--topbar);margin-bottom:8px">Общий: ${fmt(total)}</div>`
+        +state.D.wallets.map(w=>`<div style="display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:.5px solid var(--border)"><span>${w.name}</span><b>${fmt(w.balance)}</b></div>`).join('');
     }
     default:
-      return `<div style="font-size:13px;color:var(--text2)">"${intent.raw_text||''}"</div>
-        <div style="font-size:11px;color:var(--text2);margin-top:6px">Не удалось определить намерение. Введите вручную.</div>`;
+      return`<div style="font-size:13px;color:var(--text2);padding:8px 0">"${intent.raw_text||''}"</div><div style="font-size:11px;color:var(--text2)">Не удалось определить. Введите вручную.</div>`;
   }
 }
 
-// ── Читаем значения из редактируемых полей модалки ────────────────────────
+// ── Читаем значения из полей модалки ─────────────────────────────────────
 function _readModalValues(intent){
   const g=id=>{const el=document.getElementById('vi-'+id);return el?el.value:null;};
   const updated={...intent};
-
   switch(intent.intent){
     case'add_expense':case'add_income':{
       const amt=parseFloat(g('amount'));
       if(!isNaN(amt)&&amt>0)updated.amount=amt;
-      const cat=g('category');
-      if(cat)updated.category=cat;
-      // wallet — в select хранится ID, нужно имя для отображения, но в execute используем ID
+      const cat=g('category');if(cat)updated.category=cat;
       const wId=g('wallet');
-      if(wId&&state.D){
-        const w=state.D.wallets.find(w=>w.id===wId);
-        updated.wallet=w?w.name:'';
-        updated.walletId=wId; // сохраняем ID для прямого использования
-      }
-      const note=g('note');
-      if(note!==null)updated.note=note;
+      if(wId&&state.D){const w=state.D.wallets.find(w=>w.id===wId);updated.wallet=w?w.name:'';updated.walletId=wId;}
+      const note=g('note');if(note!==null)updated.note=note;
       break;
     }
     case'add_transfer':{
-      const amt=parseFloat(g('amount'));
-      if(!isNaN(amt)&&amt>0)updated.amount=amt;
-      const fwId=g('from_wallet'),twId=g('to_wallet');
-      if(fwId&&state.D){const w=state.D.wallets.find(w=>w.id===fwId);updated.from_wallet=w?w.name:'';updated.fromWalletId=fwId;}
-      if(twId&&state.D){const w=state.D.wallets.find(w=>w.id===twId);updated.to_wallet=w?w.name:'';updated.toWalletId=twId;}
+      const amt=parseFloat(g('amount'));if(!isNaN(amt)&&amt>0)updated.amount=amt;
+      const fId=g('from_wallet'),tId=g('to_wallet');
+      if(fId&&state.D){const w=state.D.wallets.find(w=>w.id===fId);updated.from_wallet=w?w.name:'';updated.fromWalletId=fId;}
+      if(tId&&state.D){const w=state.D.wallets.find(w=>w.id===tId);updated.to_wallet=w?w.name:'';updated.toWalletId=tId;}
       break;
     }
     case'add_shopping':{
@@ -463,35 +397,24 @@ function _readModalValues(intent){
   return updated;
 }
 
-// ── Открыть полную форму операции ────────────────────────────────────────
+// ── Открыть полную форму операции ─────────────────────────────────────────
 function _openFullForm(intent){
   switch(intent.intent){
     case'add_expense':case'add_income':{
       const m=document.getElementById('modal');if(!m)return;
       m.classList.add('open');
       setTimeout(()=>{
-        const opType=intent.intent==='add_expense'?'expense':'income';
-        window.setOpType&&window.setOpType(opType);
+        window.setOpType&&window.setOpType(intent.intent==='add_expense'?'expense':'income');
         const a=document.getElementById('op-amount');
         if(a&&intent.amount){a.value=intent.amount;a.dispatchEvent(new Event('input',{bubbles:true}));}
-        // Кошелёк по ID (walletId) или по имени
         const ws=document.getElementById('op-wallet');
         if(ws){
-          if(intent.walletId){
-            for(let i=0;i<ws.options.length;i++){if(ws.options[i].value===intent.walletId){ws.selectedIndex=i;ws.dispatchEvent(new Event('change',{bubbles:true}));break;}}
-          }else if(intent.wallet){
-            const wLow=intent.wallet.toLowerCase();
-            for(let i=0;i<ws.options.length;i++){if(ws.options[i].text.toLowerCase().includes(wLow)){ws.selectedIndex=i;ws.dispatchEvent(new Event('change',{bubbles:true}));break;}}
-          }
+          if(intent.walletId){for(let i=0;i<ws.options.length;i++)if(ws.options[i].value===intent.walletId){ws.selectedIndex=i;ws.dispatchEvent(new Event('change',{bubbles:true}));break;}}
+          else if(intent.wallet){const wl=intent.wallet.toLowerCase();for(let i=0;i<ws.options.length;i++)if(ws.options[i].text.toLowerCase().includes(wl)){ws.selectedIndex=i;ws.dispatchEvent(new Event('change',{bubbles:true}));break;}}
         }
-        // Категория
         const cs=document.getElementById('op-cat');
-        if(cs&&intent.category){
-          const cLow=intent.category.toLowerCase();
-          for(let i=0;i<cs.options.length;i++){if(cs.options[i].text.toLowerCase().includes(cLow)||cs.options[i].value.toLowerCase().includes(cLow)){cs.selectedIndex=i;break;}}
-        }
-        const n=document.getElementById('op-note');
-        if(n&&intent.note)n.value=intent.note;
+        if(cs&&intent.category){const cl=intent.category.toLowerCase();for(let i=0;i<cs.options.length;i++)if(cs.options[i].text.toLowerCase().includes(cl)||cs.options[i].value.toLowerCase().includes(cl)){cs.selectedIndex=i;break;}}
+        const n=document.getElementById('op-note');if(n&&intent.note)n.value=intent.note;
       },150);break;
     }
     case'add_transfer':{
@@ -502,12 +425,9 @@ function _openFullForm(intent){
         const a=document.getElementById('op-amount');
         if(a&&intent.amount){a.value=intent.amount;a.dispatchEvent(new Event('input',{bubbles:true}));}
         const wf=document.getElementById('op-wallet');
-        if(wf){
-          const id=intent.fromWalletId||'';
-          const nm=(intent.from_wallet||'').toLowerCase();
-          for(let i=0;i<wf.options.length;i++){
-            if((id&&wf.options[i].value===id)||(nm&&wf.options[i].text.toLowerCase().includes(nm))){wf.selectedIndex=i;break;}
-          }
+        if(wf&&(intent.fromWalletId||intent.from_wallet)){
+          const id=intent.fromWalletId||'';const nm=(intent.from_wallet||'').toLowerCase();
+          for(let i=0;i<wf.options.length;i++)if((id&&wf.options[i].value===id)||(nm&&wf.options[i].text.toLowerCase().includes(nm))){wf.selectedIndex=i;break;}
         }
       },150);break;
     }
@@ -516,7 +436,7 @@ function _openFullForm(intent){
   }
 }
 
-// ── Выполнение подтверждённого намерения ──────────────────────────────────
+// ── Выполнение интента ────────────────────────────────────────────────────
 export function executeIntent(intent){
   if(!state.D)return;
   const activeDate=window._getCalActiveDate?window._getCalActiveDate():today();
@@ -524,16 +444,11 @@ export function executeIntent(intent){
     case'add_expense':case'add_income':{
       const type=intent.intent==='add_expense'?'expense':'income';
       if(!intent.amount){_openFullForm(intent);return;}
-      // Используем walletId если есть, иначе ищем по имени
       let w=null;
       if(intent.walletId)w=state.D.wallets.find(ww=>ww.id===intent.walletId);
       if(!w&&intent.wallet)w=state.D.wallets.find(ww=>ww.name.toLowerCase().includes(intent.wallet.toLowerCase()));
       if(!w)w=state.D.wallets[0];
-      const op={
-        id:'op'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
-        type,amount:intent.amount,date:today(),
-        wallet:w?.id,category:intent.category||'Прочее',note:intent.note||'',
-      };
+      const op={id:'op'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type,amount:intent.amount,date:today(),wallet:w?.id,category:intent.category||'Прочее',note:intent.note||''};
       if(w){if(type==='income')w.balance+=intent.amount;else w.balance-=intent.amount;}
       state.D.operations.push(op);sched();
       _showToast(`✓ ${type==='income'?'Доход':'Расход'} ${fmt(intent.amount)}${w?' · '+w.name:''}`);
@@ -542,13 +457,9 @@ export function executeIntent(intent){
     case'add_shopping':{
       if(!state.D.shoppingLists)state.D.shoppingLists={};
       if(!state.D.shoppingLists[activeDate])state.D.shoppingLists[activeDate]=[];
-      (intent.items||[]).forEach(item=>{
-        state.D.shoppingLists[activeDate].push({id:'sh'+Date.now()+Math.random(),name:item.name,qty:item.qty||1,price:item.price||0,done:false});
-      });
-      sched();
-      _showToast(`✓ ${(intent.items||[]).length} позиций добавлено`);
-      window.renderShoppingList&&window.renderShoppingList();
-      window._renderShopWidget&&window._renderShopWidget();break;
+      (intent.items||[]).forEach(item=>state.D.shoppingLists[activeDate].push({id:'sh'+Date.now()+Math.random(),name:item.name,qty:item.qty||1,price:item.price||0,done:false}));
+      sched();_showToast(`✓ ${(intent.items||[]).length} позиций добавлено`);
+      window.renderShoppingList&&window.renderShoppingList();window._renderShopWidget&&window._renderShopWidget();break;
     }
     case'add_transfer':{
       if(!intent.amount){_openFullForm(intent);return;}
@@ -560,8 +471,7 @@ export function executeIntent(intent){
       if(!wt&&intent.to_wallet)wt=state.D.wallets.find(w=>w.name.toLowerCase().includes(intent.to_wallet.toLowerCase()));
       if(!wt)wt=state.D.wallets[1]||state.D.wallets[0];
       const op={id:'op'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'transfer',amount:intent.amount,date:today(),wallet:wf?.id,walletTo:wt?.id};
-      if(wf)wf.balance-=intent.amount;
-      if(wt&&wt!==wf)wt.balance+=intent.amount;
+      if(wf)wf.balance-=intent.amount;if(wt&&wt!==wf)wt.balance+=intent.amount;
       state.D.operations.push(op);sched();
       _showToast(`✓ Перевод ${fmt(intent.amount)} · ${wf?.name||''}→${wt?.name||''}`);
       window._refreshCurrentScreen&&window._refreshCurrentScreen();break;
@@ -599,20 +509,13 @@ export function createSmartVoiceButton(){
     if(!isVoiceConfigured()){alert('Голосовой ввод не настроен.\n\nАдминистратор → введите URL воркера → Сохранить.');return;}
     if(active){active=false;btn.textContent='🎤';btn.style.background='';btn.style.transform='';stopRecording();return;}
     await startRecording(
-      async text=>{
-        active=false;btn.textContent='🎤';btn.style.background='';btn.style.transform='';
-        _showToast('🔍 Анализирую: «'+text+'»...');
-        const intent=await parseIntent(text);
-        handleVoiceIntent(intent,executeIntent);
-      },
+      async text=>{active=false;btn.textContent='🎤';btn.style.background='';btn.style.transform='';_showToast('🔍 Анализирую: «'+text+'»...');const intent=await parseIntent(text);handleVoiceIntent(intent,executeIntent);},
       msg=>{active=false;btn.textContent='🎤';btn.style.background='';btn.style.transform='';_showToast('⚠ '+msg);},
       isRec=>{active=isRec;if(isRec){btn.textContent='⏹';btn.style.background='#c0392b';btn.style.transform='scale(1.12)';}else{btn.textContent='⏳';btn.style.background='var(--amber)';btn.style.transform='';}}
     );
   };
   return btn;
 }
-
-// ── Инлайн кнопка 🎤 ─────────────────────────────────────────────────────
 export function createVoiceButton(targetInputId,extraStyle=''){
   const btn=document.createElement('button');
   btn.type='button';btn.title='Голосовой ввод';
@@ -630,8 +533,6 @@ export function createVoiceButton(targetInputId,extraStyle=''){
   };
   return btn;
 }
-
-// ── Toast ─────────────────────────────────────────────────────────────────
 export function _showToast(msg){
   let t=document.getElementById('voice-toast');
   if(!t){t=document.createElement('div');t.id='voice-toast';t.style.cssText='position:fixed;bottom:88px;right:24px;background:var(--topbar);color:#C9A96E;padding:10px 16px;border-radius:8px;font-size:12px;font-weight:600;z-index:999;max-width:290px;word-break:break-word;opacity:0;transition:opacity .3s;pointer-events:none;line-height:1.5;';document.body.appendChild(t);}
