@@ -317,15 +317,20 @@ export function handleVoiceIntent(intent,onConfirm){
     case'add_transfer':
       body=`<b>${intent.amount?fmt(intent.amount):'?'}</b>`
         +(intent.from_wallet?` из «${intent.from_wallet}»`:'')
-        +(intent.to_wallet?` → «${intent.to_wallet}»':' → ?');
+        +(intent.to_wallet?` → «${intent.to_wallet}»`:' → ?');
       break;
     case'check_balance':
       if(state.D){
-        const w=intent.wallet?state.D.wallets.find(w=>w.name.toLowerCase().includes(intent.wallet.toLowerCase())):null;
-        body=w?`${w.name}: <b>${fmt(w.balance)}</b>`:`Общий: <b>${fmt(state.D.wallets.reduce((s,w)=>s+w.balance,0))}</b><br>`+state.D.wallets.map(w=>`${w.name}: ${fmt(w.balance)}`).join('<br>');
+        const cbW=intent.wallet?state.D.wallets.find(ww=>ww.name.toLowerCase().includes(intent.wallet.toLowerCase())):null;
+        if(cbW){
+          body=cbW.name+': <b>'+fmt(cbW.balance)+'</b>';
+        }else{
+          const cbTotal=state.D.wallets.reduce((s,ww)=>s+ww.balance,0);
+          body='Общий: <b>'+fmt(cbTotal)+'</b><br>'+state.D.wallets.map(ww=>ww.name+': '+fmt(ww.balance)).join('<br>');
+        }
       }break;
     case'add_goal':
-      body=`<b>${intent.name||'?'}</b>${intent.target_amount?' — '+fmt(intent.target_amount):''}${intent.deadline?`<br>Срок: ${intent.deadline}`:''}`;break;
+      body='<b>'+(intent.name||'?')+'</b>'+(intent.target_amount?' — '+fmt(intent.target_amount):'')+(intent.deadline?'<br>Срок: '+intent.deadline:'');break;
     case'add_category':
       body=`<b>${intent.name||'?'}</b> (${intent.type==='income'?'доход':'расход'})`;break;
     default:
