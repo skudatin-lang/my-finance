@@ -1,4 +1,4 @@
-import{$,fmt,state,planById,sched,exportData,importData,clearAllOps}from'./core.js';
+import{$,fmt,state,planById,sched,exportData,importData,clearAllOps,today,isPlanned}from'./core.js';
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -65,7 +65,6 @@ export function addWallet(){
 export function delWallet(i){
   if(state.D.wallets.length<=1){alert('Нужен хотя бы один кошелёк');return;}
   const wallet=state.D.wallets[i];
-  // FIX: warn if wallet has linked operations
   const opCount=state.D.operations.filter(o=>o.wallet===wallet.id||o.walletTo===wallet.id).length;
   const msg=opCount>0
     ?`Удалить кошелёк "${wallet.name}"? К нему привязаны ${opCount} операций — они останутся в истории, но кошелёк будет отображаться как "?".\n\nПродолжить?`
@@ -171,3 +170,45 @@ window.openEditPlanItem=openEditPlanItem;
 window.deletePlanItem=deletePlanItem;
 window.openAddPlanItem=openAddPlanItem;
 window.savePlanItem=savePlanItem;
+
+// ── CSV Экспорт (перенесено из analytics.js) ───────────────────────
+export function exportCSV(monthOffset=0){
+  if(!state.D)return;
+  const now=new Date();
+  const dt=new Date(now.getFullYear(),now.getMonth()+monthOffset,1);
+  const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  const ops=state.D.operations.filter(o=>o.date&&o.date.startsWith(ym)&&!isPlanned(o.type));
+  const lines=['Дата;Тип;Категория;Кошелёк;Сумма;Заметка'];
+  ops.sort((a,b)=>a.date>b.date?1:-1).forEach(o=>{
+    const type=o.type==='income'?'Доход':o.type==='expense'?'Расход':'Перевод';
+    const cat=o.type==='transfer'?`Перевод → ${state.D.wallets.find(w=>w.id===o.walletTo)?.name||'?'}`:o.category||'';
+    const wallet=state.D.wallets.find(w=>w.id===o.wallet)?.name||'';
+    const amt=o.type==='expense'?-o.amount:o.amount;
+    lines.push(`${o.date};${type};${cat};${wallet};${amt};${(o.note||'').replace(/;/g,',')}`);
+  });
+  const bom='\uFEFF';
+  const blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`finance-${ym}.csv`;
+  a.click();
+}
+
+export function exportAllCSV(){
+  if(!state.D)return;
+  const lines=['Дата;Тип;Категория;Кошелёк;Сумма;Заметка'];
+  const ops=state.D.operations.filter(o=>!isPlanned(o.type));
+  ops.sort((a,b)=>a.date>b.date?1:-1).forEach(o=>{
+    const type=o.type==='income'?'Доход':o.type==='expense'?'Расход':'Перевод';
+    const cat=o.type==='transfer'?`Перевод → ${state.D.wallets.find(w=>w.id===o.walletTo)?.name||'?'}`:o.category||'';
+    const wallet=state.D.wallets.find(w=>w.id===o.wallet)?.name||'';
+    const amt=o.type==='expense'?-o.amount:o.amount;
+    lines.push(`${o.date||''};${type};${cat};${wallet};${amt};${(o.note||'').replace(/;/g,',')}`);
+  });
+  const bom='\uFEFF';
+  const blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`finance-all-${today()}.csv`;
+  a.click();
+}
