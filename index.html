@@ -561,21 +561,40 @@
 <!-- MODAL: loan -->
 <div class="modal-overlay" id="modal-loan">
   <div class="modal">
-    <div class="modal-hdr"><span class="modal-title" id="loan-modal-title">КРЕДИТ / ДОЛГ</span><button class="modal-close" onclick="document.getElementById('modal-loan').classList.remove('open')">&#10005;</button></div>
-    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="loan-name" placeholder="Ипотека, долг другу..."></div>
+    <div class="modal-hdr"><span class="modal-title">ЗАЙМ / КРЕДИТ</span><button class="modal-close" onclick="document.getElementById('modal-loan').classList.remove('open')">&#10005;</button></div>
     <div class="rf">
-      <div class="fg"><label>СУММА ДОЛГА ₽</label><input class="fi" type="number" id="loan-amount" placeholder="0"></div>
-      <div class="fg"><label>СТАВКА % год</label><input class="fi" type="number" id="loan-rate" placeholder="0" step="0.1"></div>
-    </div>
-    <div class="rf">
-      <div class="fg"><label>ПЛАТЁЖ В МЕСЯЦ ₽</label><input class="fi" type="number" id="loan-payment" placeholder="0"></div>
       <div class="fg"><label>ТИП</label>
-        <select class="fi" id="loan-type">
-          <option value="credit">Кредит/Ипотека</option>
-          <option value="debt_out">Я должен</option>
-          <option value="debt_in">Мне должны</option>
+        <select class="fi" id="loan-type" onchange="window.toggleLoanType(this.value)">
+          <option value="credit">Кредит / ипотека</option>
+          <option value="card">Кредитная карта</option>
         </select>
       </div>
+      <div class="fg"><label>КОШЕЛЁК-ДОЛГ (автозаполнение)</label>
+        <select class="fi" id="loan-wallet" onchange="window.onLoanWalletChange(this.value)"></select>
+      </div>
+    </div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="loan-name" placeholder="Ипотека, Тинькофф кредитка..."></div>
+    <div class="rf">
+      <div class="fg"><label>СУММА ДОЛГА</label><input class="fi" type="number" id="loan-amount" placeholder="0"></div>
+      <div class="fg"><label>СТАВКА % ГОД.</label><input class="fi" type="number" id="loan-rate" placeholder="0" step="0.1"></div>
+    </div>
+    <div id="loan-credit-fields">
+      <div class="rf">
+        <div class="fg"><label>СРОК (МЕС.)</label><input class="fi" type="number" id="loan-months" placeholder="12"></div>
+        <div class="fg"><label>ДАТА НАЧАЛА</label><input class="fi" type="date" id="loan-start"></div>
+      </div>
+      <div class="rf">
+        <div class="fg"><label>ДЕНЬ ПЛАТЕЖА</label><input class="fi" type="number" id="loan-payday" min="1" max="28" value="1" placeholder="1"></div>
+        <div class="fg"><label>ПЛАТЁЖ В МЕС ₽ (необяз.)</label><input class="fi" type="number" id="loan-payment" placeholder="авторасчёт"></div>
+      </div>
+    </div>
+    <div id="loan-card-fields" style="display:none">
+      <div class="notice blue" style="font-size:11px">Прогноз считается на основе вашего платежа и ставки.</div>
+      <div class="rf">
+        <div class="fg"><label>МОЙ ПЛАТЁЖ ₽/МЕС</label><input class="fi" type="number" id="loan-payment-card" oninput="document.getElementById('loan-payment').value=this.value" placeholder="0"></div>
+        <div class="fg"><label>ДЕНЬ ВЫСТАВЛЕНИЯ СЧЁТА</label><input class="fi" type="number" id="loan-payday-card" oninput="document.getElementById('loan-payday').value=this.value" min="1" max="28" value="25" placeholder="25"></div>
+      </div>
+      <div class="fg"><label>БЕСПРОЦ. ПЕРИОД (дн.)</label><input class="fi" type="number" id="loan-grace" value="0" placeholder="0"></div>
     </div>
     <input type="hidden" id="loan-idx" value="-1">
     <button class="btn-primary" onclick="window.saveLoan()">Сохранить</button>
