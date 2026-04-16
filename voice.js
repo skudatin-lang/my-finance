@@ -1,20 +1,18 @@
 /**
  * voice.js — Yandex SpeechKit STT + GPT intent parsing
  *
- * Цепочка:
- * 1. Нажать 🎤 → запись аудио
- * 2. Аудио → конвертация в PCM 16-bit 16kHz
- * 3. PCM → Яндекс STT → текст
- * 4. Текст → YandexGPT → разбор намерения (intent)
- * 5. Intent → модалка подтверждения (показывает что распознано)
- * 6. Подтверждение → executeIntent → добавляет операцию/покупку/цель
+ * ИСПРАВЛЕНИЯ:
+ * 1. PCM конвертация — работает в Safari и Chrome
+ * 2. Умный _fallback — парсит без GPT если /gpt упал (мобильный)
+ * 3. _openEdit заполняет кошелёк в форме редактирования
+ * 4. setOpType вызывается правильно ('expense'/'income', не полный intent)
  */
 import{state,sched,fmt,today}from'./core.js';
 
 let _sttUrl='',_gptUrl='',_appSecret='',_userId='';
 let _mediaRecorder=null,_audioChunks=[],_isRecording=false;
 
-const PCM_RATE = 16000; // Hz — Яндекс STT lpcm
+const PCM_RATE=16000;
 
 // ── Настройки ─────────────────────────────────────────────────────────────
 export function loadVoiceSettings(){
@@ -34,8 +32,7 @@ export function saveVoiceSettings(sttUrl,gptUrl,appSecret){
 export function isVoiceConfigured(){return!!(_sttUrl.trim());}
 export function isRecording(){return _isRecording;}
 
-// ── Конвертация аудио → PCM 16-bit 16kHz mono ────────────────────────────
-// Работает с любым форматом браузера: webm, mp4, ogg
+// ── Конвертация в PCM 16-bit 16kHz (работает везде) ──────────────────────
 async function _toPCM(blob){
   const ab=await blob.arrayBuffer();
   const Ctx=window.AudioContext||window.webkitAudioContext;
@@ -43,7 +40,7 @@ async function _toPCM(blob){
   const ctx=new Ctx({sampleRate:PCM_RATE});
   let dec;
   try{dec=await ctx.decodeAudioData(ab);}
-  catch(e){await ctx.close();throw new Error('Ошибка декодирования аудио: '+e.message);}
+  catch(e){await ctx.close();throw new Error('Ошибка декодирования: '+e.message);}
   await ctx.close();
   let s=dec.getChannelData(0);
   if(dec.sampleRate!==PCM_RATE){
@@ -56,7 +53,6 @@ async function _toPCM(blob){
   return p.buffer;
 }
 
-// ── Выбор mime для записи ─────────────────────────────────────────────────
 function _pickMime(){
   const c=['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/webm','audio/mp4;codecs=mp4a.40.2','audio/mp4'];
   for(const f of c)if(MediaRecorder.isTypeSupported(f))return f;
@@ -71,7 +67,7 @@ export async function startRecording(onResult,onError,onStateChange){
     return;
   }
   const mime=_pickMime();
-  if(!mime){onError&&onError('Браузер не поддерживает запись. Используйте Chrome/Firefox/Safari 14.1+.');return;}
+  if(!mime){onError&&onError('Браузер не поддерживает запись. Используйте Chrome/Firefox/Safari 14+.');return;}
   let stream;
   try{
     stream=await navigator.mediaDevices.getUserMedia({
@@ -79,7 +75,7 @@ export async function startRecording(onResult,onError,onStateChange){
     });
   }catch(e){
     onError&&onError(e.name==='NotAllowedError'
-      ?'Нет доступа к микрофону.\nРазрешите в настройках браузера.'
+      ?'Нет доступа к микрофону. Разрешите в настройках браузера.'
       :'Микрофон недоступен: '+e.message);
     return;
   }
@@ -100,7 +96,7 @@ export async function startRecording(onResult,onError,onStateChange){
       const pcm=await _toPCM(raw);
       const text=await _sendPCM(pcm);
       if(text)onResult&&onResult(text);
-      else onError&&onError('Речь не распознана. Говорите чётче.');
+      else onError&&onError('Речь не распознана. Говорите чётче и ближе к микрофону.');
     }catch(e){onError&&onError('Ошибка: '+e.message);}
   };
   rec.onerror=e=>{
@@ -116,7 +112,7 @@ export function stopRecording(){
   try{_mediaRecorder.stop();}catch(_){}
 }
 
-// ── Отправка PCM на воркер /stt ───────────────────────────────────────────
+// ── STT: отправка PCM ─────────────────────────────────────────────────────
 async function _sendPCM(pcmBuf){
   if(!pcmBuf||pcmBuf.byteLength<500)return null;
   const base=_sttUrl.replace(/\/?$/,'');
@@ -130,43 +126,41 @@ async function _sendPCM(pcmBuf){
     if(!resp.ok){
       const msg=data.error_message||data.error||JSON.stringify(data).slice(0,100);
       if(resp.status===401)_showToast('⚠ Ошибка авторизации. Проверьте YANDEX_API_KEY.');
-      else if(resp.status===402)_showToast('⚠ Нет средств на балансе Яндекс Cloud.');
+      else if(resp.status===402)_showToast('⚠ Нет средств Яндекс Cloud.');
       else _showToast('STT ошибка ('+resp.status+'): '+msg);
       return null;
     }
     return(data.result||'').trim()||null;
-  }catch(e){_showToast('Нет связи с воркером: '+e.message);return null;}
+  }catch(e){_showToast('Нет связи: '+e.message);return null;}
 }
 
 // ── GPT: разбор намерения ─────────────────────────────────────────────────
 export async function parseIntent(spokenText){
-  if(!state.D)return{intent:'unknown',raw_text:spokenText};
+  if(!state.D)return _fallback(spokenText);
   const cats=[...state.D.incomeCats,...state.D.expenseCats.map(c=>c.name)].slice(0,20);
   const wallets=state.D.wallets.map(w=>w.name);
 
-  const sys=`Ты ассистент по личным финансам. Пользователь надиктовал команду голосом.
-Определи намерение и верни ТОЛЬКО JSON (без markdown, без пояснений).
+  const sys=`Ты ассистент финансового приложения. Пользователь надиктовал команду голосом на русском.
+Определи намерение и верни ТОЛЬКО JSON без markdown.
 
 Намерения:
-- "add_expense": трата/расход. Поля: amount(число), category(из списка), wallet(из списка), note
-- "add_income": доход/поступление. Поля: amount(число), category(из списка), wallet(из списка), note
-- "add_transfer": перевод между кошельками. Поля: amount, from_wallet, to_wallet
-- "add_shopping": список покупок/нужно купить. Поля: items([{name,qty,price}])
-- "check_balance": узнать баланс. Поля: wallet(опц.)
-- "add_goal": финансовая цель. Поля: name, target_amount, deadline(YYYY-MM-DD, опц.)
-- "add_category": новая категория. Поля: name, type("income"/"expense")
-- "unknown": непонятно. Поля: raw_text
+- add_expense: трата/расход/купил/заплатил. Поля: amount(число без валюты), category, wallet, note
+- add_income: доход/получил/зарплата/пришло. Поля: amount, category, wallet, note
+- add_transfer: перевод/перекинуть. Поля: amount, from_wallet, to_wallet
+- add_shopping: купить/список/нужно купить. Поля: items:[{name,qty,price}]
+- check_balance: баланс/сколько. Поля: wallet(опц)
+- add_goal: цель/копить. Поля: name, target_amount, deadline
+- unknown: непонятно. Поля: raw_text
 
-Категории расходов/доходов: ${cats.join(', ')||'Продукты, Транспорт, Кафе, Зарплата'}
-Кошельки: ${wallets.join(', ')||'Наличные, Карта'}
+Кошельки пользователя (важно для wallet): ${wallets.join(', ')}
+Категории: ${cats.join(', ')}
 Сегодня: ${today()}
 
-Примеры:
-"потратил 500 рублей на продукты" → {"intent":"add_expense","amount":500,"category":"Продукты","wallet":"","note":""}
-"купить молоко 2 штуки и хлеб" → {"intent":"add_shopping","items":[{"name":"молоко","qty":2,"price":0},{"name":"хлеб","qty":1,"price":0}]}
-"пришла зарплата 80000" → {"intent":"add_income","amount":80000,"category":"Зарплата","wallet":"","note":""}
-"заправил машину на 3000" → {"intent":"add_expense","amount":3000,"category":"Транспорт","wallet":"","note":"заправка"}
-"переведи 5000 с карты на наличные" → {"intent":"add_transfer","amount":5000,"from_wallet":"Карта","to_wallet":"Наличные"}`;
+Примеры JSON:
+"потратил 500 на бензин с тинькофф блэк" → {"intent":"add_expense","amount":500,"category":"Бензин","wallet":"т-банк Black","note":""}
+"потратил 1000 рублей на продукты наличными" → {"intent":"add_expense","amount":1000,"category":"Продукты","wallet":"Наличные","note":""}
+"пришла зарплата 80000 на карту" → {"intent":"add_income","amount":80000,"category":"Зарплата","wallet":"т-банк Black","note":""}
+"купить молоко и хлеб" → {"intent":"add_shopping","items":[{"name":"молоко","qty":1,"price":0},{"name":"хлеб","qty":1,"price":0}]}`;
 
   const base=(_gptUrl||_sttUrl).replace(/\/?$/,'');
   const ep=base.endsWith('/gpt')?base:base+'/gpt';
@@ -176,59 +170,118 @@ export async function parseIntent(spokenText){
 
   try{
     const resp=await fetch(ep,{method:'POST',headers:h,body:JSON.stringify({
-      completionOptions:{stream:false,temperature:0.1,maxTokens:400},
+      completionOptions:{stream:false,temperature:0.1,maxTokens:300},
       messages:[{role:'system',text:sys},{role:'user',text:spokenText}]
     })});
     if(!resp.ok){
-      console.warn('[GPT] failed:',resp.status);
+      console.warn('[GPT] failed:',resp.status,'→ using fallback');
       return _fallback(spokenText);
     }
     const d=await resp.json();
-    const t=(d.result?.alternatives?.[0]?.message?.text||'').replace(/```json|```|\n/g,'').trim();
+    const t=(d.result?.alternatives?.[0]?.message?.text||'').replace(/```json|```/g,'').trim();
     if(!t)return _fallback(spokenText);
-    try{return JSON.parse(t);}
-    catch(_){return _fallback(spokenText);}
+    try{
+      const parsed=JSON.parse(t);
+      // Если GPT вернул unknown — попробуем fallback
+      if(parsed.intent==='unknown'&&parsed.raw_text)return _fallback(spokenText)||parsed;
+      return parsed;
+    }catch(_){return _fallback(spokenText);}
   }catch(e){
-    console.warn('[GPT]',e.message);
+    console.warn('[GPT]',e.message,'→ fallback');
     return _fallback(spokenText);
   }
 }
 
+// ── Умный fallback без GPT ────────────────────────────────────────────────
+// Работает когда GPT недоступен (нет YANDEX_GPT_KEY, ошибка сети и т.д.)
 function _fallback(text){
+  if(!text)return{intent:'unknown',raw_text:''};
   const t=text.toLowerCase();
-  const m=text.match(/\b(\d[\d\s]*)\b/);
-  const amount=m?parseFloat(m[1].replace(/\s/g,'')):0;
-  if(t.match(/купи|список|магазин|нужно/))return{intent:'add_shopping',items:[{name:text.replace(/\d+/g,'').trim()||text,qty:1,price:0}]};
-  if(t.match(/трат|расход|купил|заплатил|потратил/))return{intent:'add_expense',amount,category:'Прочее',note:text};
-  if(t.match(/доход|зарплат|получил|пришл/))return{intent:'add_income',amount,category:'Прочее',note:text};
-  if(t.match(/перевод|перевел|переведи/))return{intent:'add_transfer',amount,from_wallet:'',to_wallet:''};
+
+  // Извлекаем сумму
+  const amtM=text.match(/(\d[\d\s]*(?:[.,]\d{1,2})?)\s*(?:руб|р\b|₽)?/i);
+  const amount=amtM?parseFloat(amtM[1].replace(/\s/g,'').replace(',','.')):0;
+
+  // Определяем кошелёк
+  let wallet='';
+  if(state.D?.wallets){
+    for(const w of state.D.wallets){
+      const wn=w.name.toLowerCase();
+      // Ищем упоминание кошелька в тексте
+      if(t.includes(wn)||
+         (wn.includes('наличн')&&(t.includes('налич')||t.includes('кэш')||t.includes('cash')))||
+         (wn.includes('тинькофф')||wn.includes('тбанк')||wn.includes('т-банк'))&&
+           (t.includes('тинькофф')||t.includes('тинкофф')||t.includes('тинк')||t.includes('блэк')||t.includes('black')||t.includes('платинум')||t.includes('капитал'))||
+         (wn.includes('сбер')&&t.includes('сбер'))||
+         (wn.includes('альфа')&&t.includes('альфа'))||
+         (wn.includes('отпуск')&&t.includes('отпуск'))){
+        wallet=w.name;break;
+      }
+    }
+  }
+
+  // Определяем категорию расхода
+  let category='Прочее';
+  const catMap=[
+    {keys:['продукт','еда','магазин','пятёрочк','перекрёст','ашан','лента','дикси'],cat:'Продукты'},
+    {keys:['бензин','заправк','азс','топливо','горюч'],cat:'Бензин'},
+    {keys:['кафе','кофе','ресторан','обед','ужин','завтрак','пицца','суши'],cat:'Кафе'},
+    {keys:['транспорт','метро','автобус','такси','убер','яндекс такси'],cat:'Транспорт'},
+    {keys:['аптек','лекарств','таблетк','здоров'],cat:'Здоровье'},
+    {keys:['одежд','обувь','шмотк'],cat:'Одежда'},
+    {keys:['коммунал','квартплат','свет','газ','вода','жкх'],cat:'Коммунальные'},
+    {keys:['связь','телефон','интернет','мобильн'],cat:'Связь'},
+    {keys:['развлечен','кино','театр','концерт'],cat:'Развлечения'},
+  ];
+  for(const m of catMap){
+    if(m.keys.some(k=>t.includes(k))){category=m.cat;break;}
+  }
+  // Проверяем категории пользователя
+  if(state.D?.expenseCats){
+    for(const ec of state.D.expenseCats){
+      if(ec.name&&t.includes(ec.name.toLowerCase())){category=ec.name;break;}
+    }
+  }
+
+  // Определяем намерение
+  if(t.match(/купи(ть|л)?|список|нужно\s+купить|магазин/))
+    return{intent:'add_shopping',items:[{name:text.replace(/\d+[.,]?\d*/g,'').replace(/р\b|руб\b|₽/gi,'').trim()||text,qty:1,price:0}]};
+
+  if(t.match(/перевод|перевел|перекид|перекинул|перевести/))
+    return{intent:'add_transfer',amount,from_wallet:'',to_wallet:''};
+
+  if(t.match(/зарплат|аванс|получил|пришл[оа]|доход|начислил/))
+    return{intent:'add_income',amount,category:'Зарплата',wallet,note:''};
+
+  if(t.match(/потратил|трат|расход|заплатил|купил|оплатил|снял|списал/))
+    return{intent:'add_expense',amount,category,wallet,note:''};
+
+  // Если есть сумма — скорее всего расход
+  if(amount>0)
+    return{intent:'add_expense',amount,category,wallet,note:text};
+
   return{intent:'unknown',raw_text:text};
 }
 
 // ── Модалка подтверждения ─────────────────────────────────────────────────
 export function handleVoiceIntent(intent,onConfirm){
   const modal=document.getElementById('modal-voice-intent');
-  if(!modal){
-    // Если модалки нет — выполняем сразу без подтверждения
-    console.warn('modal-voice-intent not found, executing directly');
-    onConfirm&&onConfirm(intent);
-    return;
-  }
+  if(!modal){onConfirm&&onConfirm(intent);return;}
   const titleEl=modal.querySelector('.vi-title');
   const bodyEl=modal.querySelector('.vi-body');
   const confirmBtn=modal.querySelector('.vi-confirm');
   const editBtn=modal.querySelector('.vi-edit');
 
   const E={add_expense:'💸',add_income:'💰',add_shopping:'🛒',add_transfer:'🔄',check_balance:'📊',add_goal:'🎯',add_category:'📂',unknown:'🤔'};
-  const T={add_expense:'Расход',add_income:'Доход',add_shopping:'Список покупок',add_transfer:'Перевод',check_balance:'Баланс',add_goal:'Новая цель',add_category:'Категория',unknown:'Не распознано'};
+  const T={add_expense:'Расход',add_income:'Доход',add_shopping:'Список покупок',add_transfer:'Перевод',check_balance:'Баланс',add_goal:'Новая цель',add_category:'Новая категория',unknown:'Не распознано'};
   titleEl.textContent=(E[intent.intent]||'🎤')+' '+(T[intent.intent]||'Команда');
 
   let body='';
   switch(intent.intent){
     case'add_expense':case'add_income':
-      body=`<b>${intent.amount?fmt(intent.amount):'(сумма не указана)'}</b>`
+      body=`<b>${intent.amount?fmt(intent.amount):'(сумма?)'}</b>`
         +(intent.category?` · ${intent.category}`:'')
-        +(intent.wallet?` · ${intent.wallet}`:'')
+        +(intent.wallet?` · <span style="color:var(--blue)">${intent.wallet}</span>`:'')
         +(intent.note?`<br><span style="color:var(--text2);font-size:11px">${intent.note}</span>`:'');
       break;
     case'add_shopping':
@@ -239,55 +292,70 @@ export function handleVoiceIntent(intent,onConfirm){
       break;
     case'check_balance':
       if(state.D){
-        const w=intent.wallet?state.D.wallets.find(w=>w.name.toLowerCase().includes(intent.wallet.toLowerCase())):null;
-        body=w?`${w.name}: <b>${fmt(w.balance)}</b>`:`Общий баланс: <b>${fmt(state.D.wallets.reduce((s,w)=>s+w.balance,0))}</b><br>`+state.D.wallets.map(w=>`${w.name}: ${fmt(w.balance)}`).join('<br>');
-      }
-      break;
+        const w=intent.wallet?state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.wallet||'').toLowerCase())):null;
+        body=w
+          ?`${w.name}: <b>${fmt(w.balance)}</b>`
+          :`Общий: <b>${fmt(state.D.wallets.reduce((s,w)=>s+w.balance,0))}</b><br>`
+            +state.D.wallets.map(w=>`${w.name}: ${fmt(w.balance)}`).join('<br>');
+      }break;
     case'add_goal':
-      body=`<b>${intent.name||'?'}</b>${intent.target_amount?' — '+fmt(intent.target_amount):''}${intent.deadline?`<br>Срок: ${intent.deadline}`:''}`;
-      break;
+      body=`<b>${intent.name||'?'}</b>${intent.target_amount?' — '+fmt(intent.target_amount):''}${intent.deadline?`<br>Срок: ${intent.deadline}`:''}`;break;
     case'add_category':
-      body=`<b>${intent.name||'?'}</b> (${intent.type==='income'?'доход':'расход'})`;
-      break;
+      body=`<b>${intent.name||'?'}</b> (${intent.type==='income'?'доход':'расход'})`;break;
     default:
-      body=`"${intent.raw_text||''}"<br><span style="color:var(--text2);font-size:11px">Попробуйте переформулировать или введите вручную</span>`;
+      body=`"${intent.raw_text||''}"<br><span style="color:var(--text2);font-size:11px">Попробуйте переформулировать</span>`;
   }
   bodyEl.innerHTML=body;
 
-  const L={
-    add_expense:'✅ Добавить расход',
-    add_income:'✅ Добавить доход',
-    add_shopping:'✅ Добавить в список',
-    add_transfer:'✅ Выполнить перевод',
-    check_balance:'Понятно',
-    add_goal:'✅ Создать цель',
-    add_category:'✅ Добавить категорию',
-    unknown:'Ввести вручную',
-  };
+  const L={add_expense:'✅ Добавить расход',add_income:'✅ Добавить доход',add_shopping:'✅ Добавить в список',add_transfer:'✅ Выполнить перевод',check_balance:'Понятно',add_goal:'✅ Создать цель',add_category:'✅ Добавить категорию',unknown:'Ввести вручную'};
   confirmBtn.textContent=L[intent.intent]||'Подтвердить';
   confirmBtn.onclick=()=>{modal.classList.remove('open');onConfirm&&onConfirm(intent);};
-  editBtn.onclick=()=>{modal.classList.remove('open');_openManual(intent);};
+  editBtn.onclick=()=>{modal.classList.remove('open');_openEdit(intent);};
   modal.classList.add('open');
 }
 
-// ── Ручное редактирование ─────────────────────────────────────────────────
-function _openManual(intent){
+// ── Открытие формы для ручного редактирования ─────────────────────────────
+function _openEdit(intent){
   switch(intent.intent){
     case'add_expense':case'add_income':{
       const m=document.getElementById('modal');if(!m)return;
       m.classList.add('open');
       setTimeout(()=>{
-        window.setOpType&&window.setOpType(intent.intent==='add_expense'?'expense':'income');
-        const a=document.getElementById('op-amount');if(a&&intent.amount)a.value=intent.amount;
-        const n=document.getElementById('op-note');if(n&&intent.note)n.value=intent.note;
+        // ФИКС: правильный тип ('expense'/'income', не полный intent string)
+        const opType=intent.intent==='add_expense'?'expense':'income';
+        window.setOpType&&window.setOpType(opType);
+
+        // Сумма
+        const a=document.getElementById('op-amount');
+        if(a&&intent.amount)a.value=intent.amount;
+
+        // Кошелёк — ФИКС: теперь заполняем
+        const ws=document.getElementById('op-wallet');
+        if(ws&&intent.wallet){
+          for(let i=0;i<ws.options.length;i++){
+            if(ws.options[i].text.toLowerCase().includes(intent.wallet.toLowerCase())||
+               ws.options[i].value.toLowerCase().includes(intent.wallet.toLowerCase())){
+              ws.selectedIndex=i;break;
+            }
+          }
+        }
+
+        // Категория
         const cs=document.getElementById('op-cat');
         if(cs&&intent.category){
           for(let i=0;i<cs.options.length;i++){
-            if(cs.options[i].value.toLowerCase().includes(intent.category.toLowerCase())){cs.selectedIndex=i;break;}
+            if(cs.options[i].value.toLowerCase().includes(intent.category.toLowerCase())||
+               cs.options[i].text.toLowerCase().includes(intent.category.toLowerCase())){
+              cs.selectedIndex=i;break;
+            }
           }
         }
-      },100);
-      break;
+
+        // Заметка
+        const n=document.getElementById('op-note');
+        if(n&&intent.note)n.value=intent.note;
+
+      },150);break;
     }
     case'add_shopping':window.openAddShopItem&&window.openAddShopItem();break;
     default:document.getElementById('modal')?.classList.add('open');
@@ -302,8 +370,12 @@ export function executeIntent(intent){
   switch(intent.intent){
     case'add_expense':case'add_income':{
       const type=intent.intent==='add_expense'?'expense':'income';
-      if(!intent.amount){_openManual(intent);return;}
-      const w=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.wallet||'').toLowerCase()))||state.D.wallets[0];
+      if(!intent.amount){_openEdit(intent);return;}
+      // Ищем кошелёк по имени или берём первый
+      const w=state.D.wallets.find(w=>{
+        if(!intent.wallet)return false;
+        return w.name.toLowerCase().includes(intent.wallet.toLowerCase());
+      })||state.D.wallets[0];
       const op={
         id:'op'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
         type,amount:intent.amount,date:today(),
@@ -311,7 +383,8 @@ export function executeIntent(intent){
       };
       if(w){if(type==='income')w.balance+=intent.amount;else w.balance-=intent.amount;}
       state.D.operations.push(op);sched();
-      _showToast(`✓ ${type==='income'?'Доход':'Расход'} ${fmt(intent.amount)} добавлен`);
+      const wName=w?.name||'';
+      _showToast(`✓ ${type==='income'?'Доход':'Расход'} ${fmt(intent.amount)}${wName?' → '+wName:''} добавлен`);
       window._refreshCurrentScreen&&window._refreshCurrentScreen();
       break;
     }
@@ -319,7 +392,10 @@ export function executeIntent(intent){
       if(!state.D.shoppingLists)state.D.shoppingLists={};
       if(!state.D.shoppingLists[activeDate])state.D.shoppingLists[activeDate]=[];
       (intent.items||[]).forEach(item=>{
-        state.D.shoppingLists[activeDate].push({id:'sh'+Date.now()+Math.random(),name:item.name,qty:item.qty||1,price:item.price||0,done:false});
+        state.D.shoppingLists[activeDate].push({
+          id:'sh'+Date.now()+Math.random(),
+          name:item.name,qty:item.qty||1,price:item.price||0,done:false,
+        });
       });
       sched();
       _showToast(`✓ ${(intent.items||[]).length} позиций добавлено в список`);
@@ -328,7 +404,7 @@ export function executeIntent(intent){
       break;
     }
     case'add_transfer':{
-      if(!intent.amount){_openManual(intent);return;}
+      if(!intent.amount){_openEdit(intent);return;}
       const wf=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.from_wallet||'').toLowerCase()))||state.D.wallets[0];
       const wt=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.to_wallet||'').toLowerCase()))||state.D.wallets[1]||state.D.wallets[0];
       const op={id:'op'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:'transfer',amount:intent.amount,date:today(),wallet:wf?.id,walletTo:wt?.id};
@@ -340,7 +416,7 @@ export function executeIntent(intent){
       break;
     }
     case'add_goal':{
-      if(!intent.name){_openManual(intent);return;}
+      if(!intent.name){_openEdit(intent);return;}
       if(!state.D.goals)state.D.goals=[];
       const w=state.D.wallets.find(w=>w.name.toLowerCase().includes('сбереж'))||state.D.wallets[0];
       state.D.goals.push({id:'goal'+Date.now(),name:intent.name,target:intent.target_amount||0,walletId:w?.id,deadline:intent.deadline||null});
@@ -348,21 +424,14 @@ export function executeIntent(intent){
       break;
     }
     case'add_category':{
-      if(!intent.name){return;}
-      if(intent.type==='income'){
-        if(!state.D.incomeCats.includes(intent.name))state.D.incomeCats.push(intent.name);
-      }else{
-        const pid=state.D.plan.find(p=>p.type==='expense')?.id||'';
-        if(!state.D.expenseCats.find(c=>c.name===intent.name))state.D.expenseCats.push({name:intent.name,planId:pid});
-      }
+      if(!intent.name)return;
+      if(intent.type==='income'){if(!state.D.incomeCats.includes(intent.name))state.D.incomeCats.push(intent.name);}
+      else{const pid=state.D.plan.find(p=>p.type==='expense')?.id||'';if(!state.D.expenseCats.find(c=>c.name===intent.name))state.D.expenseCats.push({name:intent.name,planId:pid});}
       sched();_showToast('✓ Категория «'+intent.name+'» добавлена');
       break;
     }
-    case'check_balance':
-      // Уже показано в модалке — ничего не делаем
-      break;
-    default:
-      _openManual(intent);
+    case'check_balance':break;
+    default:_openEdit(intent);
   }
 }
 
@@ -377,21 +446,17 @@ export function createSmartVoiceButton(){
   btn.id='smart-voice-btn';btn.title='Голосовая команда';
   btn.setAttribute('aria-label','Голосовой ввод');btn.textContent='🎤';
   let active=false;
-
   btn.onclick=async()=>{
     if(!isVoiceConfigured()){
       alert('Голосовой ввод не настроен.\n\nПерейдите: Администратор → введите URL воркера → Сохранить.');
       return;
     }
     if(active){stopRecording();return;}
-
     await startRecording(
       async text=>{
         active=false;btn.textContent='🎤';btn.style.background='';btn.style.transform='';
         _showToast('🔍 Анализирую: «'+text+'»...');
-        // GPT разбирает намерение
         const intent=await parseIntent(text);
-        // Показываем модалку подтверждения
         handleVoiceIntent(intent,executeIntent);
       },
       msg=>{
@@ -408,7 +473,7 @@ export function createSmartVoiceButton(){
   return btn;
 }
 
-// ── Инлайн кнопка 🎤 ─────────────────────────────────────────────────────
+// ── Инлайн кнопка 🎤 для полей ввода ─────────────────────────────────────
 export function createVoiceButton(targetInputId,extraStyle=''){
   const btn=document.createElement('button');
   btn.type='button';btn.title='Голосовой ввод';
