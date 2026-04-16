@@ -157,9 +157,18 @@ ${incCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
 
 ВАЖНО про категории — примеры fuzzy-match:
 - "бензин" / "заправка" / "топливо" → ближайшая категория транспорт или бензин
-- "жена" / "з/п жены" / "зарплата жены" → категория расхода "З/П жены"
 - "еда" / "продукты" / "магазин" → "Продукты"
 - "кафе" / "ресторан" / "обед" / "кофе" → "Кафе и рестораны"
+
+КРИТИЧЕСКИ ВАЖНО — категория "З/П жены" (если есть в списке расходов):
+- Это РАСХОД (add_expense), НЕ доход и НЕ перевод
+- Фразы: "з/п жены", "зарплата жены", "зарплата супруги", "жена получила зарплату", "выдали жене зарплату"
+- Все эти фразы = {"intent":"add_expense","category":"${_bestMatch('жены',expCats)||_bestMatch('жена',expCats)||expCats[0]}"}
+- Пояснение: пользователь ТРАТИТ деньги на з/п жены (выдаёт жене из семейного бюджета)
+
+ОТЛИЧИЯ перевод vs расход:
+- "перевел жене 5000" → add_transfer (деньги идут на её счёт/кошелёк)
+- "з/п жены 50000" / "зарплата жены 50000" → add_expense с категорией "З/П жены"
 
 Сегодня: ${today()}
 
@@ -176,9 +185,10 @@ ${incCats.map((c,i)=>`${i+1}. "${c}"`).join('\n')}
 
 Примеры (пользователь говорит → результат):
 "потратил 500 на бензин с тинькофф блэк" → {"intent":"add_expense","amount":500,"category":"${_bestMatch('бензин',expCats)}","wallet":"${_bestMatch('тинькофф блэк',wallets)}","note":""}
-"заправился на 1500" → {"intent":"add_expense","amount":1500,"category":"${_bestMatch('бензин',expCats)}","wallet":"","note":"заправка"}
+"з/п жены 50000" → {"intent":"add_expense","amount":50000,"category":"${_bestMatch('жены',expCats)||expCats[0]}","wallet":"","note":""}
+"зарплата жены пришла 80000" → {"intent":"add_expense","amount":80000,"category":"${_bestMatch('жены',expCats)||expCats[0]}","wallet":"","note":""}
 "перевел жене 10000 с наличных" → {"intent":"add_transfer","amount":10000,"from_wallet":"${_bestMatch('наличные',wallets)}","to_wallet":""}
-"зарплата жены 50000 на тинькофф" → {"intent":"add_income","amount":50000,"category":"${_bestMatch('зарплата',incCats)}","wallet":"${_bestMatch('тинькофф',wallets)}","note":""}
+"получил зарплату 80000 на карту" → {"intent":"add_income","amount":80000,"category":"${_bestMatch('зарплата',incCats)}","wallet":"${_bestMatch('карта',wallets)}","note":""}
 "купил продукты в пятёрочке на 800 наличными" → {"intent":"add_expense","amount":800,"category":"${_bestMatch('продукты',expCats)}","wallet":"${_bestMatch('наличные',wallets)}","note":"пятёрочка"}`;
 
   const base=(_gptUrl||_sttUrl).replace(/\/?$/,'');
@@ -269,6 +279,13 @@ function _fallback(text){
   // ПЕРЕВОД — проверяем первым
   if(t.match(/перевод|перевел|перекинул|скинул|отдал/)){
     return{intent:'add_transfer',amount,from_wallet:wallet||'',to_wallet:''};
+  }
+
+  // З/П ЖЕНЫ — специальный случай: это РАСХОД, не доход и не перевод
+  // Ищем в expCats категорию содержащую "жен" / "супруг"
+  const wifeCat=expCats.find(c=>c.toLowerCase().match(/жен|супруг/));
+  if(wifeCat&&t.match(/жен[ае]?\s|супруг[аи]?\s|з[\/\-]п жен|зарплат[ао]?\s+жен|жен[аы]\s+зарплат/)){
+    return{intent:'add_expense',amount,category:wifeCat,wallet,note:''};
   }
 
   // Список покупок
