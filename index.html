@@ -161,13 +161,14 @@
 
   <!-- ── DDS ── -->
   <div id="screen-dds" class="screen">
-    <div class="dds-month-nav">
-      <button class="dds-arrow" onclick="window.ddsChM(-1)">&#8249;</button>
-      <div class="dds-mlabel" id="dds-month-lbl"></div>
-      <button class="dds-arrow" onclick="window.ddsChM(1)">&#8250;</button>
-    </div>
     <div class="dds-wrap">
+      <!-- Левая колонка: месяц + план доходов/расходов -->
       <div class="dds-left">
+        <div class="dds-month-nav">
+          <button class="dds-arrow" onclick="window.ddsChM(-1)">&#8249;</button>
+          <div class="dds-mlabel" id="dds-month-lbl"></div>
+          <button class="dds-arrow" onclick="window.ddsChM(1)">&#8250;</button>
+        </div>
         <div class="panel" style="flex:1;min-height:0">
           <div class="panel-head" style="color:#8FBF8A">ДОХОДЫ — РАСПРЕДЕЛЕНИЕ</div>
           <div class="panel-body"><div id="dds-plan-inc"></div></div>
@@ -177,7 +178,8 @@
           <div class="panel-body"><div id="dds-plan-exp"></div></div>
         </div>
       </div>
-      <div class="dds-right" style="display:flex;flex-direction:column;gap:var(--gap)">
+      <!-- Правая колонка: все операции + cashflow -->
+      <div class="dds-right">
         <div class="panel" style="flex:1;min-height:0">
           <div class="panel-head">ВСЕ ОПЕРАЦИИ</div>
           <div class="panel-body"><div style="overflow-x:auto"><table class="dds-tbl" id="dds-table"></table></div></div>
@@ -192,14 +194,28 @@
 
   <!-- ── CALENDAR ── -->
   <div id="screen-calendar" class="screen">
-    <div class="dds-month-nav">
-      <button class="dds-arrow" onclick="window.calChM(-1)">&#8249;</button>
-      <div class="dds-mlabel" id="cal-month-lbl"></div>
-      <button class="dds-arrow" onclick="window.calChM(1)">&#8250;</button>
-    </div>
     <div class="cal-wrap">
-      <div class="cal-top-row">
-        <div class="cal-grid-wrap" style="flex:1">
+      <!-- Левая колонка: месяц + операции дня -->
+      <div class="cal-left">
+        <div class="dds-month-nav" style="padding:8px 0 4px">
+          <button class="dds-arrow" onclick="window.calChM(-1)">&#8249;</button>
+          <div class="dds-mlabel" id="cal-month-lbl"></div>
+          <button class="dds-arrow" onclick="window.calChM(1)">&#8250;</button>
+        </div>
+        <div class="cal-day-card" style="flex:1;min-height:0">
+          <div class="panel-head" id="cal-day-title">ВЫБЕРИТЕ ДЕНЬ</div>
+          <div class="panel-body" style="overflow-y:auto;flex:1">
+            <div class="day-bal-row" id="day-bal-row" style="display:none">
+              <div class="day-bal fact"><div class="day-bal-lbl">ФАКТ ЗА ДЕНЬ</div><div class="day-bal-val" id="day-fact-bal">₽ 0</div></div>
+              <div class="day-bal plan"><div class="day-bal-lbl">ОЖИДАЕМЫЙ</div><div class="day-bal-val" id="day-plan-bal">₽ 0</div></div>
+            </div>
+            <div id="cal-day-ops"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Правая колонка: календарная сетка + покупки + регулярные -->
+      <div class="cal-right">
+        <div class="cal-grid-wrap">
           <div class="cal-summary">
             <div class="cs-item" onclick="window.showCalSummary('fact-inc')" style="cursor:pointer" title="Нажми для детализации"><div class="cs-lbl">ФАКТ ДОХОД ▾</div><div class="cs-val pos" id="cs-fi">₽0</div></div>
             <div class="cs-item" onclick="window.showCalSummary('fact-exp')" style="cursor:pointer" title="Нажми для детализации"><div class="cs-lbl">ФАКТ РАСХОД ▾</div><div class="cs-val neg" id="cs-fo">₽0</div></div>
@@ -214,45 +230,33 @@
             <span><span style="display:inline-block;width:10px;height:10px;background:var(--amber);border-radius:2px;margin-right:3px"></span>Сегодня</span>
           </div>
         </div>
-        <div class="cal-day-card" style="min-width:280px;max-width:360px">
-          <div class="panel-head" id="cal-day-title">ВЫБЕРИТЕ ДЕНЬ</div>
-          <div class="panel-body">
-            <div class="day-bal-row" id="day-bal-row" style="display:none">
-              <div class="day-bal fact"><div class="day-bal-lbl">ФАКТ ЗА ДЕНЬ</div><div class="day-bal-val" id="day-fact-bal">₽ 0</div></div>
-              <div class="day-bal plan"><div class="day-bal-lbl">ОЖИДАЕМЫЙ</div><div class="day-bal-val" id="day-plan-bal">₽ 0</div></div>
+        <!-- Список покупок -->
+        <div class="panel" style="flex-shrink:0">
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px">
+            <span>&#128722; СПИСОК ПОКУПОК</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span id="shopping-count" style="font-size:10px;font-weight:400;opacity:.8;letter-spacing:0"></span>
+              <button class="sbtn amber" onclick="window.openAddShopItem()" style="padding:3px 8px;font-size:11px;border-radius:5px">+ Подробно</button>
             </div>
-            <div id="cal-day-ops"></div>
+          </div>
+          <div class="panel-body">
+            <div id="shopping-list-items"></div>
+            <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center">
+              <input class="fi" id="shop-quick-name" placeholder="Товар" style="flex:2;min-width:100px">
+              <input class="fi" id="shop-quick-qty" type="number" placeholder="Кол-во" style="width:62px" value="1" min="1">
+              <input class="fi" id="shop-quick-price" type="number" placeholder="Цена &#8381;" style="width:78px">
+              <button class="sbtn amber" onclick="window.quickAddShopItem()" style="white-space:nowrap;padding:7px 10px">+</button>
+            </div>
+            <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:6px" onclick="window.clearDoneShopItems()">Очистить купленное</button>
           </div>
         </div>
-      </div>
-
-      <!-- Список покупок -->
-      <div class="panel" style="flex-shrink:0">
-        <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px">
-          <span>&#128722; СПИСОК ПОКУПОК</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="shopping-count" style="font-size:10px;font-weight:400;opacity:.8;letter-spacing:0"></span>
-            <button class="sbtn amber" onclick="window.openAddShopItem()" style="padding:3px 8px;font-size:11px;border-radius:5px">+ Подробно</button>
+        <!-- Регулярные операции -->
+        <div class="panel" style="flex-shrink:0">
+          <div class="panel-head">РЕГУЛЯРНЫЕ ОПЕРАЦИИ</div>
+          <div class="panel-body">
+            <div id="cal-recurring-list"></div>
+            <button class="btn-sec" style="margin-top:8px;font-size:11px;padding:6px" onclick="window.openAddRecurring()">+ Добавить регулярную</button>
           </div>
-        </div>
-        <div class="panel-body">
-          <div id="shopping-list-items"></div>
-          <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center">
-            <input class="fi" id="shop-quick-name" placeholder="Товар" style="flex:2;min-width:100px">
-            <input class="fi" id="shop-quick-qty" type="number" placeholder="Кол-во" style="width:62px" value="1" min="1">
-            <input class="fi" id="shop-quick-price" type="number" placeholder="Цена &#8381;" style="width:78px">
-            <button class="sbtn amber" onclick="window.quickAddShopItem()" style="white-space:nowrap;padding:7px 10px">+</button>
-          </div>
-          <button class="btn-sec" style="margin-top:6px;font-size:11px;padding:6px" onclick="window.clearDoneShopItems()">Очистить купленное</button>
-        </div>
-      </div>
-
-      <!-- Регулярные операции -->
-      <div class="panel" style="flex-shrink:0">
-        <div class="panel-head">РЕГУЛЯРНЫЕ ОПЕРАЦИИ</div>
-        <div class="panel-body">
-          <div id="cal-recurring-list"></div>
-          <button class="btn-sec" style="margin-top:8px;font-size:11px;padding:6px" onclick="window.openAddRecurring()">+ Добавить регулярную</button>
         </div>
       </div>
     </div>
