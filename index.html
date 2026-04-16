@@ -42,6 +42,7 @@
         <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
         <button class="tbtn" onclick="window.openSearch()" title="Поиск" style="font-size:15px;padding:0 10px">🔍</button>
         <button class="tbtn" onclick="window.openQuickAdd()" title="Быстрая операция" style="font-size:15px;padding:0 10px">⚡</button>
+        <button class="tbtn" id="tbtn-admin" onclick="window.showScreen('admin')" style="display:none;color:#ff9900">⚙ АДМИН</button>
         <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
         <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
       </div>
@@ -50,12 +51,10 @@
       <div class="topbar-nav">
         <button class="tnav-btn" id="tnav-dashboard" onclick="window.showScreen('dashboard')">ДАШБОРД</button>
         <button class="tnav-btn active" id="tnav-reports" onclick="window.showScreen('reports')">ОТЧЁТЫ</button>
-        <button class="tnav-btn" id="tnav-dds" onclick="window.showScreen('dds')">ДДС</button>
         <button class="tnav-btn" id="tnav-calendar" onclick="window.showScreen('calendar')">КАЛЕНДАРЬ</button>
+        <button class="tnav-btn" id="tnav-dds" onclick="window.showScreen('dds')">ДДС</button>
         <button class="tnav-btn" id="tnav-loans" onclick="window.showScreen('loans')">КРЕДИТЫ</button>
         <button class="tnav-btn" id="tnav-health" onclick="window.showScreen('health')">ЗДОРОВЬЕ</button>
-        <button class="tnav-btn" id="tnav-settings" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
-        <button class="tnav-btn" id="tnav-admin" onclick="window.showScreen('admin')" style="display:none;color:#ff9900">⚙ АДМИН</button>
       </div>
     </div>
   </div>
@@ -71,6 +70,9 @@
     <button class="bnav-btn" id="bnav-calendar" onclick="window.showScreen('calendar')">
       <span class="bnav-icon">📅</span>КАЛЕНДАРЬ
     </button>
+    <button class="bnav-btn" id="bnav-dds" onclick="window.showScreen('dds')">
+      <span class="bnav-icon">💵</span>ДДС
+    </button>
     <button class="bnav-btn" id="bnav-more" onclick="window.showMobileMenu()">
       <span class="bnav-icon">☰</span>ЕЩЁ
     </button>
@@ -79,7 +81,6 @@
   <!-- ── MOBILE MORE MENU ── -->
   <div id="mobile-more-menu" style="display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--topbar);z-index:149;padding:8px 0;border-top:1px solid rgba(255,255,255,.15)">
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0">
-      <button onclick="window.showScreen('dds');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💵</span>ДДС</button>
       <button onclick="window.showScreen('loans');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💳</span>КРЕДИТЫ</button>
       <button onclick="window.showScreen('health');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💚</span>ЗДОРОВЬЕ</button>
       <button id="bnav-admin" onclick="window.showScreen('admin');window.hideMobileMenu()" style="display:none;background:none;border:none;color:#ff9900;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚙</span>АДМИН</button>
@@ -1019,7 +1020,7 @@ window._obNext=function(){_obStep=Math.min(_obStep+1,_obSteps.length-1);if(_obSt
 window._obSkipAll=function(){if(state.D){state.D.onboardingDone=true;sched();}document.getElementById('modal-onboarding').classList.remove('open');};
 
 // ── Mobile bottom nav ─────────────────────────────────────────────
-const _bottomNavScreens=['dashboard','reports','calendar'];
+const _bottomNavScreens=['dashboard','reports','calendar','dds'];
 function updateBottomNav(name){
   _bottomNavScreens.forEach(s=>{
     const btn=document.getElementById('bnav-'+s);
@@ -1044,7 +1045,7 @@ document.addEventListener('click',e=>{
 
 // ── Admin visibility ──────────────────────────────────────────────
 function updateAdminVisibility(){
-  const adminBtn=document.getElementById('tnav-admin');
+  const adminBtn=document.getElementById('tbtn-admin');
   const adminBnav=document.getElementById('bnav-admin');
   const show=isAdmin();
   if(adminBtn)adminBtn.style.display=show?'':'none';
