@@ -176,7 +176,7 @@ export function saveWalletEdit(){
     if(DEBT_TYPES.has(wType)&&(!rateVal||isNaN(rateVal))){
       // Подсветить поле красной рамкой и показать предупреждение
       if(rateField){rateField.style.borderColor='var(--red)';rateField.focus();}
-      alert('Укажите процентную ставку — это необходимо для расчёта переплаты');
+      // inline error shown above — no alert needed
       return; // НЕ закрываем модал, ждём ввода
     }
     // Сохраняем если долговой тип или введены данные

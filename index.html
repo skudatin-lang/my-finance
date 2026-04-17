@@ -203,7 +203,13 @@
           <button class="dds-arrow" onclick="window.calChM(1)">&#8250;</button>
         </div>
         <div class="cal-day-card" style="flex:1;min-height:0">
-          <div class="panel-head" id="cal-day-title">ВЫБЕРИТЕ ДЕНЬ</div>
+          <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center;padding:7px 14px">
+            <span id="cal-day-title">ВЫБЕРИТЕ ДЕНЬ</span>
+            <div id="cal-day-actions" style="display:none;gap:5px;display:none">
+              <button onclick="window.calAddFact()" style="background:var(--amber);border:none;color:#fff;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.3px">+ ФАКТ</button>
+              <button onclick="window.calAddPlan()" style="background:var(--blue-bg);border:1px solid var(--blue);color:var(--blue);padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.3px">+ ПЛАН</button>
+            </div>
+          </div>
           <div class="panel-body" style="overflow-y:auto;flex:1">
             <div class="day-bal-row" id="day-bal-row" style="display:none">
               <div class="day-bal fact"><div class="day-bal-lbl">ФАКТ ЗА ДЕНЬ</div><div class="day-bal-val" id="day-fact-bal">₽ 0</div></div>
@@ -896,7 +902,30 @@ window.showScreen=name=>{
 window.chMonth=d=>{state.repOff+=d;renderReports();};
 window.ddsChM=d=>{state.ddsOff+=d;renderDDS();};
 window.calChM=d=>{state.calOff+=d;renderCalendar();};
-window.selCalDay=ds=>{showCalDay(ds);state.calDay=ds;onCalendarDayChange();};
+window.selCalDay=ds=>{
+  showCalDay(ds);state.calDay=ds;onCalendarDayChange();
+  // Show action buttons when a day is selected
+  const actions=document.getElementById('cal-day-actions');
+  if(actions)actions.style.display='flex';
+};
+
+// Open modal pre-filled with selected calendar date, income type
+window.calAddFact=function(){
+  if(!state.calDay)return;
+  openModal('modal',true);
+  const dateEl=document.getElementById('op-date');
+  if(dateEl)dateEl.value=state.calDay;
+  setType('income');
+};
+
+// Open modal pre-filled with selected date, planned income type
+window.calAddPlan=function(){
+  if(!state.calDay)return;
+  openModal('modal',true);
+  const dateEl=document.getElementById('op-date');
+  if(dateEl)dateEl.value=state.calDay;
+  setType('planned_income');
+};
 window._getCalActiveDate=()=>state.calDay||today();
 window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
 window.setCatTab=tab=>setCatTab(tab);
