@@ -1,4 +1,4 @@
-import{$,state,sched,fmt,today,isPlanned}from'./core.js';
+import{$,state,sched,fmt,today}from'./core.js';
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
@@ -22,7 +22,7 @@ export function renderRecurring(){
   </div>`).join('');
 }
 
-// FIX: clamp day to last day of month to avoid invalid dates like 2025-02-31
+// clamp day to last day of month to avoid invalid dates like 2025-02-31
 function safeDay(year,month,day){
   const lastDay=new Date(year,month+1,0).getDate();
   return Math.min(day,lastDay);
@@ -63,7 +63,7 @@ window.saveRecurring=function(){
     type:$('rec-type').value,
     category:$('rec-cat').value,
     amount:parseFloat($('rec-amount').value)||0,
-    // FIX: clamp input to 1-28 to avoid edge cases
+    // clamp input to 1-28 to avoid edge cases
     day:Math.min(Math.max(parseInt($('rec-day').value)||1,1),28),
     wallet:$('rec-wallet')?.value||''
   };
@@ -102,5 +102,4 @@ function fillRecCats(type){
   const cats=type==='income'?state.D.incomeCats:state.D.expenseCats.map(c=>c.name);
   $('rec-cat').innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
 }
-// expose for HTML onchange
 window.fillRecCats=fillRecCats;
