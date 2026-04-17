@@ -4,9 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#BA7517">
+<meta name="description" content="Личный учёт доходов, расходов и финансового плана">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Финансы">
+<!-- CSP: разрешаем только нужные источники -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com;
+  style-src 'self' 'unsafe-inline';
+  connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.deepseek.com https://*.workers.dev https://stt.api.cloud.yandex.net;
+  img-src 'self' data: https://lh3.googleusercontent.com;
+  font-src 'self';
+  frame-src 'none';
+  object-src 'none';
+">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
@@ -1158,9 +1170,9 @@ function updateAdminVisibility(){
   if(uidEl&&state.CU)uidEl.textContent=state.CU.uid;
   if($('voice-proxy-url'))$('voice-proxy-url').value=appConfig.workerUrl||'';
   if($('voice-app-secret'))$('voice-app-secret').value=appConfig.appSecret||'';
-  // Загружаем DeepSeek ключ
+  // Загружаем DeepSeek ключ из appConfig
   const dsKey=document.getElementById('deepseek-api-key');
-  if(dsKey&&state.D?.aiSettings?.deepseekKey)dsKey.value=state.D.aiSettings.deepseekKey;
+  if(dsKey)dsKey.value=appConfig.deepseekKey||'';
 }
 
 // ── DASHBOARD: today block ─────────────────────────────────────────
@@ -1318,16 +1330,17 @@ window._voiceOpenDirect=function(intent){
 window.saveDeepSeekKey=function(){
   const key=document.getElementById('deepseek-api-key')?.value.trim();
   if(!key){alert('Введите ключ');return;}
-  if(!state.D)return;
-  if(!state.D.aiSettings)state.D.aiSettings={};
-  state.D.aiSettings.deepseekKey=key;
-  sched();
-  alert('Ключ сохранён');
+  // Сохраняем в /config/app (только владелец) — НЕ в данные пользователя
+  saveAppConfig({deepseekKey:key}).then(ok=>{
+    if(ok){_showNotice('✓ Ключ DeepSeek сохранён','green');}
+    else{_showNotice('⚠ Ошибка сохранения — проверьте Firestore Rules','red');}
+  });
 };
 
 window.getLoansAI=async function(){
   if(!state.D)return;
-  const key=state.D.aiSettings?.deepseekKey;
+  // Ключ теперь в appConfig (/config/app), не в данных пользователя
+  const key=appConfig.deepseekKey;
   if(!key){
     document.getElementById('loans-ai-result').innerHTML=
       '<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
@@ -1411,6 +1424,38 @@ ${loansDesc||'Нет данных о кредитах'}
     if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
   }
 };
+
+// ── Toast-уведомления (замена alert/confirm где уместно) ──────────────────
+function _showNotice(msg, type='green', duration=3000){
+  let el=document.getElementById('app-notice');
+  if(!el){
+    el=document.createElement('div');
+    el.id='app-notice';
+    el.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:8000;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .25s;max-width:340px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+    document.body.appendChild(el);
+  }
+  const colors={
+    green:'background:var(--green-dark);color:#fff;',
+    red:'background:var(--red);color:#fff;',
+    amber:'background:var(--amber);color:#fff;',
+    blue:'background:var(--blue);color:#fff;',
+  };
+  el.style.cssText+=colors[type]||colors.green;
+  el.textContent=msg;
+  el.style.opacity='1';
+  if(el._t)clearTimeout(el._t);
+  el._t=setTimeout(()=>{el.style.opacity='0';},duration);
+}
+window._showNotice=_showNotice;
+
+// ── Keyboard navigation for tour ──────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('tour-overlay')?.style.display==='none') return;
+  if(document.getElementById('tour-card')?.style.display==='none') return;
+  if(e.key==='ArrowRight'||e.key==='Enter') window._tourNext?.();
+  if(e.key==='ArrowLeft') window._tourPrev?.();
+  if(e.key==='Escape') window._tourClose?.();
+});
 
 $('loading-screen').style.display='none';
 $('app-screen').style.display='none';

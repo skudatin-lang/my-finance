@@ -51,6 +51,8 @@ export const fmtS=n=>(n>=0?'+ ':'\u2212 ')+'₽ '+Math.abs(Math.round(n)).toLoca
 export const today=()=>new Date().toISOString().split('T')[0];
 export const wName=id=>{const w=state.D.wallets.find(w=>w.id===id);return w?w.name:id||'?';};
 export const fmtD=ds=>{if(!ds)return'';const[y,m,d]=ds.split('-');return d+'.'+m+'.'+y;};
+// XSS-защита: экранирование пользовательского текста перед вставкой в HTML
+export const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 export const getMOps=off=>{
   const dt=new Date(new Date().getFullYear(),new Date().getMonth()+off,1);
   const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
@@ -64,14 +66,15 @@ export function opHtml(o,showDel){
   const isIn=o.type==='income',isOut=o.type==='expense',isTr=o.type==='transfer';
   const sc=isIn?'pos':(isOut?'neg':'');
   const pfx=isIn?'+':(isOut?'\u2212':'');
-  const label=isTr?`Перевод \u2192 ${wName(o.walletTo)}`:(o.category||'—');
+  const label=isTr?`Перевод \u2192 ${esc(wName(o.walletTo))}`:(esc(o.category)||'—');
   const pid=isTr?o.planId:catPlanId(o.category);
-  const badge=pid?`<span class="op-badge">${planById(pid)?.label||''}</span>`:'';
-  const editBtn=showDel&&!isTr&&!isPlanned(o.type)?`<button class="op-btn edit" onclick="window.openEditOp('${o.id}')" title="Редактировать">&#9998;</button>`:'';
-  const delBtn=showDel?`<button class="op-btn del" onclick="window.deleteOp('${o.id}')" title="Удалить">&#10005;</button>`:'';
+  const badge=pid?`<span class="op-badge">${esc(planById(pid)?.label||'')}</span>`:'';
+  const editBtn=showDel&&!isTr&&!isPlanned(o.type)?`<button class="op-btn edit" onclick="window.openEditOp('${esc(o.id)}')" title="Редактировать">&#9998;</button>`:'';
+  const delBtn=showDel?`<button class="op-btn del" onclick="window.deleteOp('${esc(o.id)}')" title="Удалить">&#10005;</button>`:'';
+  const noteTxt=o.note?`<div class="op-note">${esc(o.note)}</div>`:'';
   return`<div class="op-item">
     <div class="op-top">
-      <div style="flex:1;min-width:0"><div class="op-title">${label}</div><div class="op-meta">${wName(o.wallet||'')} &nbsp;${fmtD(o.date)}</div>${badge}</div>
+      <div style="flex:1;min-width:0"><div class="op-title">${label}</div><div class="op-meta">${esc(wName(o.wallet||''))} &nbsp;${fmtD(o.date)}</div>${noteTxt}${badge}</div>
       <div class="op-actions"><div class="op-amt ${sc}">${pfx} ${fmt(o.amount)}</div>${editBtn}${delBtn}</div>
     </div>
   </div>`;
@@ -259,10 +262,12 @@ export function detectAnomalies(factOps){
 const _OWNER_UID='TmexoZZxotgY7c3oBLpdAP3TG8s1';
 export function isOwner(uid){return uid===_OWNER_UID;}
 
-// ── App config (workerUrl, appSecret — настройки только владельца) ────────
+// ── App config (workerUrl, appSecret, deepseekKey — только для владельца) ─
+// Хранится в Firestore /config/app — доступен только владельцу по Rules
 export const appConfig={
   workerUrl:'',
   appSecret:'',
+  deepseekKey:'', // API-ключ DeepSeek — НЕ хранится в данных пользователя
   loaded:false,
 };
 
@@ -273,6 +278,7 @@ export async function loadAppConfig(){
       const d=snap.data();
       appConfig.workerUrl=d.workerUrl||'';
       appConfig.appSecret=d.appSecret||'';
+      appConfig.deepseekKey=d.deepseekKey||'';
       appConfig.loaded=true;
     }
   }catch(e){
@@ -285,6 +291,7 @@ export async function saveAppConfig(data){
     await setDoc(doc(db,'config','app'),data,{merge:true});
     appConfig.workerUrl=data.workerUrl??appConfig.workerUrl;
     appConfig.appSecret=data.appSecret??appConfig.appSecret;
+    appConfig.deepseekKey=data.deepseekKey??appConfig.deepseekKey;
     return true;
   }catch(e){
     console.error('saveAppConfig failed:',e.message);

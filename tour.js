@@ -261,6 +261,11 @@ export function tourStart() {
   if (overlay) overlay.style.display = '';
   if (card)    card.style.display    = '';
 
+  // Экспортируем хуки для клавиатурной навигации в index.html
+  window._tourNext  = tourNext;
+  window._tourPrev  = tourPrev;
+  window._tourClose = () => tourFinish(true);
+
   _renderStep(0);
 }
 
@@ -287,10 +292,12 @@ export function tourFinish(skipped = false) {
   if (overlay) overlay.style.display = 'none';
   if (card)    card.style.display    = 'none';
 
-  // Сохраняем что тур пройден
-  if (window._tourSaveDone) window._tourSaveDone();
+  // Чистим клавиатурные хуки
+  window._tourNext  = null;
+  window._tourPrev  = null;
+  window._tourClose = null;
 
-  // Возвращаемся на дашборд после тура
+  if (window._tourSaveDone) window._tourSaveDone();
   if (!skipped) {
     setTimeout(() => window.showScreen?.('dashboard'), 100);
   }

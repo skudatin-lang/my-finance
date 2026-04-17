@@ -1,56 +1,94 @@
-// Service Worker for PWA (offline caching + icon support)
-const CACHE = 'my-finance-v2';
+// Service Worker — my-finance PWA
+// ВАЖНО: при каждом деплое новых файлов меняйте версию CACHE (v3 → v4 → ...)
+// Это гарантирует что браузер загрузит свежие файлы, а не старый кэш
+const CACHE = 'my-finance-v3';
+
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
-  './core.js',
-  './dashboard.js',
-  './analytics.js',
-  './assets.js',
-  './calendar.js',
-  './dds.js',
-  './goals.js',
-  './health.js',
-  './import-csv.js',
-  './loans.js',
-  './operations.js',
-  './portfolio.js',
-  './recurring.js',
-  './reports.js',
-  './settings.js',
-  './shopping.js',
-  './templates.js',
-  './voice.js',
-  './family.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png',
+  // ── Ядро ──
+  './core.js',
+  './operations.js',
+  './recurring.js',
+  // ── Экраны ──
+  './dashboard.js',
+  './reports.js',
+  './dds.js',
+  './calendar.js',
+  './health.js',
+  './shopping.js',
+  './loans.js',
+  './settings.js',
+  './voice.js',
+  './tour.js',
+  // ── Внешние зависимости ──
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+];
+
+// Домены которые НИКОГДА не кэшируем — всегда сеть
+const NETWORK_ONLY = [
+  'firebase',
+  'googleapis.com',
+  'gstatic.com',
+  'deepseek.com',
+  'yandex',
+  'workers.dev',
+  'anthropic.com',
 ];
 
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS.map(u => new Request(u, {cache:'reload'}))))
+    caches.open(CACHE)
+      .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
       .catch(err => console.warn('SW cache failed:', err))
   );
+  // Активируем новый SW немедленно, не ждём закрытия вкладок
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
-  e.waitUntil(caches.keys().then(keys =>
-    Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
-  ));
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys
+          .filter(k => k !== CACHE)
+          .map(k => {
+            console.log('SW: removing old cache', k);
+            return caches.delete(k);
+          })
+      )
+    )
+  );
+  // Берём контроль над всеми вкладками немедленно
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for Firebase, STT, GPT
-  if(e.request.url.includes('firebase') || e.request.url.includes('yandex') || 
-     e.request.url.includes('workers.dev') || e.request.method !== 'GET'){
-    return;
-  }
+  const url = e.request.url;
+
+  // Только GET запросы кэшируем
+  if (e.request.method !== 'GET') return;
+
+  // Сетевые запросы к API — никогда не кэшируем
+  if (NETWORK_ONLY.some(domain => url.includes(domain))) return;
+
+  // Стратегия: сеть первая, кэш как fallback
+  // Это гарантирует свежие файлы при наличии сети
+  // и работу офлайн при её отсутствии
   e.respondWith(
-    fetch(e.request).catch(() => caches.match(e.request))
+    fetch(e.request)
+      .then(response => {
+        // Обновляем кэш свежим ответом
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
