@@ -122,7 +122,10 @@ export function openEditWallet(i){
   if(typeSel)typeSel.value=wType;
 
   // Показать/скрыть блок параметров долга
-  window.onWalletTypeChange(wType);
+  // Показываем блок если тип долговой ИЛИ если баланс отрицательный (кошелёк долговой по факту)
+  const showDebtBlock=DEBT_TYPES.has(wType)||(w.balance<0);
+  const debtBlock=document.getElementById('ew-debt-fields');
+  if(debtBlock)debtBlock.style.display=showDebtBlock?'block':'none';
 
   // Заполнить параметры долга если есть
   const ls=(state.D.loanSettings||{})[w.id]||{rate:0,payment:0,payDay:25,graceDays:0};
@@ -153,15 +156,18 @@ export function saveWalletEdit(){
   const wType=typeSel?typeSel.value:'debit';
   w.walletType=wType;
 
-  // Сохранить параметры долга если долговой тип
-  if(DEBT_TYPES.has(wType)){
-    if(!state.D.loanSettings)state.D.loanSettings={};
-    state.D.loanSettings[w.id]={
-      rate:   parseFloat($('ew-rate')?.value)||0,
-      payment:parseFloat($('ew-payment')?.value)||0,
-      payDay: parseInt($('ew-payday')?.value)||25,
-      graceDays:parseInt($('ew-grace')?.value)||0
-    };
+  // Сохранить параметры долга — всегда, если поля заполнены или тип долговой
+  // (не ограничиваем только DEBT_TYPES — пользователь мог ввести данные до смены типа)
+  {
+    const rateVal=parseFloat(document.getElementById('ew-rate')?.value)||0;
+    const payVal=parseFloat(document.getElementById('ew-payment')?.value)||0;
+    const pdVal=parseInt(document.getElementById('ew-payday')?.value)||25;
+    const grVal=parseInt(document.getElementById('ew-grace')?.value)||0;
+    // Сохраняем если долговой тип ИЛИ если хоть одно поле заполнено
+    if(DEBT_TYPES.has(wType)||rateVal>0||payVal>0){
+      if(!state.D.loanSettings)state.D.loanSettings={};
+      state.D.loanSettings[w.id]={rate:rateVal,payment:payVal,payDay:pdVal,graceDays:grVal};
+    }
   }
 
   // Статья финплана
@@ -171,13 +177,8 @@ export function saveWalletEdit(){
   sched();
   document.getElementById('modal-wallet').classList.remove('open');
   renderSettings();
-
-  // Перерисовать кредиты если они открыты
-  const loansScreen=document.getElementById('screen-loans');
-  if(loansScreen&&loansScreen.classList.contains('active')){
-    // Импорт через динамический вызов — функции зарегистрированы глобально
-    window._refreshCurrentScreen&&window._refreshCurrentScreen();
-  }
+  // Обновить текущий экран (в т.ч. кредиты если открыты)
+  window._refreshCurrentScreen&&window._refreshCurrentScreen();
 }
 
 export function addIncomeCat(){

@@ -11,8 +11,16 @@ const WALLET_TYPE_LABELS={
 };
 
 function getLoanSettings(walletId){
+  // Инициализируем если поле отсутствует (старые данные из Firebase)
   if(!state.D.loanSettings)state.D.loanSettings={};
-  return state.D.loanSettings[walletId]||{rate:0,payment:0,payDay:25,graceDays:0};
+  const ls=state.D.loanSettings[walletId];
+  if(!ls)return{rate:0,payment:0,payDay:25,graceDays:0};
+  return{
+    rate:    parseFloat(ls.rate)    ||0,
+    payment: parseFloat(ls.payment) ||0,
+    payDay:  parseInt(ls.payDay)    ||25,
+    graceDays:parseInt(ls.graceDays)||0
+  };
 }
 
 // ── Свободный остаток ─────────────────────────────────────────────
@@ -76,14 +84,15 @@ export function renderLoans(){
     return;
   }
 
-  const maxRate=Math.max(...debtWallets.map(w=>getLoanSettings(w.id).rate||0));
+  const allRates=debtWallets.map(w=>getLoanSettings(w.id).rate||0);
+  const maxRate=allRates.length?Math.max(...allRates):0;
 
   el.innerHTML=debtWallets.map((wallet)=>{
     const debt=Math.abs(wallet.balance);
     const ls=getLoanSettings(wallet.id);
     const{rate,payment,payDay,graceDays}=ls;
     const isExpensive=rate>=EXPENSIVE_RATE;
-    const isMostExpensive=rate===maxRate&&maxRate>=EXPENSIVE_RATE&&maxRate>0;
+    const isMostExpensive=rate>0&&rate===maxRate&&maxRate>=EXPENSIVE_RATE;
     const schedule=calcCardSchedule(debt,rate,payment,payDay,graceDays);
     const nextPayment=schedule.find(p=>p.date>today());
     const totalInterest=schedule.reduce((s,p)=>s+p.interest,0);
@@ -201,7 +210,7 @@ function renderLoansSummaryInternal(){
   const safeIncome=monthlyPayments>0?Math.round(monthlyPayments/0.40):0;
 
   const maxRate=Math.max(...debtWallets.map(w=>getLoanSettings(w.id).rate||0));
-  const expensive=maxRate>=EXPENSIVE_RATE
+  const expensive=(maxRate>=EXPENSIVE_RATE&&maxRate>0)
     ?debtWallets.filter(w=>getLoanSettings(w.id).rate===maxRate).sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance))[0]
     :null;
   let avalancheMonths=null;
