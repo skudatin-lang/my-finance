@@ -2,14 +2,39 @@ import{$,fmt,state,planById,sched,exportData,importData,clearAllOps,today,isPlan
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+// Иконки и метки типов кошельков
+const WALLET_TYPES={
+  debit:  {icon:'💳',label:'Дебетовая карта'},
+  cash:   {icon:'💵',label:'Наличные'},
+  savings:{icon:'🏦',label:'Накопительный счёт'},
+  credit: {icon:'🔴',label:'Кредитная карта'},
+  loan:   {icon:'📋',label:'Кредит / ипотека'},
+  debt:   {icon:'🤝',label:'Долг (я должен)'},
+  debt_in:{icon:'🤝',label:'Долг (мне должны)'},
+  invest: {icon:'📈',label:'Инвестиционный'},
+  other:  {icon:'📁',label:'Другое'},
+};
+
+function walletTypeIcon(w){
+  if(w.walletType)return(WALLET_TYPES[w.walletType]?.icon||'💰')+' ';
+  // Авто-определение по балансу если тип не задан
+  return w.balance<0?'🔴 ':'💳 ';
+}
+function walletTypeLabel(w){
+  if(w.walletType)return WALLET_TYPES[w.walletType]?.label||'';
+  return w.balance<0?'Кредит/долг':'';
+}
+
 export function renderSettings(){
   if(!state.D)return;
   $('wallets-settings').innerHTML=state.D.wallets.map((w,i)=>{
     const linkedPlan=state.D.plan.find(p=>p.id===w.planId);
+    const typeLabel=walletTypeLabel(w);
+    const isDebt=w.balance<0;
     return`<div class="s-row">
       <div>
-        <div class="s-name">${esc(w.name)}${w.balance<0?'<span class="w-badge" style="margin-left:5px">долг</span>':''}</div>
-        <div class="s-meta">${w.balance<0?'\u2212 ':''}${fmt(w.balance)}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+linkedPlan.label+'</span>':''}</div>
+        <div class="s-name">${walletTypeIcon(w)}${esc(w.name)}${isDebt?'<span class="w-badge" style="margin-left:5px;background:var(--red-bg);color:var(--red);border:1px solid var(--red)">долг</span>':''}</div>
+        <div class="s-meta">${isDebt?'\u2212 ':''}${fmt(Math.abs(w.balance))}${typeLabel?' · '+typeLabel:''}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+esc(linkedPlan.label)+'</span>':''}</div>
       </div>
       <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
     </div>`;
@@ -67,7 +92,7 @@ export function delWallet(i){
   const wallet=state.D.wallets[i];
   const opCount=state.D.operations.filter(o=>o.wallet===wallet.id||o.walletTo===wallet.id).length;
   const msg=opCount>0
-    ?`Удалить кошелёк "${wallet.name}"? К нему привязаны ${opCount} операций — они останутся в истории, но кошелёк будет отображаться как "?".\n\nПродолжить?`
+    ?`Удалить кошелёк "${wallet.name}"? К нему привязаны ${opCount} операций.\n\nПродолжить?`
     :`Удалить кошелёк "${wallet.name}"?`;
   if(!confirm(msg))return;
   state.D.wallets.splice(i,1);
@@ -77,11 +102,17 @@ export function delWallet(i){
 
 export function openEditWallet(i){
   const w=state.D.wallets[i];
-  $('ew-name').value=w.name;$('ew-bal').value=w.balance;$('ew-idx').value=i;
+  $('ew-name').value=w.name;
+  $('ew-bal').value=w.balance;
+  $('ew-idx').value=i;
+  // Тип кошелька
+  const typeSel=$('ew-type');
+  if(typeSel)typeSel.value=w.walletType||'debit';
+  // Статья финплана
   const planSel=$('ew-plan');
   if(planSel){
     planSel.innerHTML='<option value="">— не привязывать —</option>'+
-      state.D.plan.map(p=>`<option value="${p.id}"${p.id===w.planId?' selected':''}>${p.label} (${p.type==='income'?'откладываем':'расход'})</option>`).join('');
+      state.D.plan.map(p=>`<option value="${p.id}"${p.id===w.planId?' selected':''}>${esc(p.label)} (${p.type==='income'?'откладываем':'расход'})</option>`).join('');
   }
   document.getElementById('modal-wallet').classList.add('open');
 }
@@ -90,9 +121,13 @@ export function saveWalletEdit(){
   const i=+$('ew-idx').value;
   state.D.wallets[i].name=$('ew-name').value.trim()||state.D.wallets[i].name;
   state.D.wallets[i].balance=parseFloat($('ew-bal').value)||0;
+  const typeSel=$('ew-type');
+  if(typeSel)state.D.wallets[i].walletType=typeSel.value||'debit';
   const planSel=$('ew-plan');
   if(planSel)state.D.wallets[i].planId=planSel.value||null;
-  sched();document.getElementById('modal-wallet').classList.remove('open');renderSettings();
+  sched();
+  document.getElementById('modal-wallet').classList.remove('open');
+  renderSettings();
 }
 
 export function addIncomeCat(){
@@ -102,7 +137,7 @@ export function addIncomeCat(){
 export function delIncomeCat(i){state.D.incomeCats.splice(i,1);sched();renderSettings();}
 
 export function fillExpPlanSel(id){
-  $(id).innerHTML=state.D.plan.filter(p=>p.type==='expense').map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+  $(id).innerHTML=state.D.plan.filter(p=>p.type==='expense').map(p=>`<option value="${p.id}">${esc(p.label)}</option>`).join('');
 }
 export function openEditExpCat(i){
   const c=state.D.expenseCats[i];
@@ -171,7 +206,7 @@ window.deletePlanItem=deletePlanItem;
 window.openAddPlanItem=openAddPlanItem;
 window.savePlanItem=savePlanItem;
 
-// ── CSV Экспорт (перенесено из analytics.js) ───────────────────────
+// ── CSV Экспорт (перенесено из analytics.js) ──────────────────
 export function exportCSV(monthOffset=0){
   if(!state.D)return;
   const now=new Date();
@@ -188,10 +223,7 @@ export function exportCSV(monthOffset=0){
   });
   const bom='\uFEFF';
   const blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`finance-${ym}.csv`;
-  a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`finance-${ym}.csv`;a.click();
 }
 
 export function exportAllCSV(){
@@ -207,8 +239,5 @@ export function exportAllCSV(){
   });
   const bom='\uFEFF';
   const blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download=`finance-all-${today()}.csv`;
-  a.click();
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`finance-all-${today()}.csv`;a.click();
 }

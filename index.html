@@ -279,7 +279,7 @@
   <div id="screen-loans" class="screen">
     <div class="loans-wrap">
       <!-- Левая колонка: карточки из кошельков -->
-      <div class="rep-left loans-left">
+      <div class="loans-left">
         <div style="flex-shrink:0;margin-bottom:4px">
           <div style="font-size:14px;font-weight:700;color:var(--topbar)">Кредиты и долги</div>
           <div style="font-size:11px;color:var(--text2);margin-top:3px">Данные подтягиваются из кошельков с отрицательным балансом. Добавьте ставку и платёж для расчётов.</div>
@@ -287,7 +287,7 @@
         <div id="loans-list"></div>
       </div>
       <!-- Правая колонка: сводка + план + ИИ -->
-      <div class="rep-right loans-right">
+      <div class="loans-right">
         <div style="font-size:14px;font-weight:700;color:var(--topbar);flex-shrink:0">Сводка и план погашения</div>
         <div id="loans-summary"></div>
       </div>
@@ -544,7 +544,21 @@
   <div class="modal">
     <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ КОШЕЛЁК</span><button class="modal-close" onclick="window.closeModal('modal-wallet')">&#10005;</button></div>
     <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ew-name"></div>
-    <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредиток — отрицательное число</div></div>
+    <div class="fg">
+      <label>ТИП КОШЕЛЬКА</label>
+      <select class="fi" id="ew-type">
+        <option value="debit">💳 Дебетовая карта</option>
+        <option value="cash">💵 Наличные</option>
+        <option value="savings">🏦 Накопительный счёт</option>
+        <option value="credit">🔴 Кредитная карта</option>
+        <option value="loan">📋 Кредит / ипотека</option>
+        <option value="debt">🤝 Долг (я должен)</option>
+        <option value="debt_in">🤝 Долг (мне должны)</option>
+        <option value="invest">📈 Инвестиционный</option>
+        <option value="other">📁 Другое</option>
+      </select>
+    </div>
+    <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредитных карт и долгов — отрицательное число</div></div>
     <div class="fg">
       <label>СТАТЬЯ ФИНПЛАНА (для накоплений)</label>
       <select class="fi" id="ew-plan">
