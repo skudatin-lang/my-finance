@@ -38,9 +38,13 @@ function calcCardSchedule(debt,rate,payment,payDay,graceDays){
   const mr=rate/100/12;
   if(!payment||!rate||payment<=Math.round(debt*mr))return[];
   const rows=[];let bal=debt;const now=new Date();
+  const pd=payDay||25;
+  // Если день платежа в этом месяце ещё не наступил — начинаем с этого месяца
+  // Иначе — со следующего
+  const startOffset=now.getDate()<=pd?0:1;
   for(let i=0;i<360&&bal>0.5;i++){
-    const d=new Date(now.getFullYear(),now.getMonth()+i+1,payDay||25);
-    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay||25).padStart(2,'0');
+    const d=new Date(now.getFullYear(),now.getMonth()+startOffset+i,pd);
+    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
     const interest=(graceDays>0&&i===0)?0:Math.round(bal*mr);
     const pay=Math.min(payment,bal+interest);
     const principal=Math.max(pay-interest,0);
