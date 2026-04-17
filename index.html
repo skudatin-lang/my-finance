@@ -566,17 +566,15 @@
     </div>
     <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредитных карт и долгов — отрицательное число</div></div>
 
-    <!-- Блок параметров долга — показывается только для долговых типов -->
-    <div id="ew-debt-fields" style="display:none;background:var(--red-bg);border:1.5px solid var(--red);border-radius:8px;padding:12px;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:.6px;margin-bottom:10px">ПАРАМЕТРЫ КРЕДИТА / ДОЛГА</div>
+    <!-- Параметры кредита — всегда видны, заполнять только для долговых кошельков -->
+    <div id="ew-debt-fields" style="background:var(--amber-light);border:1.5px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin-bottom:10px">ПАРАМЕТРЫ КРЕДИТА (заполните для долговых кошельков)</div>
       <div class="rf">
         <div class="fg">
           <label>СТАВКА % ГОД. <span style="color:var(--red);font-weight:700">*</span></label>
           <input class="fi" type="number" step="0.1" min="0" max="200" id="ew-rate"
             placeholder="напр. 29.9"
-            style="font-size:15px;font-weight:700"
-            oninput="this.style.borderColor=this.value?'var(--amber)':'var(--red)'">
-          <div style="font-size:10px;color:var(--red);margin-top:3px">Обязательное поле</div>
+            style="font-size:15px;font-weight:700">
         </div>
         <div class="fg">
           <label>ПЛАТЁЖ/МЕС ₽</label>

@@ -14,8 +14,6 @@ const WALLET_TYPES={
   other:  {icon:'📁',label:'Другое'},
 };
 
-const DEBT_TYPES=new Set(['credit','loan','debt']);
-
 function walletTypeLabel(w){
   if(w.walletType)return WALLET_TYPES[w.walletType]?.label||'';
   return w.balance<0?'Кредит/долг':'';
@@ -25,11 +23,8 @@ function walletTypeIcon(w){
   return w.balance<0?'🔴 ':'💳 ';
 }
 
-// Показать/скрыть блок параметров долга при смене типа
-window.onWalletTypeChange=function(type){
-  const block=document.getElementById('ew-debt-fields');
-  if(block)block.style.display=DEBT_TYPES.has(type)?'block':'none';
-};
+// onWalletTypeChange — теперь просто заглушка, блок всегда виден
+window.onWalletTypeChange=function(type){};
 
 export function renderSettings(){
   if(!state.D)return;
@@ -46,7 +41,10 @@ export function renderSettings(){
         <div class="s-name">${walletTypeIcon(w)}${esc(w.name)}${isDebt?'<span class="w-badge" style="margin-left:5px;background:var(--red-bg);color:var(--red);border:1px solid var(--red)">долг</span>':''}${rateBadge}</div>
         <div class="s-meta">${isDebt?'\u2212 ':''}${fmt(Math.abs(w.balance))}${typeLabel?' · '+typeLabel:''}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+esc(linkedPlan.label)+'</span>':''}</div>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
+      <div style="display:flex;gap:5px;flex-shrink:0">
+        <button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button>
+        <button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button>
+      </div>
     </div>`;
   }).join('');
 
@@ -71,7 +69,10 @@ export function renderSettings(){
     const pl=planById(c.planId);
     return`<div class="s-row">
       <div><div class="s-name">${esc(c.name)}</div><div class="s-meta">\u2192 ${pl?esc(pl.label):'не привязано'}</div></div>
-      <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditExpCat(${i})">Изм.</button><button class="sbtn red" onclick="window.delExpCat(${i})">Удал.</button></div>
+      <div style="display:flex;gap:5px">
+        <button class="sbtn blue" onclick="window.openEditExpCat(${i})">Изм.</button>
+        <button class="sbtn red" onclick="window.delExpCat(${i})">Удал.</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -112,34 +113,22 @@ export function delWallet(i){
 
 export function openEditWallet(i){
   const w=state.D.wallets[i];
-  $('ew-name').value=w.name;
-  $('ew-bal').value=w.balance;
-  $('ew-idx').value=i;
-
+  // Базовые поля
+  document.getElementById('ew-name').value = w.name;
+  document.getElementById('ew-bal').value  = w.balance;
+  document.getElementById('ew-idx').value  = i;
   // Тип кошелька
-  const typeSel=$('ew-type');
-  const wType=w.walletType||'debit';
-  if(typeSel)typeSel.value=wType;
-
-  // Показать блок долга если тип долговой ИЛИ баланс отрицательный
-  const debtBlock=document.getElementById('ew-debt-fields');
-  const showDebt=DEBT_TYPES.has(wType)||(w.balance<0);
-  if(debtBlock)debtBlock.style.display=showDebt?'block':'none';
-
-  // Заполнить параметры долга из loanSettings
+  const typeSel=document.getElementById('ew-type');
+  if(typeSel)typeSel.value=w.walletType||'debit';
+  // Параметры кредита — заполняем ВСЕГДА
   if(!state.D.loanSettings)state.D.loanSettings={};
   const ls=state.D.loanSettings[w.id]||{};
-  const rateEl=document.getElementById('ew-rate');
-  const payEl=document.getElementById('ew-payment');
-  const pdEl=document.getElementById('ew-payday');
-  const grEl=document.getElementById('ew-grace');
-  if(rateEl)   rateEl.value   = (ls.rate    > 0) ? ls.rate    : '';
-  if(payEl)    payEl.value    = (ls.payment > 0) ? ls.payment : '';
-  if(pdEl)     pdEl.value     = ls.payDay   || 25;
-  if(grEl)     grEl.value     = ls.graceDays|| 0;
-
+  document.getElementById('ew-rate').value     = ls.rate     >0 ? ls.rate     : '';
+  document.getElementById('ew-payment').value  = ls.payment  >0 ? ls.payment  : '';
+  document.getElementById('ew-payday').value   = ls.payDay   || 25;
+  document.getElementById('ew-grace').value    = ls.graceDays|| 0;
   // Статья финплана
-  const planSel=$('ew-plan');
+  const planSel=document.getElementById('ew-plan');
   if(planSel){
     planSel.innerHTML='<option value="">— не привязывать —</option>'+
       state.D.plan.map(p=>`<option value="${p.id}"${p.id===w.planId?' selected':''}>${esc(p.label)} (${p.type==='income'?'откладываем':'расход'})</option>`).join('');
@@ -148,32 +137,26 @@ export function openEditWallet(i){
 }
 
 export function saveWalletEdit(){
-  const i=+$('ew-idx').value;
-  const w=state.D.wallets[i];
-  w.name=$('ew-name').value.trim()||w.name;
-  w.balance=parseFloat($('ew-bal').value)||0;
-  w.walletType=$('ew-type')?.value||'debit';
-
-  // ── СОХРАНИТЬ ПАРАМЕТРЫ КРЕДИТА ──────────────────────────────
-  // Читаем поля напрямую — без условий, без проверки типа
-  // Поля существуют в DOM всегда (даже если блок скрыт)
-  if(!state.D.loanSettings)state.D.loanSettings={};
-  const rateRaw  = document.getElementById('ew-rate')?.value    ?? '';
-  const payRaw   = document.getElementById('ew-payment')?.value ?? '';
-  const pdRaw    = document.getElementById('ew-payday')?.value  ?? '25';
-  const grRaw    = document.getElementById('ew-grace')?.value   ?? '0';
-  state.D.loanSettings[w.id]={
-    rate:      parseFloat(rateRaw)  || 0,
-    payment:   parseFloat(payRaw)   || 0,
-    payDay:    parseInt(pdRaw)      || 25,
-    graceDays: parseInt(grRaw)      || 0
-  };
-  // ─────────────────────────────────────────────────────────────
-
+  const idx=+document.getElementById('ew-idx').value;
+  const w=state.D.wallets[idx];
+  // Базовые поля
+  w.name    = document.getElementById('ew-name').value.trim() || w.name;
+  w.balance = parseFloat(document.getElementById('ew-bal').value) || 0;
+  w.walletType = document.getElementById('ew-type')?.value || 'debit';
   // Статья финплана
-  const planSel=$('ew-plan');
+  const planSel=document.getElementById('ew-plan');
   if(planSel)w.planId=planSel.value||null;
-
+  // ── СОХРАНИТЬ ПАРАМЕТРЫ КРЕДИТА ──────────────────────────────────
+  // Поля всегда присутствуют в DOM (нет display:none на родителе)
+  // Читаем напрямую без каких-либо условий
+  if(!state.D.loanSettings)state.D.loanSettings={};
+  state.D.loanSettings[w.id]={
+    rate:      parseFloat(document.getElementById('ew-rate').value)    || 0,
+    payment:   parseFloat(document.getElementById('ew-payment').value) || 0,
+    payDay:    parseInt(document.getElementById('ew-payday').value)    || 25,
+    graceDays: parseInt(document.getElementById('ew-grace').value)     || 0
+  };
+  // ─────────────────────────────────────────────────────────────────
   sched();
   document.getElementById('modal-wallet').classList.remove('open');
   renderSettings();
