@@ -30,6 +30,9 @@ function walletTypeLabel(w){
 window.onWalletTypeChange=function(type){
   const block=document.getElementById('ew-debt-fields');
   if(block)block.style.display=DEBT_TYPES.has(type)?'block':'none';
+  // Сбросить цвет рамки поля ставки при смене типа
+  const rateField=document.getElementById('ew-rate');
+  if(rateField)rateField.style.borderColor='';
 };
 
 export function renderSettings(){
@@ -131,10 +134,11 @@ export function openEditWallet(i){
   const ls=(state.D.loanSettings||{})[w.id]||{rate:0,payment:0,payDay:25,graceDays:0};
   const rateEl=$('ew-rate');const payEl=$('ew-payment');
   const pdEl=$('ew-payday');const grEl=$('ew-grace');
-  if(rateEl)rateEl.value=ls.rate||'';
-  if(payEl)payEl.value=ls.payment||'';
+  // Показываем реальные числа (не через || '' — это приводило к пустому полю при rate=0)
+  if(rateEl)rateEl.value=ls.rate>0?ls.rate:'';
+  if(payEl)payEl.value=ls.payment>0?ls.payment:'';
   if(pdEl)pdEl.value=ls.payDay||25;
-  if(grEl)grEl.value=ls.graceDays||0;
+  if(grEl)grEl.value=ls.graceDays>=0?ls.graceDays:0;
 
   // Статья финплана
   const planSel=$('ew-plan');
@@ -159,11 +163,23 @@ export function saveWalletEdit(){
   // Сохранить параметры долга — всегда, если поля заполнены или тип долговой
   // (не ограничиваем только DEBT_TYPES — пользователь мог ввести данные до смены типа)
   {
-    const rateVal=parseFloat(document.getElementById('ew-rate')?.value)||0;
-    const payVal=parseFloat(document.getElementById('ew-payment')?.value)||0;
-    const pdVal=parseInt(document.getElementById('ew-payday')?.value)||25;
-    const grVal=parseInt(document.getElementById('ew-grace')?.value)||0;
-    // Сохраняем если долговой тип ИЛИ если хоть одно поле заполнено
+    const rateField=document.getElementById('ew-rate');
+    const payField=document.getElementById('ew-payment');
+    const pdField=document.getElementById('ew-payday');
+    const grField=document.getElementById('ew-grace');
+    // Читаем значения — пустое поле = NaN, используем 0 как fallback
+    const rateVal=rateField&&rateField.value.trim()!==''?parseFloat(rateField.value):0;
+    const payVal=payField&&payField.value.trim()!==''?parseFloat(payField.value):0;
+    const pdVal=pdField&&pdField.value.trim()!==''?parseInt(pdField.value):25;
+    const grVal=grField&&grField.value.trim()!==''?parseInt(grField.value):0;
+    // Предупредить если тип долговой, но ставка не введена
+    if(DEBT_TYPES.has(wType)&&(!rateVal||isNaN(rateVal))){
+      // Подсветить поле красной рамкой и показать предупреждение
+      if(rateField){rateField.style.borderColor='var(--red)';rateField.focus();}
+      alert('Укажите процентную ставку — это необходимо для расчёта переплаты');
+      return; // НЕ закрываем модал, ждём ввода
+    }
+    // Сохраняем если долговой тип или введены данные
     if(DEBT_TYPES.has(wType)||rateVal>0||payVal>0){
       if(!state.D.loanSettings)state.D.loanSettings={};
       state.D.loanSettings[w.id]={rate:rateVal,payment:payVal,payDay:pdVal,graceDays:grVal};
