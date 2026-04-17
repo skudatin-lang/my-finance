@@ -157,15 +157,15 @@ export async function parseIntent(text){
 // ── Вспомогательные функции разбора ───────────────────────────────
 
 function _extractAmount(text){
-  // Ищем числа: 500, 1500.50, 1 500, полтора (нет), пятьсот рублей
   const wordNums={'ноль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,'одиннадцать':11,'двенадцать':12,'тринадцать':13,'четырнадцать':14,'пятнадцать':15,'шестнадцать':16,'семнадцать':17,'восемнадцать':18,'девятнадцать':19,'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90,'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900,'тысяча':1000,'тысячи':1000,'тысяч':1000,'тыщ':1000,'тыщи':1000,'миллион':1000000,'миллиона':1000000,'миллионов':1000000};
 
-  // Числа цифрами с пробелами: "1 500" или "1500"
-  const numMatch=text.match(/(\d[\d\s]*\d|\d+)(?:[,\.]\d+)?(?:\s*(?:руб|рублей|рубл|₽|р\b))?/);
-  if(numMatch){
-    const raw=numMatch[0].replace(/[^\d,\.]/g,'').replace(',','.');
+  // Ищем все числа в тексте, берём первое подходящее (не год)
+  const allNums=[...text.matchAll(/\b(\d[\d\s]{0,5}\d|\d+)(?:[,\.](\d{1,2}))?\b/g)];
+  for(const m of allNums){
+    const raw=m[0].replace(/\s/g,'').replace(',','.');
     const n=parseFloat(raw);
-    if(!isNaN(n)&&n>0)return n;
+    // Пропускаем похожие на год (2000-2035) и нулевые
+    if(!isNaN(n)&&n>0&&!(n>=2000&&n<=2035))return n;
   }
 
   // Числа словами
@@ -395,20 +395,29 @@ export function createSmartVoiceButton(){
     return btn;
   }
 
+  const resetBtn=()=>{active=false;btn.textContent='🎤';btn.style.background='var(--amber)';btn.style.transform='scale(1)';};
+
   btn.onclick=async()=>{
-    if(active){stopRecording();return;}
+    if(active){stopRecording();resetBtn();return;}
     await startRecording(
       async text=>{
-        active=false;btn.textContent='🎤';btn.style.background='var(--amber)';btn.style.transform='scale(1)';
+        resetBtn();
         _showToast('🔍 «'+text+'» — анализирую...');
-        const intent=await parseIntent(text);
-        handleVoiceIntent(intent,executeIntent);
+        try{
+          const intent=await parseIntent(text);
+          handleVoiceIntent(intent,executeIntent);
+        }catch(e){
+          _showToast('⚠ Ошибка разбора команды');
+        }
       },
-      msg=>{active=false;btn.textContent='🎤';btn.style.background='var(--amber)';btn.style.transform='scale(1)';_showToast('⚠ '+msg);},
+      msg=>{resetBtn();_showToast('⚠ '+msg);},
       isRec=>{
         active=isRec;
         if(isRec){btn.textContent='⏹';btn.style.background='#c0392b';btn.style.transform='scale(1.12)';}
-        else{btn.textContent='⏳';}
+        else{
+          // Запись закончена — сразу сбрасываем кнопку, не ждём parseIntent
+          resetBtn();
+        }
       }
     );
   };
@@ -426,16 +435,22 @@ export function createVoiceButton(targetInputId,extraStyle=''){
   if(!supported)btn.style.display='none';
 
   let active=false;
+  const resetVBtn=()=>{active=false;btn.textContent='🎤';btn.style.background='var(--amber-light)';};
+
   btn.onclick=async()=>{
-    if(active){stopRecording();return;}
+    if(active){stopRecording();resetVBtn();return;}
     await startRecording(
       text=>{
-        active=false;btn.textContent='🎤';btn.style.background='var(--amber-light)';
+        resetVBtn();
         const el=document.getElementById(targetInputId);
         if(el){el.value=text;el.dispatchEvent(new Event('input',{bubbles:true}));}
       },
-      msg=>{active=false;btn.textContent='🎤';btn.style.background='var(--amber-light)';_showToast('⚠ '+msg);},
-      isRec=>{active=isRec;btn.textContent=isRec?'⏹':'⏳';btn.style.background=isRec?'#fdd':'var(--amber-light)';}
+      msg=>{resetVBtn();_showToast('⚠ '+msg);},
+      isRec=>{
+        active=isRec;
+        if(isRec){btn.textContent='⏹';btn.style.background='#fdd';}
+        else{resetVBtn();}
+      }
     );
   };
   return btn;

@@ -274,11 +274,13 @@ function parseIntent(text){
 }
 
 function extractAmount(text){
-  const m=text.match(/(\d[\d\s]*\d|\d+)(?:[,\.](\d+))?/);
-  if(m){
-    const raw=m[0].replace(/\s/g,'').replace(',','.');
-    const n=parseFloat(raw);
-    if(!isNaN(n)&&n>0)return n;
+    const allNums=[...text.matchAll(/\b(\d[\d\s]{0,5}\d|\d+)(?:[,\.](\d{1,2}))?\b/g)];
+    for(const m of allNums){
+      const raw=m[0].replace(/\s/g,'').replace(',','.');
+      const n=parseFloat(raw);
+      if(!isNaN(n)&&n>0&&!(n>=2000&&n<=2035))return n;
+    }
+    return 0;
   }
   return 0;
 }
