@@ -89,8 +89,18 @@ export function migrate(){
 }
 
 export async function saveNow(){
-  if(!state.CU)return;
-  try{await setDoc(doc(db,'users',state.CU.uid,'data','main'),state.D);}catch(e){}
+  if(!state.CU||!state.D)return;
+  // ЗАЩИТА: не перезаписываем Firestore пустыми данными
+  // если в памяти 0 операций но флаг _dataLoadedFromFirestore не стоит — пропускаем
+  if(!state._dataLoadedFromFirestore&&state.D.operations.length===0){
+    console.warn('saveNow blocked: no data loaded from Firestore yet, skip to prevent overwrite');
+    return;
+  }
+  try{
+    await setDoc(doc(db,'users',state.CU.uid,'data','main'),state.D);
+  }catch(e){
+    console.error('saveNow failed:',e.message);
+  }
 }
 
 export function sched(){
@@ -98,12 +108,64 @@ export function sched(){
   state.saveTimer=setTimeout(saveNow,1500);
 }
 
+// ── Автоматический локальный бэкап ───────────────────────────────────────
+function _autoBackup(data){
+  try{
+    // Сохраняем в localStorage как страховку
+    const key='mf_backup_'+today();
+    localStorage.setItem(key,JSON.stringify(data));
+    // Чистим бэкапы старше 7 дней
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('mf_backup_')){
+        const d=new Date(k.replace('mf_backup_',''));
+        if(d<cutoff)localStorage.removeItem(k);
+      }
+    });
+    console.info('Auto-backup saved to localStorage:',key,'ops:',data.operations?.length||0);
+  }catch(e){
+    console.warn('Auto-backup failed:',e.message);
+  }
+}
+
+export function getLocalBackup(){
+  // Вернуть самый свежий локальный бэкап
+  const keys=Object.keys(localStorage).filter(k=>k.startsWith('mf_backup_')).sort().reverse();
+  if(!keys.length)return null;
+  try{return{key:keys[0],data:JSON.parse(localStorage.getItem(keys[0]))};}catch(e){return null;}
+}
+
 export async function loadData(uid){
   try{
     const s=await getDoc(doc(db,'users',uid,'data','main'));
-    if(s.exists()){state.D=s.data();migrate();}
-    else{state.D=JSON.parse(JSON.stringify(DEFAULT_DATA));await saveNow();}
-  }catch(e){state.D=JSON.parse(JSON.stringify(DEFAULT_DATA));}
+    if(s.exists()){
+      state.D=s.data();
+      migrate();
+      // Данные успешно загружены из Firestore — разрешаем сохранение
+      state._dataLoadedFromFirestore=true;
+      // Автобэкап при каждом успешном входе
+      _autoBackup(state.D);
+    }else{
+      // Документ не существует — первый вход пользователя
+      state.D=JSON.parse(JSON.stringify(DEFAULT_DATA));
+      state._dataLoadedFromFirestore=true;
+      await saveNow();
+    }
+  }catch(e){
+    // СЕТЕВАЯ ОШИБКА — НЕ перезаписываем Firestore
+    // Пробуем восстановить из локального бэкапа
+    console.error('loadData failed (network/auth error):',e.message);
+    const backup=getLocalBackup();
+    if(backup&&backup.data.operations?.length>0){
+      state.D=backup.data;
+      console.info('Restored from local backup:',backup.key,'ops:',state.D.operations.length);
+      // НЕ ставим _dataLoadedFromFirestore — не будем перезаписывать Firestore
+      // пока не убедимся что соединение восстановлено
+    }else{
+      state.D=JSON.parse(JSON.stringify(DEFAULT_DATA));
+      // НЕ вызываем saveNow() — не затираем Firestore при ошибке подключения
+    }
+  }
 }
 
 export function planSpent(p,ops){
@@ -118,7 +180,7 @@ export function planSpent(p,ops){
   ).reduce((s,o)=>s+o.amount,0);
 }
 
-// ── Health score calculation (shared between health.js and dashboard.js) ──
+// ── Health score calculation ──────────────────────────────────────────────
 export function calcHealthScore(){
   if(!state.D)return null;
   let totalExp=0,totalInc=0,filledMonths=0;
@@ -148,7 +210,6 @@ export function calcHealthScore(){
   const savingsRate=curInc>0?Math.round(actualSaved/curInc*100):0;
   const emergencyMonths=avgExp>0?Math.round(totalSavings/avgExp*10)/10:0;
   const creditPlan=state.D.plan.find(p=>p.label.toLowerCase().includes('кредит'));
-  // Если долгов нет — нагрузка 0; если нет плана — используем 3% от долга как прокси
   const creditSpent=totalDebt===0?0:(creditPlan?planSpent(creditPlan,curOps):Math.round(totalDebt*0.03));
   const dtiPct=avgInc>0?Math.round(creditSpent/avgInc*100):0;
   const obligPlanIds=state.D.plan.filter(p=>p.type==='expense'&&
@@ -168,7 +229,7 @@ export function calcHealthScore(){
     avgExp,avgInc,curInc,totalSavings,totalDebt,creditPlan,creditSpent,investable};
 }
 
-// ── Anomaly detection (shared threshold: mean + 2*std, 6 months) ──
+// ── Anomaly detection ─────────────────────────────────────────────────────
 export function detectAnomalies(factOps){
   const anomalies=[];
   state.D.expenseCats.forEach(cat=>{
@@ -191,65 +252,60 @@ export function detectAnomalies(factOps){
   return anomalies.sort((a,b)=>b.pct-a.pct);
 }
 
-
-// ── Global app config (loaded from Firestore /config/app) ─────────
-// Set once in Firebase Console, never in code
-export const appConfig = {
-  adminUids: [],
-  workerUrl: '',
-  appSecret: '',
-  loaded: false,
+// ── Global app config ─────────────────────────────────────────────────────
+export const appConfig={
+  adminUids:[],
+  workerUrl:'',
+  appSecret:'',
+  loaded:false,
 };
 
-export async function loadAppConfig() {
-  try {
-    const snap = await getDoc(doc(db, 'config', 'app'));
-    if (snap.exists()) {
-      const d = snap.data();
-      appConfig.adminUids = d.adminUids || [];
-      appConfig.workerUrl = d.workerUrl || '';
-      appConfig.appSecret = d.appSecret || '';
-      appConfig.loaded = true;
+export async function loadAppConfig(){
+  try{
+    const snap=await getDoc(doc(db,'config','app'));
+    if(snap.exists()){
+      const d=snap.data();
+      appConfig.adminUids=d.adminUids||[];
+      appConfig.workerUrl=d.workerUrl||'';
+      appConfig.appSecret=d.appSecret||'';
+      appConfig.loaded=true;
     }
-  } catch(e) {
-    // /config/app may not exist yet — that's OK
+  }catch(e){
     console.info('App config not found in Firestore — using defaults');
   }
 }
 
-export async function saveAppConfig(data) {
-  // Only callable by admin — Firestore rules enforce this server-side
-  try {
-    await setDoc(doc(db, 'config', 'app'), data, { merge: true });
-    appConfig.adminUids = data.adminUids ?? appConfig.adminUids;
-    appConfig.workerUrl = data.workerUrl ?? appConfig.workerUrl;
-    appConfig.appSecret = data.appSecret ?? appConfig.appSecret;
+export async function saveAppConfig(data){
+  try{
+    await setDoc(doc(db,'config','app'),data,{merge:true});
+    appConfig.adminUids=data.adminUids??appConfig.adminUids;
+    appConfig.workerUrl=data.workerUrl??appConfig.workerUrl;
+    appConfig.appSecret=data.appSecret??appConfig.appSecret;
     return true;
-  } catch(e) {
-    console.error('saveAppConfig failed:', e.message);
+  }catch(e){
+    console.error('saveAppConfig failed:',e.message);
     return false;
   }
 }
 
-export function isAdminUser(uid) {
-  // If no adminUids configured yet, no one is admin (avoids open access)
-  if (!appConfig.adminUids.length) return false;
+export function isAdminUser(uid){
+  if(!appConfig.adminUids.length)return false;
   return appConfig.adminUids.includes(uid);
 }
 
 export function initAuth(onLogin,onLogout){
   onAuthStateChanged(auth,async user=>{
     if(user){state.CU=user;await loadData(user.uid);onLogin(user);}
-    else{state.CU=null;state.D=null;onLogout();}
+    else{state.CU=null;state.D=null;state._dataLoadedFromFirestore=false;onLogout();}
   });
 }
 
 export async function signInGoogle(){
   try{await signInWithPopup(auth,prov);}catch(e){alert('Ошибка: '+e.message);}
 }
+
 export async function doSignOut(){
   if(!confirm('Выйти?'))return;
-  // Clear pending save timer before sign out
   if(state.saveTimer){clearTimeout(state.saveTimer);state.saveTimer=null;}
   await fbOut(auth);
 }
@@ -259,6 +315,7 @@ export function exportData(){
   const a=document.createElement('a');a.href=URL.createObjectURL(b);
   a.download='my-finance-backup-'+today()+'.json';a.click();
 }
+
 export function importData(e,onDone){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
@@ -267,11 +324,14 @@ export function importData(e,onDone){
       const imp=JSON.parse(ev.target.result);
       if(!imp.wallets||!imp.operations)throw new Error('Неверный формат');
       if(!confirm('Заменить все данные?'))return;
-      state.D=imp;migrate();saveNow();onDone();alert('Данные импортированы');
+      state.D=imp;
+      state._dataLoadedFromFirestore=true; // разрешаем запись после импорта
+      migrate();saveNow();onDone();alert('Данные импортированы');
     }catch(err){alert('Ошибка: '+err.message);}
   };
   r.readAsText(f);e.target.value='';
 }
+
 export function clearAllOps(onDone){
   if(!confirm('Удалить ВСЕ операции?'))return;
   state.D.operations=[];sched();onDone();alert('Операции удалены');

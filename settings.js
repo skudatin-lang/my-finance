@@ -1,74 +1,70 @@
-import{$,fmt,state,planById,sched,exportData,importData,clearAllOps,today,isPlanned}from'./core.js';
+import{$,state,sched,fmt,today}from'./core.js';
 
+// ── Helpers ───────────────────────────────────────────────────────────────
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-const WALLET_TYPES={
-  debit:  {icon:'💳',label:'Дебетовая карта'},
-  cash:   {icon:'💵',label:'Наличные'},
-  savings:{icon:'🏦',label:'Накопительный счёт'},
-  credit: {icon:'🔴',label:'Кредитная карта'},
-  loan:   {icon:'📋',label:'Кредит / ипотека'},
-  debt:   {icon:'🤝',label:'Долг (я должен)'},
-  debt_in:{icon:'🤝',label:'Долг (мне должны)'},
-  invest: {icon:'📈',label:'Инвестиционный'},
-  other:  {icon:'📁',label:'Другое'},
-};
-
-function walletTypeLabel(w){
-  if(w.walletType)return WALLET_TYPES[w.walletType]?.label||'';
-  return w.balance<0?'Кредит/долг':'';
-}
-function walletTypeIcon(w){
-  if(w.walletType)return(WALLET_TYPES[w.walletType]?.icon||'💰')+' ';
-  return w.balance<0?'🔴 ':'💳 ';
-}
-
-// onWalletTypeChange — теперь просто заглушка, блок всегда виден
-window.onWalletTypeChange=function(type){};
-
+// ── renderSettings ────────────────────────────────────────────────────────
 export function renderSettings(){
   if(!state.D)return;
-  $('wallets-settings').innerHTML=state.D.wallets.map((w,i)=>{
-    const linkedPlan=state.D.plan.find(p=>p.id===w.planId);
-    const typeLabel=walletTypeLabel(w);
-    const isDebt=w.balance<0;
-    const ls=(state.D.loanSettings||{})[w.id];
-    const rateBadge=ls&&ls.rate>0
-      ?`<span style="font-size:10px;background:${ls.rate>=20?'var(--red-bg)':'var(--amber-light)'};color:${ls.rate>=20?'var(--red)':'var(--amber-dark)'};padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:700">${ls.rate}%</span>`
-      :'';
+  _renderWallets();
+  _renderPlan();
+  _renderIncomeCats();
+  _renderExpenseCats();
+  updPT();
+}
+
+function _renderWallets(){
+  const el=$('wallets-settings');if(!el)return;
+  if(!state.D.wallets.length){el.innerHTML='<div style="color:var(--text2);font-size:13px">Нет кошельков</div>';return;}
+  el.innerHTML=state.D.wallets.map((w,i)=>{
+    const typeLabel={debit:'💳',cash:'💵',savings:'🏦',credit:'🔴',loan:'📋',debt:'🤝',debt_in:'🤝',invest:'📈',other:'📁'}[w.type||'debit']||'💳';
+    const debtInfo=w.rate?` · ${w.rate}% · ${fmt(w.payment||0)}/мес`:'';
     return`<div class="s-row">
-      <div style="min-width:0;flex:1">
-        <div class="s-name">${walletTypeIcon(w)}${esc(w.name)}${isDebt?'<span class="w-badge" style="margin-left:5px;background:var(--red-bg);color:var(--red);border:1px solid var(--red)">долг</span>':''}${rateBadge}</div>
-        <div class="s-meta">${isDebt?'\u2212 ':''}${fmt(Math.abs(w.balance))}${typeLabel?' · '+typeLabel:''}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+esc(linkedPlan.label)+'</span>':''}</div>
+      <div>
+        <div class="s-name">${typeLabel} ${esc(w.name)}</div>
+        <div class="s-meta">${w.balance<0?'Долг: ':''}<span style="color:${w.balance<0?'var(--red)':'var(--green-dark)'}">${fmt(w.balance)}</span>${debtInfo}</div>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0">
+      <div style="display:flex;gap:5px">
         <button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button>
         <button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button>
       </div>
     </div>`;
   }).join('');
+}
 
-  $('plan-settings').innerHTML=state.D.plan.map((p,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border)">
-    <div style="flex:1;min-width:0">
-      <div style="font-size:12px;font-weight:700;color:var(--topbar)">${esc(p.label)}</div>
-      <div style="font-size:10px;color:var(--text2)">${p.type==='income'?'Накопление':'Расход'}</div>
+function _renderPlan(){
+  const el=$('plan-settings');if(!el)return;
+  if(!state.D.plan.length){el.innerHTML='<div style="color:var(--text2);font-size:13px">Нет статей</div>';return;}
+  el.innerHTML=state.D.plan.map((p,i)=>`<div class="s-row">
+    <div>
+      <div class="s-name">${esc(p.label)}</div>
+      <div class="s-meta">${p.pct}% · ${p.type==='income'?'Накопление':'Расход'}</div>
     </div>
-    <input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="window.updPT()" style="width:52px;padding:5px;border:1.5px solid var(--border);border-radius:5px;font-size:13px;color:var(--topbar);background:#fff;text-align:right">
-    <span style="font-size:13px;color:var(--text2)">%</span>
-    <button class="sbtn blue" onclick="window.openEditPlanItem(${i})" style="padding:4px 7px;font-size:11px">✎</button>
-    <button class="sbtn red" onclick="window.deletePlanItem(${i})" style="padding:4px 7px;font-size:11px">✕</button>
+    <div style="display:flex;gap:5px">
+      <button class="sbtn blue" onclick="window.openEditPlanItem(${i})">Изм.</button>
+      <button class="sbtn red" onclick="window.deletePlanItem(${i})">Удал.</button>
+    </div>
   </div>`).join('');
   updPT();
+}
 
-  $('income-cats-list').innerHTML=state.D.incomeCats.map((c,i)=>`<div class="s-row">
+function _renderIncomeCats(){
+  const el=$('income-cats-list');if(!el)return;
+  el.innerHTML=state.D.incomeCats.map((c,i)=>`<div class="s-row">
     <span class="s-name">${esc(c)}</span>
-    <button class="sbtn red" onclick="window.delIncomeCat(${i})">Удалить</button>
+    <button class="sbtn red" onclick="window.delIncomeCat(${i})">Удал.</button>
   </div>`).join('');
+}
 
-  $('expense-cats-list').innerHTML=state.D.expenseCats.map((c,i)=>{
-    const pl=planById(c.planId);
+function _renderExpenseCats(){
+  const el=$('expense-cats-list');if(!el)return;
+  el.innerHTML=state.D.expenseCats.map((c,i)=>{
+    const p=state.D.plan.find(p=>p.id===c.planId);
     return`<div class="s-row">
-      <div><div class="s-name">${esc(c.name)}</div><div class="s-meta">\u2192 ${pl?esc(pl.label):'не привязано'}</div></div>
+      <div>
+        <div class="s-name">${esc(c.name)}</div>
+        <div class="s-meta">${p?p.label:'—'}</div>
+      </div>
       <div style="display:flex;gap:5px">
         <button class="sbtn blue" onclick="window.openEditExpCat(${i})">Изм.</button>
         <button class="sbtn red" onclick="window.delExpCat(${i})">Удал.</button>
@@ -77,195 +73,215 @@ export function renderSettings(){
   }).join('');
 }
 
+// ── Plan total % ──────────────────────────────────────────────────────────
 export function updPT(){
-  let t=0;
-  state.D.plan.forEach((_,i)=>{const e=$('pp-'+i);if(e)t+=parseFloat(e.value)||0;});
-  const e=$('plan-total-pct');
-  if(e){e.textContent=Math.round(t)+'%';e.style.color=Math.round(t)===100?'var(--green)':'var(--red)';}
+  const el=$('plan-total-pct');if(!el||!state.D)return;
+  const total=state.D.plan.reduce((s,p)=>s+p.pct,0);
+  el.textContent=total+'%';
+  el.style.color=total===100?'var(--green-dark)':total>100?'var(--red)':'var(--orange-dark)';
 }
 
+// ── Plan settings (save all at once via inputs) ───────────────────────────
 export function savePlanSettings(){
-  let t=0;
-  state.D.plan.forEach((p,i)=>{const e=$('pp-'+i);const v=parseFloat(e?.value)||0;p.pct=v;t+=v;});
-  if(Math.round(t)!==100){alert('Сумма должна быть 100%. Сейчас: '+Math.round(t)+'%');return;}
-  sched();alert('План сохранён');
+  if(!state.D)return;
+  sched();
+  alert('Финансовый план сохранён');
 }
 
+// ── Wallets ───────────────────────────────────────────────────────────────
 export function addWallet(){
-  const n=$('nw-name').value.trim(),b=parseFloat($('nw-bal').value)||0;
-  if(!n)return;
-  state.D.wallets.push({id:'w'+Date.now(),name:n,balance:b});
-  sched();$('nw-name').value='';$('nw-bal').value='';renderSettings();
+  if(!state.D)return;
+  const name=$('nw-name')?.value.trim();
+  if(!name){alert('Введите название кошелька');return;}
+  const bal=parseFloat($('nw-bal')?.value)||0;
+  state.D.wallets.push({id:'w'+Date.now(),name,balance:bal,type:'debit'});
+  sched();
+  if($('nw-name'))$('nw-name').value='';
+  if($('nw-bal'))$('nw-bal').value='';
+  _renderWallets();
 }
 
 export function delWallet(i){
-  if(state.D.wallets.length<=1){alert('Нужен хотя бы один кошелёк');return;}
-  const wallet=state.D.wallets[i];
-  const opCount=state.D.operations.filter(o=>o.wallet===wallet.id||o.walletTo===wallet.id).length;
-  const msg=opCount>0
-    ?`Удалить кошелёк "${wallet.name}"? К нему привязаны ${opCount} операций.\n\nПродолжить?`
-    :`Удалить кошелёк "${wallet.name}"?`;
-  if(!confirm(msg))return;
+  if(!state.D)return;
+  const w=state.D.wallets[i];if(!w)return;
+  if(!confirm(`Удалить кошелёк «${w.name}»?`))return;
   state.D.wallets.splice(i,1);
-  if(state.walletIdx>=state.D.wallets.length)state.walletIdx=0;
-  sched();renderSettings();
+  sched();_renderWallets();
 }
 
 export function openEditWallet(i){
-  const w=state.D.wallets[i];
-  // Базовые поля
-  document.getElementById('ew-name').value = w.name;
-  document.getElementById('ew-bal').value  = w.balance;
-  document.getElementById('ew-idx').value  = i;
-  // Тип кошелька
-  const typeSel=document.getElementById('ew-type');
-  if(typeSel)typeSel.value=w.walletType||'debit';
-  // Параметры кредита — заполняем ВСЕГДА
-  if(!state.D.loanSettings)state.D.loanSettings={};
-  const ls=state.D.loanSettings[w.id]||{};
-  document.getElementById('ew-rate').value     = ls.rate     >0 ? ls.rate     : '';
-  document.getElementById('ew-payment').value  = ls.payment  >0 ? ls.payment  : '';
-  document.getElementById('ew-payday').value   = ls.payDay   || 25;
-  document.getElementById('ew-grace').value    = ls.graceDays|| 0;
-  // Статья финплана
-  const planSel=document.getElementById('ew-plan');
+  if(!state.D)return;
+  const w=state.D.wallets[i];if(!w)return;
+  $('ew-name').value=w.name;
+  $('ew-bal').value=w.balance;
+  $('ew-idx').value=i;
+  const typeEl=$('ew-type');if(typeEl)typeEl.value=w.type||'debit';
+  const rateEl=$('ew-rate');if(rateEl)rateEl.value=w.rate||'';
+  const payEl=$('ew-payment');if(payEl)payEl.value=w.payment||'';
+  const pdEl=$('ew-payday');if(pdEl)pdEl.value=w.payDay||'';
+  const grEl=$('ew-grace');if(grEl)grEl.value=w.gracePeriod||'';
+  // Fill plan selector
+  const planSel=$('ew-plan');
   if(planSel){
     planSel.innerHTML='<option value="">— не привязывать —</option>'+
-      state.D.plan.map(p=>`<option value="${p.id}"${p.id===w.planId?' selected':''}>${esc(p.label)} (${p.type==='income'?'откладываем':'расход'})</option>`).join('');
+      state.D.plan.filter(p=>p.type==='income').map(p=>`<option value="${p.id}"${w.planId===p.id?' selected':''}>${esc(p.label)}</option>`).join('');
   }
+  window.onWalletTypeChange&&window.onWalletTypeChange(w.type||'debit');
   document.getElementById('modal-wallet').classList.add('open');
 }
 
 export function saveWalletEdit(){
-  const idx=+document.getElementById('ew-idx').value;
-  const w=state.D.wallets[idx];
-  // Базовые поля
-  w.name    = document.getElementById('ew-name').value.trim() || w.name;
-  w.balance = parseFloat(document.getElementById('ew-bal').value) || 0;
-  w.walletType = document.getElementById('ew-type')?.value || 'debit';
-  // Статья финплана
-  const planSel=document.getElementById('ew-plan');
-  if(planSel)w.planId=planSel.value||null;
-  // ── СОХРАНИТЬ ПАРАМЕТРЫ КРЕДИТА ──────────────────────────────────
-  // Поля всегда присутствуют в DOM (нет display:none на родителе)
-  // Читаем напрямую без каких-либо условий
-  if(!state.D.loanSettings)state.D.loanSettings={};
-  state.D.loanSettings[w.id]={
-    rate:      parseFloat(document.getElementById('ew-rate').value)    || 0,
-    payment:   parseFloat(document.getElementById('ew-payment').value) || 0,
-    payDay:    parseInt(document.getElementById('ew-payday').value)    || 25,
-    graceDays: parseInt(document.getElementById('ew-grace').value)     || 0
-  };
-  // ─────────────────────────────────────────────────────────────────
+  if(!state.D)return;
+  const i=parseInt($('ew-idx')?.value);
+  if(isNaN(i)||!state.D.wallets[i])return;
+  const w=state.D.wallets[i];
+  const oldBal=w.balance;
+  const newBal=parseFloat($('ew-bal')?.value)||0;
+  w.name=$('ew-name')?.value.trim()||w.name;
+  w.balance=newBal;
+  w.type=$('ew-type')?.value||'debit';
+  const rate=parseFloat($('ew-rate')?.value)||0;
+  if(rate)w.rate=rate; else delete w.rate;
+  const pay=parseFloat($('ew-payment')?.value)||0;
+  if(pay)w.payment=pay; else delete w.payment;
+  const pd=parseInt($('ew-payday')?.value)||0;
+  if(pd)w.payDay=pd; else delete w.payDay;
+  const gr=parseInt($('ew-grace')?.value)||0;
+  if(gr)w.gracePeriod=gr; else delete w.gracePeriod;
+  const planId=$('ew-plan')?.value||'';
+  if(planId)w.planId=planId; else delete w.planId;
   sched();
   document.getElementById('modal-wallet').classList.remove('open');
   renderSettings();
-  window._refreshCurrentScreen&&window._refreshCurrentScreen();
 }
 
+// Expose for HTML onchange
+window.onWalletTypeChange=function(type){
+  const debtTypes=['credit','loan','debt'];
+  const fields=$('ew-debt-fields');
+  if(fields)fields.style.display=''; // always visible per HTML
+};
+
+// ── Income categories ─────────────────────────────────────────────────────
 export function addIncomeCat(){
-  const v=$('new-inc-cat').value.trim();if(!v)return;
-  state.D.incomeCats.push(v);sched();$('new-inc-cat').value='';renderSettings();
+  if(!state.D)return;
+  const el=$('new-inc-cat');
+  const name=el?.value.trim();
+  if(!name){alert('Введите название');return;}
+  if(state.D.incomeCats.includes(name)){alert('Категория уже существует');return;}
+  state.D.incomeCats.push(name);
+  sched();if(el)el.value='';
+  _renderIncomeCats();
 }
-export function delIncomeCat(i){state.D.incomeCats.splice(i,1);sched();renderSettings();}
 
-export function fillExpPlanSel(id){
-  $(id).innerHTML=state.D.plan.filter(p=>p.type==='expense').map(p=>`<option value="${p.id}">${esc(p.label)}</option>`).join('');
+export function delIncomeCat(i){
+  if(!state.D)return;
+  if(!confirm(`Удалить категорию «${state.D.incomeCats[i]}»?`))return;
+  state.D.incomeCats.splice(i,1);
+  sched();_renderIncomeCats();
 }
+
+// ── Expense categories ────────────────────────────────────────────────────
+export function fillExpPlanSel(selId){
+  const sel=$(selId);if(!sel||!state.D)return;
+  sel.innerHTML=state.D.plan.map(p=>`<option value="${p.id}">${esc(p.label)}</option>`).join('');
+}
+
 export function openEditExpCat(i){
-  const c=state.D.expenseCats[i];
-  $('exp-cat-modal-title').textContent='ИЗМЕНИТЬ КАТЕГОРИЮ';
-  $('ec-name').value=c.name;$('ec-idx').value=i;
-  fillExpPlanSel('ec-plan');$('ec-plan').value=c.planId;
+  if(!state.D)return;
+  const c=state.D.expenseCats[i];if(!c)return;
+  $('exp-cat-modal-title').textContent='РЕДАКТИРОВАТЬ КАТЕГОРИЮ';
+  $('ec-name').value=c.name;
+  $('ec-idx').value=i;
+  fillExpPlanSel('ec-plan');
+  setTimeout(()=>{if($('ec-plan'))$('ec-plan').value=c.planId||'';},10);
   document.getElementById('modal-exp-cat').classList.add('open');
 }
+
 export function saveExpCat(){
-  const name=$('ec-name').value.trim(),planId=$('ec-plan').value,idx=+$('ec-idx').value;
-  if(!name)return;
-  if(idx>=0)state.D.expenseCats[idx]={name,planId};else state.D.expenseCats.push({name,planId});
-  sched();document.getElementById('modal-exp-cat').classList.remove('open');renderSettings();
+  if(!state.D)return;
+  const name=$('ec-name')?.value.trim();
+  if(!name){alert('Введите название');return;}
+  const planId=$('ec-plan')?.value||'';
+  const idx=parseInt($('ec-idx')?.value);
+  if(idx>=0&&state.D.expenseCats[idx]){
+    state.D.expenseCats[idx].name=name;
+    state.D.expenseCats[idx].planId=planId;
+  }else{
+    state.D.expenseCats.push({name,planId});
+  }
+  sched();
+  document.getElementById('modal-exp-cat').classList.remove('open');
+  _renderExpenseCats();
 }
-export function delExpCat(i){state.D.expenseCats.splice(i,1);sched();renderSettings();}
 
-window.openEditWallet=openEditWallet;
-window.delWallet=delWallet;
-window.delIncomeCat=delIncomeCat;
-window.openEditExpCat=openEditExpCat;
+export function delExpCat(i){
+  if(!state.D)return;
+  if(!confirm(`Удалить категорию «${state.D.expenseCats[i]?.name}»?`))return;
+  state.D.expenseCats.splice(i,1);
+  sched();_renderExpenseCats();
+}
 
-export{exportData,importData,clearAllOps};
-
-// ── Plan item CRUD ────────────────────────────────────────────────
+// ── Plan items ────────────────────────────────────────────────────────────
 export function openAddPlanItem(){
-  const modal=document.getElementById('modal-plan-item');if(!modal)return;
-  document.getElementById('plan-item-modal-title').textContent='НОВАЯ СТАТЬЯ ФИНПЛАНА';
-  document.getElementById('pi-idx').value=-1;
-  document.getElementById('pi-label').value='';
-  document.getElementById('pi-pct').value='';
-  document.getElementById('pi-type').value='expense';
-  modal.classList.add('open');
+  $('plan-item-modal-title').textContent='НОВАЯ СТАТЬЯ';
+  $('pi-label').value='';$('pi-pct').value='';$('pi-type').value='expense';$('pi-idx').value=-1;
+  document.getElementById('modal-plan-item').classList.add('open');
 }
+
 export function openEditPlanItem(i){
-  const p=state.D.plan[i];if(!p)return;
-  const modal=document.getElementById('modal-plan-item');if(!modal)return;
-  document.getElementById('plan-item-modal-title').textContent='ИЗМЕНИТЬ СТАТЬЮ';
-  document.getElementById('pi-idx').value=i;
-  document.getElementById('pi-label').value=p.label;
-  document.getElementById('pi-pct').value=p.pct;
-  document.getElementById('pi-type').value=p.type;
-  modal.classList.add('open');
+  if(!state.D||!state.D.plan[i])return;
+  const p=state.D.plan[i];
+  $('plan-item-modal-title').textContent='РЕДАКТИРОВАТЬ СТАТЬЮ';
+  $('pi-label').value=p.label;$('pi-pct').value=p.pct;$('pi-type').value=p.type||'expense';$('pi-idx').value=i;
+  document.getElementById('modal-plan-item').classList.add('open');
 }
+
 export function savePlanItem(){
-  const label=document.getElementById('pi-label')?.value.trim();
-  const pct=parseFloat(document.getElementById('pi-pct')?.value)||0;
-  const type=document.getElementById('pi-type')?.value||'expense';
-  if(!label){alert('Введите название статьи');return;}
-  const idx=+(document.getElementById('pi-idx')?.value??'-1');
-  if(idx>=0){state.D.plan[idx]={...state.D.plan[idx],label,pct,type};}
-  else{state.D.plan.push({id:'p'+Date.now(),label,pct,type});}
+  if(!state.D)return;
+  const label=$('pi-label')?.value.trim();
+  if(!label){alert('Введите название');return;}
+  const pct=parseFloat($('pi-pct')?.value)||0;
+  const type=$('pi-type')?.value||'expense';
+  const idx=parseInt($('pi-idx')?.value);
+  if(idx>=0&&state.D.plan[idx]){
+    state.D.plan[idx].label=label;state.D.plan[idx].pct=pct;state.D.plan[idx].type=type;
+  }else{
+    state.D.plan.push({id:'p'+Date.now(),label,pct,type});
+  }
   sched();
   document.getElementById('modal-plan-item').classList.remove('open');
-  renderSettings();
+  _renderPlan();updPT();
 }
-export function deletePlanItem(i){
-  if(!confirm('Удалить статью «'+state.D.plan[i]?.label+'»?\nКатегории потеряют привязку.'))return;
-  state.D.plan.splice(i,1);sched();renderSettings();
-}
-window.openEditPlanItem=openEditPlanItem;
-window.deletePlanItem=deletePlanItem;
-window.openAddPlanItem=openAddPlanItem;
-window.savePlanItem=savePlanItem;
 
-// ── CSV Экспорт ────────────────────────────────────────────────────
-export function exportCSV(monthOffset=0){
+export function deletePlanItem(i){
   if(!state.D)return;
-  const now=new Date();
-  const dt=new Date(now.getFullYear(),now.getMonth()+monthOffset,1);
-  const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
-  const ops=state.D.operations.filter(o=>o.date&&o.date.startsWith(ym)&&!isPlanned(o.type));
-  const lines=['Дата;Тип;Категория;Кошелёк;Сумма;Заметка'];
-  ops.sort((a,b)=>a.date>b.date?1:-1).forEach(o=>{
-    const type=o.type==='income'?'Доход':o.type==='expense'?'Расход':'Перевод';
-    const cat=o.type==='transfer'?`Перевод → ${state.D.wallets.find(w=>w.id===o.walletTo)?.name||'?'}`:o.category||'';
-    const wallet=state.D.wallets.find(w=>w.id===o.wallet)?.name||'';
-    const amt=o.type==='expense'?-o.amount:o.amount;
-    lines.push(`${o.date};${type};${cat};${wallet};${amt};${(o.note||'').replace(/;/g,',')}`);
-  });
-  const bom='\uFEFF';
-  const blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`finance-${ym}.csv`;a.click();
+  if(!confirm(`Удалить статью «${state.D.plan[i]?.label}»?`))return;
+  state.D.plan.splice(i,1);
+  sched();_renderPlan();updPT();
 }
+
+// ── CSV Export ────────────────────────────────────────────────────────────
+export function exportCSV(off){
+  if(!state.D)return;
+  const dt=new Date(new Date().getFullYear(),new Date().getMonth()+(off||0),1);
+  const ym=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0');
+  const ops=state.D.operations.filter(o=>o.date&&o.date.startsWith(ym));
+  _downloadCSV(ops,'finances-'+ym+'.csv');
+}
+
 export function exportAllCSV(){
   if(!state.D)return;
-  const lines=['Дата;Тип;Категория;Кошелёк;Сумма;Заметка'];
-  const ops=state.D.operations.filter(o=>!isPlanned(o.type));
-  ops.sort((a,b)=>a.date>b.date?1:-1).forEach(o=>{
-    const type=o.type==='income'?'Доход':o.type==='expense'?'Расход':'Перевод';
-    const cat=o.type==='transfer'?`Перевод → ${state.D.wallets.find(w=>w.id===o.walletTo)?.name||'?'}`:o.category||'';
-    const wallet=state.D.wallets.find(w=>w.id===o.wallet)?.name||'';
-    const amt=o.type==='expense'?-o.amount:o.amount;
-    lines.push(`${o.date||''};${type};${cat};${wallet};${amt};${(o.note||'').replace(/;/g,',')}`);
+  _downloadCSV(state.D.operations,'finances-all-'+today()+'.csv');
+}
+
+function _downloadCSV(ops,filename){
+  const rows=[['Дата','Тип','Категория','Сумма','Кошелёк','Заметка']];
+  ops.forEach(o=>{
+    const w=state.D.wallets.find(w=>w.id===o.wallet);
+    rows.push([o.date||'',o.type,o.category||'',o.amount,w?w.name:'',o.note||'']);
   });
-  const bom='\uFEFF';
-  const blob=new Blob([bom+lines.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`finance-all-${today()}.csv`;a.click();
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const b=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;a.click();
 }

@@ -3,9 +3,9 @@ import{state,sched,fmt,today}from'./core.js';
 
 let _recognition=null;
 let _isRecording=false;
-let _watchdog=null; // таймер защиты от зависания
+let _watchdog=null;
 
-// ── Принудительный сброс всех состояний ──────────────────────────
+// ── Принудительный сброс всех состояний ──────────────────────────────────
 function _forceReset(){
   if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
   if(_recognition){
@@ -15,7 +15,7 @@ function _forceReset(){
   _isRecording=false;
 }
 
-// ── Совместимость со старым кодом ────────────────────────────────
+// ── Совместимость со старым кодом ─────────────────────────────────────────
 export function loadVoiceSettings(){}
 export function saveVoiceSettings(sttUrl,gptUrl,appSecret){
   if(!state.D)return;
@@ -28,7 +28,7 @@ export function isVoiceConfigured(){
 }
 export function isRecording(){return _isRecording;}
 
-// ── Запись ────────────────────────────────────────────────────────
+// ── Запись ────────────────────────────────────────────────────────────────
 export async function startRecording(onResult,onError,onStateChange){
   // Если уже идёт запись — сбрасываем принудительно
   if(_isRecording||_recognition){
@@ -43,24 +43,25 @@ export async function startRecording(onResult,onError,onStateChange){
     return;
   }
 
+  // Флаг вынесен ЗА try — доступен во всех обработчиках включая onend
+  let _handled=false;
+
+  const _done=(text,isError)=>{
+    if(_handled)return;
+    _handled=true;
+    _forceReset();
+    onStateChange&&onStateChange(false);
+    if(isError)onError&&onError(text);
+    else if(text)onResult&&onResult(text);
+    else onError&&onError('Речь не распознана — говорите чётче');
+  };
+
   try{
     _recognition=new SR();
     _recognition.lang='ru-RU';
     _recognition.continuous=false;
     _recognition.interimResults=false;
     _recognition.maxAlternatives=1;
-
-    let _handled=false;
-
-    const _done=(text,isError)=>{
-      if(_handled)return;
-      _handled=true;
-      _forceReset();
-      onStateChange&&onStateChange(false);
-      if(isError)onError&&onError(text);
-      else if(text)onResult&&onResult(text);
-      else onError&&onError('Речь не распознана — говорите чётче');
-    };
 
     _recognition.onstart=()=>{
       _isRecording=true;
@@ -75,6 +76,7 @@ export async function startRecording(onResult,onError,onStateChange){
       if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
       const text=(e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript||'').trim();
       if(text)_done(text,false);
+      else _done('',false);
     };
 
     _recognition.onerror=e=>{
@@ -92,6 +94,8 @@ export async function startRecording(onResult,onError,onStateChange){
 
     _recognition.onend=()=>{
       if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
+      // onend всегда вызывается после onresult/onerror
+      // Если _handled уже true — ничего не делаем
       if(!_handled){
         _done('Речь не распознана — говорите чётче и ближе к микрофону',true);
       }
@@ -100,6 +104,7 @@ export async function startRecording(onResult,onError,onStateChange){
     _recognition.start();
 
   }catch(e){
+    _handled=true; // предотвращаем повторный вызов из onend
     _forceReset();
     onStateChange&&onStateChange(false);
     onError&&onError('Не удалось запустить: '+e.message);
@@ -110,7 +115,7 @@ export function stopRecording(){
   _forceReset();
 }
 
-// ── Разбор намерений (локально, без GPT) ─────────────────────────
+// ── Разбор намерений (локально, без GPT) ─────────────────────────────────
 export async function parseIntent(text){
   if(!state.D||!text)return{intent:'unknown',raw_text:text};
   const t=text.toLowerCase().trim();
@@ -145,13 +150,11 @@ export async function parseIntent(text){
 }
 
 function _amount(text){
-  // Ищем все числа, берём первое не похожее на год
   const all=[...text.matchAll(/\b(\d[\d\s]{0,5}\d|\d+)(?:[,\.](\d{1,2}))?\b/g)];
   for(const m of all){
     const n=parseFloat(m[0].replace(/\s/g,'').replace(',','.'));
     if(!isNaN(n)&&n>0&&!(n>=2000&&n<=2035))return n;
   }
-  // Числа словами
   const words={'ноль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90,'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900,'тысяча':1000,'тысячи':1000,'тысяч':1000,'тыщ':1000,'миллион':1000000};
   let total=0,cur=0;
   for(const w of text.split(/\s+/)){
@@ -197,8 +200,8 @@ function _findWallet(text){
 }
 
 function _transferWallets(text){
-  const t=text.toLowerCase();
   let from='',to='';
+  const t=text.toLowerCase();
   for(const w of(state.D?.wallets||[])){
     const n=w.name.toLowerCase();
     const after=t.indexOf(n);
@@ -221,7 +224,7 @@ function _parseShoppingItems(text){
   }).filter(Boolean);
 }
 
-// ── Модал подтверждения ───────────────────────────────────────────
+// ── Модал подтверждения ───────────────────────────────────────────────────
 export function handleVoiceIntent(intent,onConfirm){
   const modal=document.getElementById('modal-voice-intent');
   if(!modal)return;
@@ -251,7 +254,7 @@ export function handleVoiceIntent(intent,onConfirm){
   const labels={add_expense:'Добавить расход',add_income:'Добавить доход',add_shopping:'Добавить в список',add_transfer:'Выполнить перевод',check_balance:'Понятно',unknown:'Ввести вручную'};
   confirmBtn.textContent=labels[intent.intent]||'Подтвердить';
   confirmBtn.onclick=()=>{modal.classList.remove('open');onConfirm&&onConfirm(intent);};
-  editBtn.onclick=()=>{modal.classList.remove('open');_openEdit(intent);};
+  if(editBtn)editBtn.onclick=()=>{modal.classList.remove('open');_openEdit(intent);};
   modal.classList.add('open');
 }
 
@@ -273,7 +276,7 @@ function _openEdit(intent){
   }
 }
 
-// ── Выполнить команду ─────────────────────────────────────────────
+// ── Выполнить команду ─────────────────────────────────────────────────────
 export function executeIntent(intent){
   if(!state.D)return;
   switch(intent.intent){
@@ -299,6 +302,7 @@ export function executeIntent(intent){
       if(!intent.amount){_openEdit(intent);return;}
       const wf=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.from_wallet||'').toLowerCase()))||state.D.wallets[0];
       const wt=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.to_wallet||'').toLowerCase()))||state.D.wallets[1]||state.D.wallets[0];
+      if(wf===wt){_showToast('⚠ Укажите разные кошельки для перевода');_openEdit(intent);return;}
       const op={id:'op'+Date.now(),type:'transfer',amount:intent.amount,date:today(),wallet:wf?.id,walletTo:wt?.id};
       if(wf)wf.balance-=intent.amount;if(wt&&wt!==wf)wt.balance+=intent.amount;
       state.D.operations.push(op);sched();
@@ -310,8 +314,12 @@ export function executeIntent(intent){
   }
 }
 
-// ── Плавающая кнопка ─────────────────────────────────────────────
+// ── Плавающая кнопка (защита от дублирования) ────────────────────────────
 export function createSmartVoiceButton(){
+  // Если кнопка уже существует — вернуть её, не создавать новую
+  const existing=document.getElementById('smart-voice-btn');
+  if(existing)return existing;
+
   const btn=document.createElement('button');
   btn.id='smart-voice-btn';
   btn.title='Голосовая команда';
@@ -350,7 +358,7 @@ export function createSmartVoiceButton(){
   return btn;
 }
 
-// ── Встроенная кнопка в поле ввода ───────────────────────────────
+// ── Встроенная кнопка в поле ввода ───────────────────────────────────────
 export function createVoiceButton(targetInputId,extraStyle=''){
   const btn=document.createElement('button');
   btn.type='button';

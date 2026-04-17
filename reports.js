@@ -1,4 +1,4 @@
-import{$,fmt,fmtS,state,MONTHS,getMOps,planById,catPlanId,isPlanned,opHtml,planSpent,sched,wName}from'./core.js';
+import{$,fmt,state,MONTHS,getMOps,isPlanned,opHtml}from'./core.js';
 
 let curCatTab='income';
 
