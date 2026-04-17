@@ -126,20 +126,22 @@
           </div>
         </div>
       </div>
-      <!-- Wallets -->
-      <div class="panel" style="flex-shrink:0">
-        <div class="panel-head">КОШЕЛЬКИ</div>
-        <div class="panel-body"><div id="r-wallets"></div></div>
-      </div>
-      <!-- Categories -->
-      <div class="panel" style="flex:1;min-height:0">
-        <div class="panel-head">ПО КАТЕГОРИЯМ</div>
-        <div class="panel-body">
-          <div class="cat-tabs">
-            <button class="cat-tab active" id="cattab-income" onclick="window.setCatTab('income')">Доходы</button>
-            <button class="cat-tab" id="cattab-expense" onclick="window.setCatTab('expense')">Расходы</button>
+      <!-- Wallets + Categories side by side, equal height -->
+      <div class="rep-bottom-row">
+        <div class="panel">
+          <div class="panel-head">КОШЕЛЬКИ</div>
+          <div class="panel-body"><div id="r-wallets"></div></div>
+        </div>
+        <!-- Categories -->
+        <div class="panel">
+          <div class="panel-head">ПО КАТЕГОРИЯМ</div>
+          <div class="panel-body">
+            <div class="cat-tabs">
+              <button class="cat-tab active" id="cattab-income" onclick="window.setCatTab('income')">Доходы</button>
+              <button class="cat-tab" id="cattab-expense" onclick="window.setCatTab('expense')">Расходы</button>
+            </div>
+            <div id="r-cat-list"></div>
           </div>
-          <div id="r-cat-list"></div>
         </div>
       </div>
     </div>
