@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тест голосового ввода</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#F0E6C8;color:#3D2B1A;padding:20px;min-height:100vh;}
+  h1{font-size:18px;font-weight:700;color:#3D2B1A;letter-spacing:.5px;margin-bottom:20px;text-align:center;}
+  .card{background:#FDF6E3;border:1.5px solid #C9A96E;border-radius:12px;padding:20px;margin-bottom:16px;}
+  .card-title{font-size:11px;font-weight:700;color:#7A5C30;letter-spacing:1px;margin-bottom:14px;}
+  .status-row{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:13px;}
+  .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .dot.ok{background:#4A7C3F;}
+  .dot.warn{background:#C25B1A;}
+  .dot.err{background:#C0392B;}
+  .dot.gray{background:#ccc;}
+  .mic-btn{width:80px;height:80px;border-radius:50%;border:none;font-size:32px;cursor:pointer;background:#BA7517;color:#fff;display:flex;align-items:center;justify-content:center;margin:20px auto;transition:all .2s;box-shadow:0 4px 12px rgba(186,117,23,.4);}
+  .mic-btn:hover{background:#7A4D0A;transform:scale(1.05);}
+  .mic-btn.recording{background:#C0392B;animation:pulse 1s infinite;}
+  .mic-btn.waiting{background:#7A5C30;}
+  @keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+  .result-box{background:#fff;border:1.5px solid #D4B483;border-radius:8px;padding:14px;min-height:60px;font-size:14px;color:#3D2B1A;line-height:1.6;white-space:pre-wrap;}
+  .result-box.error{border-color:#C0392B;background:#FADBD8;color:#C0392B;}
+  .result-box.success{border-color:#4A7C3F;background:#C8DFC4;color:#2D5228;}
+  .hint{font-size:11px;color:#7A5C30;margin-top:8px;line-height:1.6;}
+  .intent-box{font-size:12px;font-family:monospace;background:#3D2B1A;color:#C9A96E;border-radius:8px;padding:14px;overflow-x:auto;white-space:pre;display:none;}
+  .log{font-size:11px;color:#7A5C30;font-family:monospace;max-height:150px;overflow-y:auto;background:#fff9f0;border:1px solid #D4B483;border-radius:6px;padding:10px;}
+  .log div{margin-bottom:3px;}
+  .log .ts{color:#A07840;margin-right:6px;}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{padding:8px 16px;border-radius:7px;border:1.5px solid #C9A96E;background:#F5DFA0;color:#7A4D0A;font-size:12px;font-weight:700;cursor:pointer;}
+  .btn:hover{background:#BA7517;color:#fff;border-color:#BA7517;}
+  .phrase{background:#fff;border:1px solid #D4B483;border-radius:6px;padding:8px 12px;font-size:13px;cursor:pointer;transition:.15s;}
+  .phrase:hover{background:#F5DFA0;border-color:#BA7517;}
+  .phrases{display:flex;flex-direction:column;gap:6px;}
+  .section-label{font-size:10px;font-weight:700;color:#A07840;letter-spacing:.5px;margin:10px 0 6px;}
+</style>
+</head>
+<body>
+
+<h1>🎤 ТЕСТ ГОЛОСОВОГО ВВОДА</h1>
+
+<!-- Диагностика -->
+<div class="card">
+  <div class="card-title">ДИАГНОСТИКА</div>
+  <div class="status-row"><div class="dot gray" id="dot-api"></div><span id="txt-api">Проверяю Web Speech API...</span></div>
+  <div class="status-row"><div class="dot gray" id="dot-https"></div><span id="txt-https">Проверяю протокол...</span></div>
+  <div class="status-row"><div class="dot gray" id="dot-mic"></div><span id="txt-mic">Микрофон не проверен</span></div>
+  <div style="margin-top:10px">
+    <button class="btn" onclick="checkMic()">🎙 Проверить микрофон</button>
+  </div>
+</div>
+
+<!-- Запись -->
+<div class="card">
+  <div class="card-title">ЗАПИСЬ</div>
+  <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎤</button>
+  <div style="text-align:center;font-size:12px;color:#7A5C30;margin-bottom:14px" id="rec-status">Нажмите для записи</div>
+  <div class="result-box" id="result-box">Здесь появится распознанный текст...</div>
+  <div class="hint">
+    💡 Говорите сразу после нажатия.<br>
+    💡 Требуется интернет (Google распознаёт речь).<br>
+    💡 Работает в Chrome, Edge, Safari. Firefox — нет.
+  </div>
+</div>
+
+<!-- Разбор намерения -->
+<div class="card">
+  <div class="card-title">РАЗБОР НАМЕРЕНИЯ (parseIntent)</div>
+  <div class="intent-box" id="intent-box"></div>
+  <div id="intent-placeholder" style="font-size:13px;color:#A07840">После распознавания здесь появится разобранное намерение</div>
+</div>
+
+<!-- Тестовые фразы -->
+<div class="card">
+  <div class="card-title">ТЕСТОВЫЕ ФРАЗЫ (нажмите чтобы проверить разбор)</div>
+  <div class="section-label">РАСХОДЫ</div>
+  <div class="phrases" id="phrases-expense"></div>
+  <div class="section-label">ДОХОДЫ</div>
+  <div class="phrases" id="phrases-income"></div>
+  <div class="section-label">СПИСОК ПОКУПОК</div>
+  <div class="phrases" id="phrases-shop"></div>
+  <div class="section-label">ДРУГОЕ</div>
+  <div class="phrases" id="phrases-other"></div>
+</div>
+
+<!-- Лог событий -->
+<div class="card">
+  <div class="card-title">ЛОГ СОБЫТИЙ</div>
+  <div class="log" id="log"></div>
+  <div style="margin-top:8px"><button class="btn" onclick="clearLog()">Очистить</button></div>
+</div>
+
+<script>
+// ── Диагностика ─────────────────────────────────────────────────
+function setDot(id,txtId,status,msg){
+  const dot=document.getElementById(id);
+  const txt=document.getElementById(txtId);
+  dot.className='dot '+status;
+  txt.textContent=msg;
+}
+
+function runDiagnostics(){
+  // Web Speech API
+  if(window.SpeechRecognition||window.webkitSpeechRecognition){
+    setDot('dot-api','txt-api','ok','✓ Web Speech API поддерживается ('+
+      (window.SpeechRecognition?'SpeechRecognition':'webkitSpeechRecognition')+')');
+  }else{
+    setDot('dot-api','txt-api','err','✗ Web Speech API НЕ поддерживается — используйте Chrome или Safari');
+    document.getElementById('mic-btn').disabled=true;
+  }
+  // HTTPS
+  const proto=location.protocol;
+  const isLocal=location.hostname==='localhost'||location.hostname==='127.0.0.1';
+  if(proto==='https:'||isLocal){
+    setDot('dot-https','txt-https','ok','✓ Протокол: '+(isLocal?'localhost (разрешено)':location.origin));
+  }else{
+    setDot('dot-https','txt-https','err','✗ Требуется HTTPS! Текущий протокол: '+proto+'//'+location.hostname);
+    log('WARN','Speech API требует HTTPS или localhost');
+  }
+}
+
+async function checkMic(){
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    stream.getTracks().forEach(t=>t.stop());
+    setDot('dot-mic','txt-mic','ok','✓ Микрофон доступен');
+    log('OK','Доступ к микрофону получен');
+  }catch(e){
+    setDot('dot-mic','txt-mic','err','✗ Микрофон: '+e.message);
+    log('ERR','Микрофон: '+e.message);
+  }
+}
+
+// ── Запись ──────────────────────────────────────────────────────
+let recognition=null;
+let isRecording=false;
+
+function toggleRecording(){
+  if(isRecording){stopRec();return;}
+  startRec();
+}
+
+function startRec(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){showResult('Браузер не поддерживает Web Speech API','error');return;}
+
+  recognition=new SR();
+  recognition.lang='ru-RU';
+  recognition.continuous=false;
+  recognition.interimResults=true; // включаем чтобы видеть промежуточный текст
+  recognition.maxAlternatives=3;
+
+  recognition.onstart=()=>{
+    isRecording=true;
+    document.getElementById('mic-btn').className='mic-btn recording';
+    document.getElementById('mic-btn').textContent='⏹';
+    document.getElementById('rec-status').textContent='🔴 Идёт запись — говорите...';
+    document.getElementById('result-box').className='result-box';
+    document.getElementById('result-box').textContent='Слушаю...';
+    log('REC','Запись начата');
+  };
+
+  recognition.onresult=e=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    if(interim)document.getElementById('result-box').textContent='💬 '+interim;
+    if(final){
+      isRecording=false;
+      setBtn('idle');
+      showResult(final,'success');
+      log('OK','Распознано: "'+final+'"');
+      // Все альтернативы
+      const alts=[];
+      for(let i=0;i<e.results[0].length;i++)alts.push(e.results[0][i].transcript+' ('+Math.round(e.results[0][i].confidence*100)+'%)');
+      if(alts.length>1)log('ALT','Альтернативы: '+alts.join(' | '));
+      // Разобрать намерение
+      const intent=parseIntent(final);
+      showIntent(intent);
+    }
+  };
+
+  recognition.onnomatch=()=>{
+    isRecording=false;setBtn('idle');
+    showResult('Речь не распознана','error');
+    log('WARN','onresult: ничего не распознано');
+  };
+
+  recognition.onerror=e=>{
+    log('ERR','onerror: '+e.error+(e.message?' — '+e.message:''));
+    if(e.error==='aborted'){log('INFO','aborted — нормально если уже получили результат');return;}
+    isRecording=false;setBtn('idle');
+    const msgs={
+      'not-allowed':'Нет доступа к микрофону',
+      'no-speech':'Ничего не услышано',
+      'network':'Нет интернета',
+      'audio-capture':'Микрофон не найден',
+      'service-not-allowed':'Требуется HTTPS',
+    };
+    showResult(msgs[e.error]||'Ошибка: '+e.error,'error');
+  };
+
+  recognition.onend=()=>{
+    log('EVT','onend сработал, isRecording='+isRecording);
+    if(isRecording){isRecording=false;setBtn('idle');}
+  };
+
+  try{
+    recognition.start();
+    log('EVT','recognition.start() вызван');
+  }catch(e){
+    showResult('Не удалось запустить: '+e.message,'error');
+    log('ERR','start() исключение: '+e.message);
+  }
+}
+
+function stopRec(){
+  if(recognition)try{recognition.stop();}catch(e){}
+  isRecording=false;
+  setBtn('idle');
+  document.getElementById('rec-status').textContent='Запись остановлена вручную';
+  log('EVT','Запись остановлена вручную');
+}
+
+function setBtn(state){
+  const btn=document.getElementById('mic-btn');
+  if(state==='idle'){
+    btn.className='mic-btn';btn.textContent='🎤';
+    document.getElementById('rec-status').textContent='Нажмите для записи';
+  }else if(state==='waiting'){
+    btn.className='mic-btn waiting';btn.textContent='⏳';
+  }
+}
+
+function showResult(text,type){
+  const box=document.getElementById('result-box');
+  box.className='result-box'+(type?' '+type:'');
+  box.textContent=text;
+}
+
+// ── parseIntent — локальный разбор ──────────────────────────────
+function parseIntent(text){
+  if(!text)return{intent:'unknown',raw_text:text};
+  const t=text.toLowerCase().trim();
+
+  // Список покупок
+  const shopVerbs=['купить','купи','куплю','добавь в список','нужно купить'];
+  if(shopVerbs.some(v=>t.includes(v))){
+    const items=parseShoppingItems(t);
+    if(items.length)return{intent:'add_shopping',items};
+  }
+  // Баланс
+  if(/баланс|сколько|остаток/.test(t))return{intent:'check_balance',raw_text:text};
+  // Перевод
+  if(/перевёл|перевел|перевести|перевод/.test(t)){
+    return{intent:'add_transfer',amount:extractAmount(t),raw_text:text};
+  }
+  // Доход
+  const incVbs=['получил','получила','заработал','заработала','пришло','пришла','зарплата','аванс','доход','начислили'];
+  if(incVbs.some(v=>t.includes(v))){
+    return{intent:'add_income',amount:extractAmount(t),category:findCategory(t,'income'),raw_text:text};
+  }
+  // Расход (если есть сумма)
+  const amount=extractAmount(t);
+  if(amount>0){
+    return{intent:'add_expense',amount,category:findCategory(t,'expense'),raw_text:text};
+  }
+  return{intent:'unknown',raw_text:text};
+}
+
+function extractAmount(text){
+  const m=text.match(/(\d[\d\s]*\d|\d+)(?:[,\.](\d+))?/);
+  if(m){
+    const raw=m[0].replace(/\s/g,'').replace(',','.');
+    const n=parseFloat(raw);
+    if(!isNaN(n)&&n>0)return n;
+  }
+  return 0;
+}
+
+function findCategory(text,type){
+  const keyMap=[
+    [/продукт|еда|магазин|супермаркет/,'Продукты'],
+    [/транспорт|метро|такси|автобус/,'Транспорт'],
+    [/кафе|ресторан|кофе|обед|ужин/,'Кафе и рестораны'],
+    [/аптек|лекарств|врач/,'Здоровье'],
+    [/одежд|обувь/,'Одежда'],
+    [/зарплат|аванс|оклад/,'Зарплата'],
+    [/кредит|ипотек/,'Кредит'],
+    [/связь|интернет|телефон/,'Связь'],
+    [/квартплат|коммунал|аренда/,'Квартплата'],
+    [/развлечен|кино|игр/,'Развлечения'],
+  ];
+  for(const[re,cat]of keyMap)if(re.test(text))return cat;
+  return'Прочее';
+}
+
+function parseShoppingItems(text){
+  const clean=text.replace(/купить|купи|куплю|добавь в список|нужно/g,' ');
+  const parts=clean.split(/,|\bи\b/).map(s=>s.trim()).filter(s=>s.length>1);
+  return parts.map(p=>{
+    const qm=p.match(/(\d+)/);
+    const qty=qm?parseInt(qm[1]):1;
+    const name=p.replace(/\d+\s*(?:шт|штук|пачк|литр|кг|грамм)?/g,'').trim();
+    return name.length>1?{name,qty,price:0}:null;
+  }).filter(Boolean);
+}
+
+function showIntent(intent){
+  document.getElementById('intent-placeholder').style.display='none';
+  const box=document.getElementById('intent-box');
+  box.style.display='block';
+  box.textContent=JSON.stringify(intent,null,2);
+}
+
+// ── Тестовые фразы ───────────────────────────────────────────────
+const testPhrases={
+  expense:['потратил 500 на продукты','купил кофе за 200 рублей','заплатил 3500 за такси','потратил 1500 на одежду','оплатил 800 рублей в кафе'],
+  income:['получил зарплату 80000','пришло 5000 рублей','заработал 15000 на фрилансе','начислили аванс 30000'],
+  shop:['купить молоко и хлеб','купи молоко 2 штуки и масло','добавь в список яблоки кефир и творог'],
+  other:['баланс карты','перевёл 10000 с карты на наличные','что-то непонятное скажи привет'],
+};
+
+function buildPhrases(){
+  const fill=(id,phrases)=>{
+    const el=document.getElementById(id);
+    phrases.forEach(p=>{
+      const div=document.createElement('div');
+      div.className='phrase';
+      div.textContent='«'+p+'»';
+      div.onclick=()=>{
+        showResult(p,'success');
+        const intent=parseIntent(p);
+        showIntent(intent);
+        log('TEST','Тест: "'+p+'" → '+intent.intent);
+      };
+      el.appendChild(div);
+    });
+  };
+  fill('phrases-expense',testPhrases.expense);
+  fill('phrases-income',testPhrases.income);
+  fill('phrases-shop',testPhrases.shop);
+  fill('phrases-other',testPhrases.other);
+}
+
+// ── Лог ─────────────────────────────────────────────────────────
+function log(type,msg){
+  const el=document.getElementById('log');
+  const ts=new Date().toLocaleTimeString('ru-RU');
+  const colors={OK:'#2D5228',ERR:'#C0392B',WARN:'#C25B1A',REC:'#2471A3',EVT:'#7A5C30',INFO:'#A07840',ALT:'#7A5C30',TEST:'#BA7517'};
+  const div=document.createElement('div');
+  div.innerHTML=`<span class="ts">${ts}</span><span style="color:${colors[type]||'#3D2B1A'};font-weight:700">[${type}]</span> ${msg}`;
+  el.appendChild(div);
+  el.scrollTop=el.scrollHeight;
+}
+
+function clearLog(){document.getElementById('log').innerHTML='';}
+
+// ── Запуск ───────────────────────────────────────────────────────
+runDiagnostics();
+buildPhrases();
+log('INFO','Страница загружена. Браузер: '+navigator.userAgent.match(/(Chrome|Safari|Firefox|Edge)\/[\d.]+/)?.[0]||'неизвестен');
+</script>
+</body>
+</html>
