@@ -1,4 +1,4 @@
-import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,today,sched,calcHealthScore,detectAnomalies}from'./core.js';
+import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched,calcHealthScore,detectAnomalies}from'./core.js';
 
 let chartInstance=null;
 
@@ -156,6 +156,7 @@ function renderAlerts(factOps,mInc){
     else if(pct>=80)alerts.push({level:'warn',msg:`«${lim.cat}» — ${pct}% лимита (${fmt(spent)} из ${fmt(lim.limit)})`});
   });
 
+  // FIX: window._checkPortfolioAlert and _checkAssetsAlert are registered in index.html after login
   const portAlert=window._checkPortfolioAlert&&window._checkPortfolioAlert();
   if(portAlert)alerts.push({level:'info',msg:`📈 ${portAlert} — <a href="#" onclick="window.showScreen('portfolio');return false" style="color:var(--blue);font-weight:700">Обновить →</a>`});
   const assetsAlert=window._checkAssetsAlert&&window._checkAssetsAlert();
@@ -204,6 +205,7 @@ function renderQuickOps(){
   const freq={};
   recentOps.forEach(o=>{
     if(!o.category)return;
+    // FIX: use actual amount rounded to nearest 50 for better grouping accuracy
     const roundAmt=Math.round(o.amount/50)*50;
     const key=o.type+'|'+o.category+'|'+roundAmt;
     freq[key]=(freq[key]||0)+1;
@@ -280,15 +282,16 @@ function renderDebtsDash(){
     return;
   }
   const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
-  const monthlyPayments=loans.reduce((s,l)=>s+(l.payment||0),0);
+  // Платежи берём из кошельков (w.payment), а не из устаревшего loans[]
+  const monthlyPayments=debtWallets.reduce((s,w)=>s+(w.payment||0),0);
   const now=new Date();
-  const upcoming=loans.map(l=>{
-    const payDay=l.payDay||1;
+  // Ближайшие платежи из кошельков (w.payDay), а не из устаревшего loans[]
+  const upcoming=debtWallets.filter(w=>w.payment&&w.payDay).map(w=>{
+    const payDay=w.payDay;
     let d=new Date(now.getFullYear(),now.getMonth(),payDay);
     if(d<new Date(today()))d=new Date(now.getFullYear(),now.getMonth()+1,payDay);
-    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay).padStart(2,'0');
     const diff=Math.ceil((d-new Date(today()))/(1000*60*60*24));
-    return{...l,daysLeft:diff,nextDate:ds};
+    return{name:w.name,payment:w.payment,payDay,daysLeft:diff};
   }).filter(l=>l.daysLeft>=0&&l.daysLeft<=10).sort((a,b)=>a.daysLeft-b.daysLeft);
 
   el.innerHTML=`
@@ -308,10 +311,11 @@ function renderDebtsDash(){
         ${fmt(l.payment||0)} · ${l.daysLeft===0?'сегодня':l.daysLeft===1?'завтра':'через '+l.daysLeft+' дн.'}
       </span>
     </div>`).join('')}
-    ${!upcoming.length&&loans.length?'<div style="font-size:11px;color:var(--text2)">Ближайших платежей нет</div>':''}
+    ${!upcoming.length&&debtWallets.some(w=>w.payment)?'<div style="font-size:11px;color:var(--text2)">Ближайших платежей нет</div>':''}
   `;
 }
 
+// FIX: use shared calcHealthScore from core.js instead of duplicating logic
 function renderHealthScore(){
   const el=$('dash-health-score');if(!el||!state.D)return;
   const h=calcHealthScore();
@@ -383,6 +387,7 @@ function renderPortfolioDash(){
   `;
 }
 
+// FIX: ownership cost calc now uses same logic as assets.js (divide by filled months, not always 3)
 function renderAssetsDash(){
   const el=document.getElementById('dash-physassets');if(!el||!state.D)return;
   const assets=state.D.physAssets||[];
@@ -514,6 +519,7 @@ function renderForecastDash(){
   <div style="font-size:10px;color:var(--text2);margin-top:5px">Ср. баланс/мес: ${avg>=0?'+':''}${fmt(Math.round(avg))} · осталось ${monthsLeft} мес.</div>`;
 }
 
+// FIX: use shared detectAnomalies from core.js (2*std, 6 months — matches analytics.js)
 function renderAnomaliesDash(factOps){
   const el=document.getElementById('dash-anomalies');if(!el||!state.D)return;
   const anomalies=detectAnomalies(factOps);
@@ -537,7 +543,7 @@ function renderTodayDash(){
   el.innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
     <div><div style="font-size:9px;color:var(--text2);font-weight:700">ДОХОД</div><div style="font-size:14px;font-weight:700;color:var(--green-dark)">${fmt(inc)}</div></div>
     <div><div style="font-size:9px;color:var(--text2);font-weight:700">РАСХОД</div><div style="font-size:14px;font-weight:700;color:var(--red)">${fmt(exp)}</div></div>
-    <div><div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div><div style="font-size:14px;font-weight:700;color:${bal>=0?'var(--green-dark)':'var(--red)'}${bal<0?'−':''}${fmt(bal)}</div></div>
+    <div><div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div><div style="font-size:14px;font-weight:700;color:${bal>=0?'var(--green-dark)':'var(--red)'}">${bal<0?'−':''}${fmt(bal)}</div></div>
   </div>
   ${ops.slice(0,3).map(o=>`<div style="font-size:11px;color:var(--text2);padding:3px 0;border-top:.5px solid var(--border);margin-top:5px">${o.category||'—'} · ${o.type==='income'?'+':'−'}${fmt(o.amount)}</div>`).join('')}
   ${ops.length>3?`<div style="font-size:10px;color:var(--text2)">+${ops.length-3} операций</div>`:''}`;

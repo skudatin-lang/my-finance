@@ -1379,7 +1379,18 @@ ${loansDesc||'Нет данных о кредитах'}
     });
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
-      throw new Error(err.error?.message||'HTTP '+resp.status);
+      const msg=err.error?.message||'HTTP '+resp.status;
+      // Понятные сообщения для типичных ошибок DeepSeek
+      if(msg.includes('Insufficient Balance')||msg.includes('insufficient_quota')){
+        throw new Error('На счёте DeepSeek недостаточно средств. Пополните баланс на platform.deepseek.com → Billing');
+      }
+      if(resp.status===401||msg.includes('Invalid API')){
+        throw new Error('Неверный API-ключ. Проверьте ключ в панели Админ');
+      }
+      if(resp.status===429){
+        throw new Error('Превышен лимит запросов. Попробуйте через минуту');
+      }
+      throw new Error(msg);
     }
     const data=await resp.json();
     const text=data.choices?.[0]?.message?.content||'Нет ответа';
@@ -1390,7 +1401,10 @@ ${loansDesc||'Нет данных о кредитах'}
     result.innerHTML=`<div style="color:var(--topbar)">${html}</div>
       <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
   }catch(e){
-    result.innerHTML=`<span style="color:var(--red)">⚠ Ошибка: ${e.message}</span>`;
+    const isBalance=e.message.includes('недостаточно средств');
+    result.innerHTML=`<div style="color:var(--red)">⚠ ${e.message}${isBalance?
+      ' <a href="https://platform.deepseek.com/usage" target="_blank" style="color:var(--amber);font-weight:700">Пополнить →</a>':
+      ''}</div>`;
   }finally{
     if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
   }
