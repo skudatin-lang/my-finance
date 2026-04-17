@@ -252,9 +252,15 @@ export function detectAnomalies(factOps){
   return anomalies.sort((a,b)=>b.pct-a.pct);
 }
 
-// ── Global app config ─────────────────────────────────────────────────────
+// ── Owner UID — единственный источник истины для admin-доступа ───────────
+// Используется ТОЛЬКО для показа/скрытия UI панели Админ.
+// Реальная защита данных — Firestore Rules на сервере Firebase,
+// которые не зависят от этой переменной и не могут быть обойдены клиентом.
+const _OWNER_UID='TmexoZZxotgY7c3oBLpdAP3TG8s1';
+export function isOwner(uid){return uid===_OWNER_UID;}
+
+// ── App config (workerUrl, appSecret — настройки только владельца) ────────
 export const appConfig={
-  adminUids:[],
   workerUrl:'',
   appSecret:'',
   loaded:false,
@@ -265,7 +271,6 @@ export async function loadAppConfig(){
     const snap=await getDoc(doc(db,'config','app'));
     if(snap.exists()){
       const d=snap.data();
-      appConfig.adminUids=d.adminUids||[];
       appConfig.workerUrl=d.workerUrl||'';
       appConfig.appSecret=d.appSecret||'';
       appConfig.loaded=true;
@@ -278,7 +283,6 @@ export async function loadAppConfig(){
 export async function saveAppConfig(data){
   try{
     await setDoc(doc(db,'config','app'),data,{merge:true});
-    appConfig.adminUids=data.adminUids??appConfig.adminUids;
     appConfig.workerUrl=data.workerUrl??appConfig.workerUrl;
     appConfig.appSecret=data.appSecret??appConfig.appSecret;
     return true;
@@ -286,11 +290,6 @@ export async function saveAppConfig(data){
     console.error('saveAppConfig failed:',e.message);
     return false;
   }
-}
-
-export function isAdminUser(uid){
-  if(!appConfig.adminUids.length)return false;
-  return appConfig.adminUids.includes(uid);
 }
 
 export function initAuth(onLogin,onLogout){
