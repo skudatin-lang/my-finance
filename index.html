@@ -546,7 +546,7 @@
     <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ew-name"></div>
     <div class="fg">
       <label>ТИП КОШЕЛЬКА</label>
-      <select class="fi" id="ew-type">
+      <select class="fi" id="ew-type" onchange="window.onWalletTypeChange(this.value)">
         <option value="debit">💳 Дебетовая карта</option>
         <option value="cash">💵 Наличные</option>
         <option value="savings">🏦 Накопительный счёт</option>
@@ -559,6 +559,36 @@
       </select>
     </div>
     <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредитных карт и долгов — отрицательное число</div></div>
+
+    <!-- Блок параметров долга — показывается только для долговых типов -->
+    <div id="ew-debt-fields" style="display:none;background:var(--red-bg);border:1.5px solid var(--red);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--red);letter-spacing:.6px;margin-bottom:10px">ПАРАМЕТРЫ КРЕДИТА / ДОЛГА</div>
+      <div class="rf">
+        <div class="fg">
+          <label>СТАВКА % ГОД.</label>
+          <input class="fi" type="number" step="0.1" min="0" max="200" id="ew-rate" placeholder="0"
+            style="font-size:14px;font-weight:700">
+        </div>
+        <div class="fg">
+          <label>ПЛАТЁЖ/МЕС ₽</label>
+          <input class="fi" type="number" min="0" id="ew-payment" placeholder="0"
+            style="font-size:14px">
+        </div>
+      </div>
+      <div class="rf">
+        <div class="fg">
+          <label>ДЕНЬ ВЫСТАВЛЕНИЯ СЧЁТА</label>
+          <input class="fi" type="number" min="1" max="28" id="ew-payday" placeholder="25"
+            style="font-size:14px">
+        </div>
+        <div class="fg">
+          <label>БЕСПРОЦ. ПЕРИОД (дн.)</label>
+          <input class="fi" type="number" min="0" id="ew-grace" placeholder="0"
+            style="font-size:14px">
+        </div>
+      </div>
+    </div>
+
     <div class="fg">
       <label>СТАТЬЯ ФИНПЛАНА (для накоплений)</label>
       <select class="fi" id="ew-plan">

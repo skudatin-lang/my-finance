@@ -15,116 +15,6 @@ function getLoanSettings(walletId){
   return state.D.loanSettings[walletId]||{rate:0,payment:0,payDay:25,graceDays:0};
 }
 
-// ── Читает текущие значения полей карточки прямо из DOM ───────────
-function readCardFields(walletId){
-  // Используем data-walletid атрибут для надёжного поиска
-  const card=document.querySelector(`[data-loan-card="${walletId}"]`);
-  if(!card)return getLoanSettings(walletId);
-  return{
-    rate:   parseFloat(card.querySelector('[data-field="rate"]')?.value)||0,
-    payment:parseFloat(card.querySelector('[data-field="payment"]')?.value)||0,
-    payDay: parseInt(card.querySelector('[data-field="payday"]')?.value)||25,
-    graceDays:parseInt(card.querySelector('[data-field="grace"]')?.value)||0
-  };
-}
-
-// ── Сохранить все поля карточки в state и пересчитать переплату ───
-window.updateLoanCard=function(walletId){
-  if(!state.D||!state.D.loanSettings)state.D.loanSettings={};
-  const fields=readCardFields(walletId);
-  state.D.loanSettings[walletId]=fields;
-  sched();
-
-  // Пересчитать и обновить только динамические блоки внутри карточки
-  const card=document.querySelector(`[data-loan-card="${walletId}"]`);
-  if(!card)return;
-
-  const debt=Math.abs(state.D.wallets.find(w=>w.id===walletId)?.balance||0);
-  const{rate,payment,payDay,graceDays}=fields;
-  const schedule=calcCardSchedule(debt,rate,payment,payDay,graceDays);
-  const totalInterest=schedule.reduce((s,p)=>s+p.interest,0);
-  const nextPayment=schedule.find(p=>p.date>today());
-  const daysToNext=nextPayment?Math.ceil((new Date(nextPayment.date+'T12:00:00')-new Date(today()+'T12:00:00'))/(1000*60*60*24)):null;
-  const alertPay=daysToNext!==null&&daysToNext<=7;
-
-  // Обновить цифры
-  const payEl=card.querySelector('[data-val="payment"]');
-  if(payEl)payEl.textContent=payment>0?fmt(payment):'—';
-
-  const interestEl=card.querySelector('[data-val="interest"]');
-  if(interestEl)interestEl.textContent=totalInterest>0?fmt(Math.round(totalInterest)):'—';
-
-  // Обновить ставку — цвет
-  const rateInput=card.querySelector('[data-field="rate"]');
-  if(rateInput){
-    const isExpensive=rate>=EXPENSIVE_RATE;
-    rateInput.style.borderColor=isExpensive?'var(--red)':'';
-    rateInput.style.color=isExpensive?'var(--red)':'';
-    rateInput.style.fontWeight=isExpensive?'700':'';
-  }
-
-  // Обновить следующий платёж
-  const nextEl=card.querySelector('[data-next-payment]');
-  if(nextEl){
-    if(nextPayment){
-      nextEl.textContent=`${alertPay?'⚠ ':'📅 '}Следующий платёж: ${fmtD(nextPayment.date)}${daysToNext===0?' (сегодня)':daysToNext===1?' (завтра)':' через '+daysToNext+' дн.'}`;
-      nextEl.style.color=alertPay?'var(--orange-dark)':'var(--text2)';
-      nextEl.style.fontWeight=alertPay?'700':'400';
-      nextEl.style.display='block';
-    }else if(rate>0&&payment>0){
-      nextEl.textContent='Платёж ≤ начисляемым процентам — увеличьте сумму';
-      nextEl.style.color='var(--red)';
-      nextEl.style.display='block';
-    }else{
-      nextEl.style.display='none';
-    }
-  }
-
-  // Обновить метку «дорогой»
-  const badgeEl=card.querySelector('[data-expensive-badge]');
-  if(badgeEl){
-    const maxRate=Math.max(...state.D.wallets.filter(w=>w.balance<0).map(w=>getLoanSettings(w.id).rate||0));
-    const isMostExpensive=rate===maxRate&&maxRate>=EXPENSIVE_RATE;
-    const isExpensive=rate>=EXPENSIVE_RATE;
-    badgeEl.innerHTML=isMostExpensive
-      ?'<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 7px;border-radius:5px;font-weight:700">⚠ САМЫЙ ДОРОГОЙ</span>'
-      :isExpensive
-      ?'<span style="font-size:10px;background:var(--orange-bg);color:var(--orange-dark);padding:2px 7px;border-radius:5px;font-weight:700">! ДОРОГОЙ</span>'
-      :'';
-    // Обновить рамку карточки
-    const borderColor=isMostExpensive?'var(--red)':isExpensive?'var(--orange)':alertPay?'var(--orange)':'var(--border2)';
-    card.style.borderColor=borderColor;
-  }
-
-  // Обновить/показать блок графика
-  const schedWrap=card.querySelector('[data-sched-wrap]');
-  if(schedWrap){
-    if(schedule.length>0){
-      schedWrap.style.display='';
-      const btn=schedWrap.querySelector('[data-sched-btn]');
-      if(btn)btn.textContent=`▶ График погашения (${schedule.length} платежей)`;
-      const tbl=schedWrap.querySelector('[data-sched-tbl]');
-      if(tbl)tbl.innerHTML=renderScheduleRows(schedule);
-    }else{
-      schedWrap.style.display='none';
-    }
-  }
-
-  // Обновить сводку справа
-  renderLoansSummaryInternal();
-};
-
-function renderScheduleRows(schedule){
-  return schedule.slice(0,24).map(p=>`<tr style="border-bottom:.5px solid var(--border);${p.date<=today()?'opacity:.45':''}">
-    <td style="padding:5px">${fmtD(p.date)}</td>
-    <td style="text-align:right;padding:5px;font-weight:700">${fmt(p.total)}</td>
-    <td style="text-align:right;padding:5px;color:var(--green-dark)">${fmt(p.principal)}</td>
-    <td style="text-align:right;padding:5px;color:var(--red)">${fmt(p.interest)}</td>
-    <td style="text-align:right;padding:5px">${fmt(p.balance)}</td>
-  </tr>`).join('')
-  +(schedule.length>24?`<tr><td colspan="5" style="padding:6px;text-align:center;color:var(--text2);font-size:10px">ещё ${schedule.length-24} платежей...</td></tr>`:'');
-}
-
 // ── Свободный остаток ─────────────────────────────────────────────
 function calcFreeBalance(){
   const ops=getMOps(0).filter(o=>!isPlanned(o.type));
@@ -135,6 +25,7 @@ function calcFreeBalance(){
   return{totalInc,totalAllocated,totalExp,free:Math.max(totalInc-totalAllocated-totalExp,0)};
 }
 
+// ── График погашения ──────────────────────────────────────────────
 function calcCardSchedule(debt,rate,payment,payDay,graceDays){
   const mr=rate/100/12;
   if(!payment||!rate||payment<=Math.round(debt*mr))return[];
@@ -165,20 +56,22 @@ function calcMonthsToClose(debt,rate,extraPayment,basePayment){
   return Math.ceil(-Math.log(1-(mr*debt/totalPay))/Math.log(1+mr));
 }
 
-// ── ЛЕВАЯ КОЛОНКА: рендер карточек ───────────────────────────────
+// ── ЛЕВАЯ КОЛОНКА: чистые карточки из кошельков ───────────────────
 export function renderLoans(){
   if(!state.D)return;
   if(!state.D.loanSettings)state.D.loanSettings={};
   const el=$('loans-list');if(!el)return;
 
   const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+
   if(!debtWallets.length){
-    el.innerHTML=`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:16px;font-size:13px;color:var(--blue);line-height:1.8">
+    el.innerHTML=`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:16px;font-size:13px;color:var(--blue);line-height:2">
       <b>Нет долговых кошельков</b><br>
       <span style="font-size:12px">Чтобы добавить кредит:<br>
       1. Перейдите в <b>Настройки → Кошельки</b><br>
-      2. Создайте кошелёк с <b>отрицательным балансом</b><br>
-      3. Выберите тип: Кредитная карта, Кредит или Долг</span>
+      2. Нажмите <b>Изм.</b> рядом с кошельком<br>
+      3. Выберите тип <b>Кредитная карта / Кредит / Долг</b><br>
+      4. Укажите отрицательный баланс и параметры кредита</span>
     </div>`;
     return;
   }
@@ -190,7 +83,7 @@ export function renderLoans(){
     const ls=getLoanSettings(wallet.id);
     const{rate,payment,payDay,graceDays}=ls;
     const isExpensive=rate>=EXPENSIVE_RATE;
-    const isMostExpensive=rate===maxRate&&maxRate>=EXPENSIVE_RATE;
+    const isMostExpensive=rate===maxRate&&maxRate>=EXPENSIVE_RATE&&maxRate>0;
     const schedule=calcCardSchedule(debt,rate,payment,payDay,graceDays);
     const nextPayment=schedule.find(p=>p.date>today());
     const totalInterest=schedule.reduce((s,p)=>s+p.interest,0);
@@ -200,106 +93,86 @@ export function renderLoans(){
     const typeLabel=wallet.walletType?WALLET_TYPE_LABELS[wallet.walletType]||'':'';
     const wid=wallet.id;
 
-    // Следующий платёж — текст
-    let nextPayText='',nextPayColor='var(--text2)',nextPayWeight='400',nextPayDisplay='none';
+    // Статус платежа
+    let nextPayHtml='';
     if(nextPayment){
-      nextPayText=`${alertPay?'⚠ ':'📅 '}Следующий платёж: ${fmtD(nextPayment.date)}${daysToNext===0?' (сегодня)':daysToNext===1?' (завтра)':' через '+daysToNext+' дн.'}`;
-      nextPayColor=alertPay?'var(--orange-dark)':'var(--text2)';
-      nextPayWeight=alertPay?'700':'400';
-      nextPayDisplay='block';
+      nextPayHtml=`<div style="font-size:11px;margin-top:8px;color:${alertPay?'var(--orange-dark)':'var(--text2)'};font-weight:${alertPay?'700':'400'}">${alertPay?'⚠ ':'📅 '}Следующий платёж: ${fmtD(nextPayment.date)}${daysToNext===0?' (сегодня)':daysToNext===1?' (завтра)':' через '+daysToNext+' дн.'}</div>`;
     }else if(rate>0&&payment>0){
-      nextPayText='Платёж ≤ начисляемым процентам — увеличьте сумму';
-      nextPayColor='var(--red)';
-      nextPayDisplay='block';
+      nextPayHtml=`<div style="font-size:11px;margin-top:8px;color:var(--red)">⚠ Платёж ≤ начисляемым процентам — измените параметры в Настройках</div>`;
     }
 
-    return`<div data-loan-card="${wid}" style="background:var(--card);border:2px solid ${borderColor};border-radius:10px;padding:14px 16px;margin-bottom:12px">
-      <!-- Заголовок -->
-      <div style="margin-bottom:8px">
-        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-          <span style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(wallet.name)}</span>
-          ${typeLabel?`<span style="font-size:10px;background:var(--bg);color:var(--text2);padding:2px 7px;border-radius:5px;border:1px solid var(--border)">${typeLabel}</span>`:''}
-          <span data-expensive-badge>${isMostExpensive?'<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 7px;border-radius:5px;font-weight:700">⚠ САМЫЙ ДОРОГОЙ</span>':isExpensive?'<span style="font-size:10px;background:var(--orange-bg);color:var(--orange-dark);padding:2px 7px;border-radius:5px;font-weight:700">! ДОРОГОЙ</span>':''}</span>
+    // Подсказка если нет ставки
+    const noSettingsHint=!rate||!payment
+      ?`<div style="font-size:11px;color:var(--text2);margin-top:8px;background:var(--amber-light);border-radius:6px;padding:6px 8px">⚙ Укажите ставку и платёж в <b>Настройках → Кошельки → Изм.</b> для расчёта переплаты</div>`
+      :'';
+
+    // График
+    let schedHtml='';
+    if(schedule.length>0){
+      const rows=schedule.slice(0,24).map(p=>`<tr style="border-bottom:.5px solid var(--border);${p.date<=today()?'opacity:.45':''}">
+        <td style="padding:5px">${fmtD(p.date)}</td>
+        <td style="text-align:right;padding:5px;font-weight:700">${fmt(p.total)}</td>
+        <td style="text-align:right;padding:5px;color:var(--green-dark)">${fmt(p.principal)}</td>
+        <td style="text-align:right;padding:5px;color:var(--red)">${fmt(p.interest)}</td>
+        <td style="text-align:right;padding:5px">${fmt(p.balance)}</td>
+      </tr>`).join('')+(schedule.length>24?`<tr><td colspan="5" style="padding:6px;text-align:center;color:var(--text2);font-size:10px">ещё ${schedule.length-24} платежей...</td></tr>`:'');
+      schedHtml=`<button onclick="window.toggleLoanSchedule('${wid}')" style="margin-top:10px;background:var(--amber-light);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--amber-dark);cursor:pointer;font-weight:700">▶ График погашения (${schedule.length} платежей)</button>
+      <div id="lsched-${wid}" style="display:none;margin-top:10px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:360px">
+          <tr style="border-bottom:1px solid var(--border)">
+            <th style="text-align:left;padding:5px;color:var(--text2)">Дата</th>
+            <th style="text-align:right;padding:5px;color:var(--text2)">Платёж</th>
+            <th style="text-align:right;padding:5px;color:var(--text2)">Осн.</th>
+            <th style="text-align:right;padding:5px;color:var(--text2)">%</th>
+            <th style="text-align:right;padding:5px;color:var(--text2)">Остаток</th>
+          </tr>
+          ${rows}
+        </table>
+      </div>`;
+    }
+
+    return`<div style="background:var(--card);border:2px solid ${borderColor};border-radius:10px;padding:14px 16px;margin-bottom:12px">
+      <!-- Заголовок: название + тип + бейджи -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(wallet.name)}</span>
+            ${isMostExpensive?'<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 7px;border-radius:5px;font-weight:700">⚠ САМЫЙ ДОРОГОЙ</span>':''}
+            ${isExpensive&&!isMostExpensive?'<span style="font-size:10px;background:var(--orange-bg);color:var(--orange-dark);padding:2px 7px;border-radius:5px;font-weight:700">! ДОРОГОЙ</span>':''}
+          </div>
+          ${typeLabel?`<div style="font-size:11px;color:var(--text2);margin-top:3px">${typeLabel}${rate>0?` · <b style="color:${isExpensive?'var(--red)':'var(--text2)'}">${rate}% год.</b>`:''}</div>`:''}
         </div>
+        <button onclick="window.goToWalletSettings('${wid}')" style="background:var(--amber-light);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:10px;color:var(--amber-dark);cursor:pointer;font-weight:700;flex-shrink:0;margin-left:8px">⚙ Изм.</button>
       </div>
 
-      <!-- Ключевые цифры — обновляются через data-val -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
-        <div class="bal-item red"><div class="bal-lbl">ОСТАТОК ДОЛГА</div><div class="bal-val sm neg">${fmt(debt)}</div></div>
-        <div class="bal-item"><div class="bal-lbl">ПЛАТЁЖ/МЕС</div><div class="bal-val sm" data-val="payment">${payment>0?fmt(payment):'—'}</div></div>
-        <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА</div><div class="bal-val sm neg" data-val="interest">${totalInterest>0?fmt(Math.round(totalInterest)):'—'}</div></div>
+      <!-- Три цифры: остаток, платёж, переплата -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div class="bal-item ${isMostExpensive?'red':''}"><div class="bal-lbl">ОСТАТОК ДОЛГА</div><div class="bal-val sm neg">${fmt(debt)}</div></div>
+        <div class="bal-item"><div class="bal-lbl">ПЛАТЁЖ/МЕС</div><div class="bal-val sm">${payment>0?fmt(payment):'—'}</div></div>
+        <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА</div><div class="bal-val sm neg">${totalInterest>0?fmt(Math.round(totalInterest)):'—'}</div></div>
       </div>
 
-      <!-- Поля ввода — используют data-field и oninput → updateLoanCard -->
-      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">ПАРАМЕТРЫ КРЕДИТА</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <div>
-            <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">СТАВКА % ГОД.</label>
-            <input class="fi" type="number" step="0.1" min="0" max="200" placeholder="0"
-              value="${rate||''}"
-              data-field="rate"
-              style="padding:7px 10px;font-size:14px;font-weight:700;${isExpensive?'border-color:var(--red);color:var(--red)':''}"
-              oninput="window.updateLoanCard('${wid}')">
-          </div>
-          <div>
-            <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">ПЛАТЁЖ/МЕС ₽</label>
-            <input class="fi" type="number" min="0" placeholder="0"
-              value="${payment||''}"
-              data-field="payment"
-              style="padding:7px 10px;font-size:14px"
-              oninput="window.updateLoanCard('${wid}')">
-          </div>
-          <div>
-            <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">ДЕНЬ СЧЁТА</label>
-            <input class="fi" type="number" min="1" max="28" placeholder="25"
-              value="${payDay||''}"
-              data-field="payday"
-              style="padding:7px 10px;font-size:14px"
-              oninput="window.updateLoanCard('${wid}')">
-          </div>
-          <div>
-            <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">БЕСПРОЦ. ПЕРИОД (дн.)</label>
-            <input class="fi" type="number" min="0" placeholder="0"
-              value="${graceDays||''}"
-              data-field="grace"
-              style="padding:7px 10px;font-size:14px"
-              oninput="window.updateLoanCard('${wid}')">
-          </div>
-        </div>
-      </div>
-
-      <!-- Следующий платёж -->
-      <div data-next-payment style="font-size:11px;margin-bottom:8px;display:${nextPayDisplay};color:${nextPayColor};font-weight:${nextPayWeight}">${nextPayText}</div>
-
-      <!-- График -->
-      <div data-sched-wrap style="${schedule.length>0?'':'display:none'}">
-        <button data-sched-btn onclick="window.toggleLoanSchedule('${wid}')" style="background:var(--amber-light);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--amber-dark);cursor:pointer;font-weight:700">▶ График погашения (${schedule.length} платежей)</button>
-        <div id="lsched-${wid}" style="display:none;margin-top:10px;overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:360px">
-            <tr style="border-bottom:1px solid var(--border)">
-              <th style="text-align:left;padding:5px;color:var(--text2)">Дата</th>
-              <th style="text-align:right;padding:5px;color:var(--text2)">Платёж</th>
-              <th style="text-align:right;padding:5px;color:var(--text2)">Осн.</th>
-              <th style="text-align:right;padding:5px;color:var(--text2)">%</th>
-              <th style="text-align:right;padding:5px;color:var(--text2)">Остаток</th>
-            </tr>
-            <tbody data-sched-tbl>${renderScheduleRows(schedule)}</tbody>
-          </table>
-        </div>
-      </div>
+      ${nextPayHtml}
+      ${noSettingsHint}
+      ${schedHtml}
     </div>`;
   }).join('');
 }
+
+// Кнопка «Изм.» в карточке — открывает настройки кошелька
+window.goToWalletSettings=function(walletId){
+  const idx=state.D.wallets.findIndex(w=>w.id===walletId);
+  if(idx<0)return;
+  window.showScreen('settings');
+  // Небольшая задержка чтобы экран успел отрисоваться
+  setTimeout(()=>window.openEditWallet(idx),150);
+};
 
 window.toggleLoanSchedule=function(walletId){
   const el=document.getElementById('lsched-'+walletId);
   if(!el)return;
   const open=el.style.display!=='none';
   el.style.display=open?'none':'block';
-  const card=document.querySelector(`[data-loan-card="${walletId}"]`);
-  const btn=card?.querySelector('[data-sched-btn]');
-  if(btn)btn.textContent=(open?'▶':'▼')+` График погашения`;
 };
 
 // ── ПРАВАЯ КОЛОНКА: сводка ────────────────────────────────────────
@@ -318,7 +191,8 @@ function renderLoansSummaryInternal(){
   debtWallets.forEach(w=>{
     const ls=getLoanSettings(w.id);
     monthlyPayments+=ls.payment||0;
-    if(ls.rate>0&&ls.payment>0)totalInterest+=calcTotalInterest(Math.abs(w.balance),ls.rate,ls.payment,ls.payDay,ls.graceDays);
+    if(ls.rate>0&&ls.payment>0)
+      totalInterest+=calcTotalInterest(Math.abs(w.balance),ls.rate,ls.payment,ls.payDay,ls.graceDays);
   });
 
   const{totalInc,totalAllocated,totalExp,free}=calcFreeBalance();
@@ -384,7 +258,7 @@ function renderLoansSummaryInternal(){
     const allHaveRate=debtWallets.every(w=>getLoanSettings(w.id).rate>0);
     html+=allHaveRate
       ?`<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:14px"><div style="font-size:11px;font-weight:700;color:var(--green-dark)">✓ Нет кредитов с высокой ставкой (>20%)</div></div>`
-      :`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">Укажите ставку % для каждого кредита — появится план «Лавина»</div>`;
+      :`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">Укажите ставку % в Настройках кошельков — появится план «Лавина»</div>`;
   }
 
   html+=`<div style="border:1.5px solid var(--border2);border-radius:8px;overflow:hidden">
@@ -400,7 +274,7 @@ function renderLoansSummaryInternal(){
   el.innerHTML=html;
 }
 
-// ── ИИ-анализ ─────────────────────────────────────────────────────
+// ── ИИ-анализ через Cloudflare Worker → Anthropic ─────────────────
 window.runLoansAI=async function(){
   const el=$('loans-ai-result');if(!el||!state.D)return;
   const debtWallets=state.D.wallets.filter(w=>w.balance<0);

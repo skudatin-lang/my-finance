@@ -2,22 +2,23 @@ import{$,fmt,state,planById,sched,exportData,importData,clearAllOps,today,isPlan
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
-// Иконки и метки типов кошельков
 const WALLET_TYPES={
-  debit:  {icon:'💳',label:'Дебетовая карта'},
-  cash:   {icon:'💵',label:'Наличные'},
-  savings:{icon:'🏦',label:'Накопительный счёт'},
-  credit: {icon:'🔴',label:'Кредитная карта'},
-  loan:   {icon:'📋',label:'Кредит / ипотека'},
-  debt:   {icon:'🤝',label:'Долг (я должен)'},
-  debt_in:{icon:'🤝',label:'Долг (мне должны)'},
-  invest: {icon:'📈',label:'Инвестиционный'},
-  other:  {icon:'📁',label:'Другое'},
+  debit:  {icon:'💳',label:'Дебетовая карта',   isDebt:false},
+  cash:   {icon:'💵',label:'Наличные',           isDebt:false},
+  savings:{icon:'🏦',label:'Накопительный счёт', isDebt:false},
+  credit: {icon:'🔴',label:'Кредитная карта',    isDebt:true},
+  loan:   {icon:'📋',label:'Кредит / ипотека',   isDebt:true},
+  debt:   {icon:'🤝',label:'Долг (я должен)',     isDebt:true},
+  debt_in:{icon:'🤝',label:'Долг (мне должны)',   isDebt:false}, // мне должны — не кредит
+  invest: {icon:'📈',label:'Инвестиционный',      isDebt:false},
+  other:  {icon:'📁',label:'Другое',              isDebt:false},
 };
+
+// Типы которые показывают блок параметров долга
+const DEBT_TYPES=new Set(['credit','loan','debt']);
 
 function walletTypeIcon(w){
   if(w.walletType)return(WALLET_TYPES[w.walletType]?.icon||'💰')+' ';
-  // Авто-определение по балансу если тип не задан
   return w.balance<0?'🔴 ':'💳 ';
 }
 function walletTypeLabel(w){
@@ -25,18 +26,27 @@ function walletTypeLabel(w){
   return w.balance<0?'Кредит/долг':'';
 }
 
+// Показать/скрыть блок параметров долга при смене типа
+window.onWalletTypeChange=function(type){
+  const block=document.getElementById('ew-debt-fields');
+  if(block)block.style.display=DEBT_TYPES.has(type)?'block':'none';
+};
+
 export function renderSettings(){
   if(!state.D)return;
   $('wallets-settings').innerHTML=state.D.wallets.map((w,i)=>{
     const linkedPlan=state.D.plan.find(p=>p.id===w.planId);
     const typeLabel=walletTypeLabel(w);
     const isDebt=w.balance<0;
+    const ls=(state.D.loanSettings||{})[w.id];
+    // Показать ставку если есть
+    const rateBadge=ls&&ls.rate>0?`<span style="font-size:10px;background:${ls.rate>=20?'var(--red-bg)':'var(--amber-light)'};color:${ls.rate>=20?'var(--red)':'var(--amber-dark)'};padding:1px 6px;border-radius:4px;margin-left:4px;font-weight:700">${ls.rate}%</span>`:'';
     return`<div class="s-row">
-      <div>
-        <div class="s-name">${walletTypeIcon(w)}${esc(w.name)}${isDebt?'<span class="w-badge" style="margin-left:5px;background:var(--red-bg);color:var(--red);border:1px solid var(--red)">долг</span>':''}</div>
+      <div style="min-width:0;flex:1">
+        <div class="s-name">${walletTypeIcon(w)}${esc(w.name)}${isDebt?'<span class="w-badge" style="margin-left:5px;background:var(--red-bg);color:var(--red);border:1px solid var(--red)">долг</span>':''}${rateBadge}</div>
         <div class="s-meta">${isDebt?'\u2212 ':''}${fmt(Math.abs(w.balance))}${typeLabel?' · '+typeLabel:''}${linkedPlan?' · <span style="color:var(--amber-dark)">→ '+esc(linkedPlan.label)+'</span>':''}</div>
       </div>
-      <div style="display:flex;gap:5px"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
+      <div style="display:flex;gap:5px;flex-shrink:0"><button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button><button class="sbtn red" onclick="window.delWallet(${i})">Удал.</button></div>
     </div>`;
   }).join('');
 
@@ -47,8 +57,8 @@ export function renderSettings(){
     </div>
     <input type="number" min="0" max="100" value="${p.pct}" id="pp-${i}" oninput="window.updPT()" style="width:52px;padding:5px;border:1.5px solid var(--border);border-radius:5px;font-size:13px;color:var(--topbar);background:#fff;text-align:right">
     <span style="font-size:13px;color:var(--text2)">%</span>
-    <button class="sbtn blue" onclick="window.openEditPlanItem(${i})" style="padding:4px 7px;font-size:11px" title="Изменить">✎</button>
-    <button class="sbtn red" onclick="window.deletePlanItem(${i})" style="padding:4px 7px;font-size:11px" title="Удалить">✕</button>
+    <button class="sbtn blue" onclick="window.openEditPlanItem(${i})" style="padding:4px 7px;font-size:11px">✎</button>
+    <button class="sbtn red" onclick="window.deletePlanItem(${i})" style="padding:4px 7px;font-size:11px">✕</button>
   </div>`).join('');
   updPT();
 
@@ -105,9 +115,24 @@ export function openEditWallet(i){
   $('ew-name').value=w.name;
   $('ew-bal').value=w.balance;
   $('ew-idx').value=i;
+
   // Тип кошелька
   const typeSel=$('ew-type');
-  if(typeSel)typeSel.value=w.walletType||'debit';
+  const wType=w.walletType||'debit';
+  if(typeSel)typeSel.value=wType;
+
+  // Показать/скрыть блок параметров долга
+  window.onWalletTypeChange(wType);
+
+  // Заполнить параметры долга если есть
+  const ls=(state.D.loanSettings||{})[w.id]||{rate:0,payment:0,payDay:25,graceDays:0};
+  const rateEl=$('ew-rate');const payEl=$('ew-payment');
+  const pdEl=$('ew-payday');const grEl=$('ew-grace');
+  if(rateEl)rateEl.value=ls.rate||'';
+  if(payEl)payEl.value=ls.payment||'';
+  if(pdEl)pdEl.value=ls.payDay||25;
+  if(grEl)grEl.value=ls.graceDays||0;
+
   // Статья финплана
   const planSel=$('ew-plan');
   if(planSel){
@@ -119,15 +144,40 @@ export function openEditWallet(i){
 
 export function saveWalletEdit(){
   const i=+$('ew-idx').value;
-  state.D.wallets[i].name=$('ew-name').value.trim()||state.D.wallets[i].name;
-  state.D.wallets[i].balance=parseFloat($('ew-bal').value)||0;
+  const w=state.D.wallets[i];
+  w.name=$('ew-name').value.trim()||w.name;
+  w.balance=parseFloat($('ew-bal').value)||0;
+
+  // Тип кошелька
   const typeSel=$('ew-type');
-  if(typeSel)state.D.wallets[i].walletType=typeSel.value||'debit';
+  const wType=typeSel?typeSel.value:'debit';
+  w.walletType=wType;
+
+  // Сохранить параметры долга если долговой тип
+  if(DEBT_TYPES.has(wType)){
+    if(!state.D.loanSettings)state.D.loanSettings={};
+    state.D.loanSettings[w.id]={
+      rate:   parseFloat($('ew-rate')?.value)||0,
+      payment:parseFloat($('ew-payment')?.value)||0,
+      payDay: parseInt($('ew-payday')?.value)||25,
+      graceDays:parseInt($('ew-grace')?.value)||0
+    };
+  }
+
+  // Статья финплана
   const planSel=$('ew-plan');
-  if(planSel)state.D.wallets[i].planId=planSel.value||null;
+  if(planSel)w.planId=planSel.value||null;
+
   sched();
   document.getElementById('modal-wallet').classList.remove('open');
   renderSettings();
+
+  // Перерисовать кредиты если они открыты
+  const loansScreen=document.getElementById('screen-loans');
+  if(loansScreen&&loansScreen.classList.contains('active')){
+    // Импорт через динамический вызов — функции зарегистрированы глобально
+    window._refreshCurrentScreen&&window._refreshCurrentScreen();
+  }
 }
 
 export function addIncomeCat(){
@@ -154,7 +204,6 @@ export function saveExpCat(){
 }
 export function delExpCat(i){state.D.expenseCats.splice(i,1);sched();renderSettings();}
 
-// expose for window.* calls from HTML
 window.openEditWallet=openEditWallet;
 window.delWallet=delWallet;
 window.delIncomeCat=delIncomeCat;
@@ -162,7 +211,7 @@ window.openEditExpCat=openEditExpCat;
 
 export{exportData,importData,clearAllOps};
 
-// ── Plan item CRUD ─────────────────────────────────────────
+// ── Plan item CRUD ─────────────────────────────────────────────────
 export function openAddPlanItem(){
   const modal=document.getElementById('modal-plan-item');if(!modal)return;
   document.getElementById('plan-item-modal-title').textContent='НОВАЯ СТАТЬЯ ФИНПЛАНА';
@@ -188,11 +237,8 @@ export function savePlanItem(){
   const type=document.getElementById('pi-type')?.value||'expense';
   if(!label){alert('Введите название статьи');return;}
   const idx=+(document.getElementById('pi-idx')?.value??'-1');
-  if(idx>=0){
-    state.D.plan[idx]={...state.D.plan[idx],label,pct,type};
-  }else{
-    state.D.plan.push({id:'p'+Date.now(),label,pct,type});
-  }
+  if(idx>=0){state.D.plan[idx]={...state.D.plan[idx],label,pct,type};}
+  else{state.D.plan.push({id:'p'+Date.now(),label,pct,type});}
   sched();
   document.getElementById('modal-plan-item').classList.remove('open');
   renderSettings();
@@ -206,7 +252,7 @@ window.deletePlanItem=deletePlanItem;
 window.openAddPlanItem=openAddPlanItem;
 window.savePlanItem=savePlanItem;
 
-// ── CSV Экспорт (перенесено из analytics.js) ──────────────────
+// ── CSV Экспорт ────────────────────────────────────────────────────
 export function exportCSV(monthOffset=0){
   if(!state.D)return;
   const now=new Date();
