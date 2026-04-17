@@ -443,29 +443,45 @@
         <span style="font-size:11px;background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:10px;font-weight:700">ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:var(--gap)">
-        <div class="s-panel" style="width:380px">
-          <div class="s-panel-head">🎤 ГОЛОСОВОЙ ВВОД (Яндекс SpeechKit)</div>
+        <div class="s-panel" style="width:420px">
+          <div class="s-panel-head">🎤 ГОЛОСОВОЙ ВВОД</div>
           <div class="s-panel-body">
-            <div class="notice blue" style="font-size:11px">Ключи хранятся в Cloudflare Worker. Пользователи их не видят.</div>
-            <div class="fg"><label>URL ВОРКЕРА (base URL)</label>
+
+            <!-- Текущий режим -->
+            <div id="voice-status" style="font-size:11px;margin-bottom:12px;padding:8px 10px;border-radius:6px;background:var(--amber-light)">Загрузка...</div>
+
+            <!-- Разделитель: Worker -->
+            <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin-bottom:8px">CLOUDFLARE WORKER (для Яндекс STT)</div>
+            <div class="fg"><label>URL ВОРКЕРА</label>
               <input class="fi" id="voice-proxy-url" placeholder="https://my-worker.YOUR-NAME.workers.dev">
             </div>
-            <div class="fg"><label>APP SECRET (защита воркера)</label>
-              <input class="fi" id="voice-app-secret" type="password" placeholder="Из Variables воркера">
+            <div class="fg"><label>APP SECRET</label>
+              <input class="fi" id="voice-app-secret" type="password" placeholder="Из Settings → Variables воркера">
             </div>
-            <div style="background:var(--amber-light);border-radius:6px;padding:10px 12px;font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.7">
-              <b>Инструкция:</b><br>
-              1. workers.cloudflare.com → New Worker → вставить cloudflare_worker.js<br>
-              2. Settings → Variables → YANDEX_API_KEY, YANDEX_FOLDER, APP_SECRET<br>
-              3. Скопировать URL воркера → вставить выше
+
+            <!-- Диагностика -->
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.8">
+              <b style="color:var(--topbar)">Шаги настройки Worker:</b><br>
+              1. <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--amber-dark)">workers.cloudflare.com</a> → создать Worker → вставить <b>cloudflare_worker.js</b><br>
+              2. Settings → Variables → добавить:<br>
+              &nbsp;&nbsp;• <b>YANDEX_API_KEY</b> = ключ с console.yandex.cloud<br>
+              &nbsp;&nbsp;• <b>YANDEX_FOLDER</b> = folder ID<br>
+              &nbsp;&nbsp;• <b>APP_SECRET</b> = любой пароль<br>
+              &nbsp;&nbsp;• <b>ANTHROPIC_KEY</b> = ключ с console.anthropic.com (для ИИ)<br>
+              3. Deploy → скопировать URL → вставить выше<br>
+              4. Нажать «Проверить» — должно быть ✓
             </div>
-            <div class="fg" style="margin-top:10px"><label>ADMIN UIDs (через запятую)</label>
-              <input class="fi" id="admin-uids-input" placeholder="uid1, uid2, ...">
-              <div style="font-size:10px;color:var(--text2);margin-top:3px">Ваш UID показан ниже в блоке "Твой Firebase UID"</div>
+
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <button class="btn-primary" style="flex:1;padding:9px" onclick="window.saveVoiceSettingsUI()">Сохранить</button>
+              <button class="btn-sec" style="flex:1;margin-top:0;padding:9px" onclick="window.testVoiceWorker()">Проверить ✓</button>
             </div>
-            <button class="btn-primary" onclick="window.saveVoiceSettingsUI()">Сохранить всё в базу данных</button>
-            <button class="btn-sec" style="margin-top:8px" onclick="window.testVoiceWorker()">Проверить соединение</button>
-            <div id="voice-status" style="font-size:11px;margin-top:8px;padding:6px 8px;border-radius:5px;background:var(--amber-light)"></div>
+
+            <!-- Admin UIDs -->
+            <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin-bottom:6px">ADMIN UIDs</div>
+            <div class="fg"><input class="fi" id="admin-uids-input" placeholder="uid1, uid2, ...">
+              <div style="font-size:10px;color:var(--text2);margin-top:3px">Ваш UID — в блоке «Твой Firebase UID» ниже</div>
+            </div>
           </div>
         </div>
         <div class="s-panel" style="width:380px">
@@ -572,13 +588,14 @@
       <div class="rf">
         <div class="fg">
           <label>СТАВКА % ГОД. <span style="color:var(--red);font-weight:700">*</span></label>
-          <input class="fi" type="number" step="0.1" min="0" max="200" id="ew-rate"
+          <input class="fi" type="number" step="0.1" min="0" id="ew-rate"
             placeholder="напр. 29.9"
             style="font-size:15px;font-weight:700">
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">Используйте точку: 29.9 (не запятую)</div>
         </div>
         <div class="fg">
           <label>ПЛАТЁЖ/МЕС ₽</label>
-          <input class="fi" type="number" min="0" id="ew-payment" placeholder="напр. 5000"
+          <input class="fi" type="number" min="0" id="ew-payment" placeholder="напр. 5000.50"
             style="font-size:15px">
         </div>
       </div>
@@ -823,11 +840,14 @@ function setupVoiceButtons(){
 
 function updateVoiceStatus(){
   const el=$('voice-status');if(!el)return;
-  if(isVoiceConfigured()){
-    el.textContent='✓ Голосовой ввод настроен и готов к работе';
+  const hasWebSpeech=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  const hasWorker=!!(appConfig.workerUrl);
+  if(hasWebSpeech){
+    const mode=hasWorker?'Web Speech API + Cloudflare Worker (ИИ-анализ)':'Web Speech API — работает без настройки';
+    el.textContent='✓ '+mode;
     el.style.color='var(--green-dark)';el.style.background='var(--green-bg)';
   }else{
-    el.textContent='⚠ Заполните Прокси URL и APP SECRET для активации';
+    el.textContent='⚠ Голосовой ввод не поддерживается. Используйте Chrome или Safari.';
     el.style.color='var(--orange-dark)';el.style.background='var(--amber-light)';
   }
 }
@@ -852,13 +872,29 @@ window.saveVoiceSettingsUI=async function(){
 };
 
 window.testVoiceWorker=async function(){
-  const url=$('voice-proxy-url')?.value.trim();
-  const secret=$('voice-app-secret')?.value.trim();
-  if(!url){alert('Введите URL воркера');return;}
+  const url=($('voice-proxy-url')?.value||'').trim();
+  const secret=($('voice-app-secret')?.value||'').trim();
+  const statusEl=$('voice-status');
+  if(!url){
+    if(statusEl){statusEl.textContent='⚠ Введите URL воркера';statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+    return;
+  }
+  if(statusEl){statusEl.textContent='⏳ Проверяю соединение...';statusEl.style.color='var(--text2)';statusEl.style.background='var(--amber-light)';}
   try{
-    const r=await fetch(url+'/ping',{headers:{'X-App-Secret':secret||''}});
-    alert(r.ok?'✓ Соединение успешно! Статус: '+r.status:'✗ Ошибка: '+r.status);
-  }catch(e){alert('✗ Не удалось подключиться: '+e.message);}
+    // Worker отвечает на GET / — не /ping
+    const baseUrl=url.replace(/\/$/,'');
+    const r=await fetch(baseUrl,{method:'GET',headers:{'X-App-Secret':secret}});
+    const data=await r.json().catch(()=>({}));
+    if(r.ok&&(data.ok||data.service)){
+      if(statusEl){statusEl.textContent='✓ Worker доступен: '+JSON.stringify(data);statusEl.style.color='var(--green-dark)';statusEl.style.background='var(--green-bg)';}
+    }else if(r.status===401){
+      if(statusEl){statusEl.textContent='✗ Ошибка 401: неверный APP_SECRET. Проверьте переменную APP_SECRET в Worker Variables.';statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+    }else{
+      if(statusEl){statusEl.textContent='✗ Worker ответил '+r.status+': '+JSON.stringify(data).slice(0,100);statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+    }
+  }catch(e){
+    if(statusEl){statusEl.textContent='✗ Не удалось подключиться: '+e.message+'. Проверьте URL и что Worker задеплоен.';statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+  }
 };
 
 function _loadVoiceToSettings(){
@@ -1185,7 +1221,6 @@ initAuth(
     applyRecurring();
     try{await loadAppConfig();}catch(e){console.warn('loadAppConfig:',e.message);}
     loadVoiceSettings();
-    if(appConfig.workerUrl)saveVoiceSettings(appConfig.workerUrl,appConfig.workerUrl,appConfig.appSecret);
     setupVoiceButtons();
     updateVoiceStatus();
     window.openAddPlanItem=openAddPlanItem;
