@@ -1,21 +1,21 @@
-import{$,fmt,state,sched,today,fmtD,getMOps,isPlanned,planSpent}from'./core.js';
+import{$,fmt,state,sched,today,fmtD,getMOps,isPlanned,planSpent,appConfig}from'./core.js';
 
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-
 const EXPENSIVE_RATE=20;
 
-function calcRemaining(loan){
-  if(loan.loanType==='card'){
-    const wallet=state.D.wallets.find(w=>w.id===loan.walletId);
-    return wallet?Math.abs(Math.min(wallet.balance,0)):loan.amount;
-  }
-  const schedule=calcSchedule(loan);
-  const paid=schedule.filter(p=>p.date<=today());
-  const paidAmt=paid.reduce((s,p)=>s+p.principal,0);
-  return Math.max(loan.amount-paidAmt,0);
+// ── loanSettings: доп. параметры кредита, хранятся по walletId ───
+// state.D.loanSettings = { [walletId]: { rate, payment, payDay, graceDays } }
+function getLoanSettings(walletId){
+  if(!state.D.loanSettings)state.D.loanSettings={};
+  return state.D.loanSettings[walletId]||{rate:0,payment:0,payDay:25,graceDays:0};
+}
+function setLoanSettings(walletId,settings){
+  if(!state.D.loanSettings)state.D.loanSettings={};
+  state.D.loanSettings[walletId]={...getLoanSettings(walletId),...settings};
+  sched();
 }
 
-// Свободный остаток: доход - отчисления по финплану (накопления) - расходы
+// ── Свободный остаток: доход − отчисления по финплану − расходы ──
 function calcFreeBalance(){
   const ops=getMOps(0).filter(o=>!isPlanned(o.type));
   const totalInc=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
@@ -25,86 +25,137 @@ function calcFreeBalance(){
   return{totalInc,totalAllocated,totalExp,free:Math.max(totalInc-totalAllocated-totalExp,0)};
 }
 
+// ── График кредитной карты ────────────────────────────────────────
+function calcCardSchedule(debt,rate,payment,payDay,graceDays){
+  const mr=rate/100/12;
+  if(!payment||payment<=Math.round(debt*mr))return[];
+  const rows=[];let bal=debt;
+  const now=new Date();
+  for(let i=0;i<360&&bal>0.5;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()+i+1,payDay||25);
+    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay||25).padStart(2,'0');
+    const interest=(graceDays>0&&i===0)?0:Math.round(bal*mr);
+    const pay=Math.min(payment,bal+interest);
+    const principal=Math.max(pay-interest,0);
+    bal=Math.max(bal-principal,0);
+    rows.push({date:ds,total:Math.round(pay),principal:Math.round(principal),interest:Math.round(interest),balance:Math.round(bal)});
+    if(bal<1)break;
+  }
+  return rows;
+}
+
+// ── Рассчитать переплату ──────────────────────────────────────────
+function calcTotalInterest(debt,rate,payment,payDay,graceDays){
+  const schedule=calcCardSchedule(debt,rate,payment,payDay,graceDays);
+  return schedule.reduce((s,p)=>s+p.interest,0);
+}
+
+// ── Месяцев до погашения при доп. платеже ───────────────────────
+function calcMonthsToClose(debt,rate,extraPayment,basePayment){
+  const totalPay=(basePayment||0)+extraPayment;
+  const mr=rate/100/12;
+  if(!mr||totalPay<=0)return null;
+  const interest=Math.round(debt*mr);
+  if(totalPay<=interest)return null;
+  return Math.ceil(-Math.log(1-(mr*debt/totalPay))/Math.log(1+mr));
+}
+
+// ── ЛЕВАЯ КОЛОНКА: карточки из кошельков ─────────────────────────
 export function renderLoans(){
   if(!state.D)return;
-  if(!state.D.loans)state.D.loans=[];
+  if(!state.D.loanSettings)state.D.loanSettings={};
   const el=$('loans-list');if(!el)return;
-  const loans=state.D.loans;
-  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
-  const linkedWalletIds=new Set(loans.filter(l=>l.walletId).map(l=>l.walletId));
-  const unlinkedDebtWallets=debtWallets.filter(w=>!linkedWalletIds.has(w.id));
 
-  let html='';
-  if(unlinkedDebtWallets.length){
-    html+=`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--blue)">
-      <b>Долговые кошельки без кредита:</b> ${unlinkedDebtWallets.map(w=>`<b>${esc(w.name)}</b> (${fmt(Math.abs(w.balance))})`).join(', ')}<br>
-      <span style="font-size:11px;opacity:.8">Нажмите «+ Добавить» → выберите кошелёк для автозаполнения</span>
+  // Все кошельки с отрицательным балансом = долговые обязательства
+  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+
+  if(!debtWallets.length){
+    el.innerHTML=`<div style="color:var(--text2);font-size:13px;padding:16px 0;text-align:center;line-height:1.8">
+      Нет долговых кошельков.<br>
+      <span style="font-size:12px">Чтобы добавить кредит — перейдите в <b>Настройки → Кошельки</b> и создайте кошелёк с <b>отрицательным балансом</b> (например: −150 000).</span>
     </div>`;
-  }
-  if(!loans.length&&!debtWallets.length){
-    el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:8px 0">Нет займов. Добавьте кредит или кредитную карту.</div>';
     return;
   }
-  if(!loans.length){
-    el.innerHTML=html+'<div style="color:var(--text2);font-size:13px;padding:8px 0">Кредиты не добавлены.</div>';
-    return;
-  }
-  const maxRate=Math.max(...loans.map(l=>l.rate||0));
-  html+=loans.map((loan,i)=>{
-    const isCard=loan.loanType==='card';
-    const schedule=isCard?calcCardSchedule(loan):calcSchedule(loan);
-    const wallet=state.D.wallets.find(w=>w.id===loan.walletId);
-    const remaining=calcRemaining(loan);
-    const totalInterest=schedule.reduce((s,p)=>s+p.interest,0);
+
+  // Самая высокая ставка для подсветки
+  const maxRate=Math.max(...debtWallets.map(w=>{const ls=getLoanSettings(w.id);return ls.rate||0;}));
+
+  const html=debtWallets.map((wallet,i)=>{
+    const debt=Math.abs(wallet.balance);
+    const ls=getLoanSettings(wallet.id);
+    const{rate,payment,payDay,graceDays}=ls;
+    const isExpensive=rate>=EXPENSIVE_RATE;
+    const isMostExpensive=rate===maxRate&&maxRate>=EXPENSIVE_RATE;
+    const schedule=rate>0&&payment>0?calcCardSchedule(debt,rate,payment,payDay,graceDays):[];
     const nextPayment=schedule.find(p=>p.date>today());
-    const pct=loan.amount>0?Math.min(Math.round((loan.amount-remaining)/loan.amount*100),100):0;
+    const totalInterest=schedule.reduce((s,p)=>s+p.interest,0);
     const daysToNext=nextPayment?Math.ceil((new Date(nextPayment.date+'T12:00:00')-new Date(today()+'T12:00:00'))/(1000*60*60*24)):null;
     const alertPay=daysToNext!==null&&daysToNext<=7;
-    const isExpensive=loan.rate>=EXPENSIVE_RATE;
-    const isMostExpensive=loan.rate===maxRate&&maxRate>=EXPENSIVE_RATE;
     const borderColor=isMostExpensive?'var(--red)':isExpensive?'var(--orange)':alertPay?'var(--orange)':'var(--border2)';
+
     return`<div style="background:var(--card);border:2px solid ${borderColor};border-radius:10px;padding:14px 16px;margin-bottom:12px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-            <span style="font-size:14px;font-weight:700;color:var(--topbar)">${esc(loan.name)}</span>
-            ${isCard?'<span style="font-size:10px;background:var(--blue-bg);color:var(--blue);padding:2px 7px;border-radius:5px">КРЕДИТКА</span>':''}
-            ${isMostExpensive?'<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 7px;border-radius:5px;font-weight:700">⚠ САМЫЙ ДОРОГОЙ</span>':''}
-            ${isExpensive&&!isMostExpensive?'<span style="font-size:10px;background:var(--orange-bg);color:var(--orange-dark);padding:2px 7px;border-radius:5px;font-weight:700">! ДОРОГОЙ</span>':''}
-          </div>
-          <div style="font-size:11px;color:var(--text2);margin-top:4px">
-            ${isCard
-              ?`Ставка <b style="color:${isExpensive?'var(--red)':'inherit'}">${loan.rate}%</b> год. · платёж ~${fmt(loan.payment||0)}/мес`
-              :`<b style="color:${isExpensive?'var(--red)':'inherit'}">${loan.rate}%</b> год. · ${loan.months||'?'} мес. · с ${fmtD(loan.startDate)}`}
-            ${wallet?' · '+esc(wallet.name):''}
+      <!-- Заголовок карточки -->
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <span style="font-size:15px;font-weight:700;color:var(--topbar)">${esc(wallet.name)}</span>
+        ${isMostExpensive?'<span style="font-size:10px;background:var(--red-bg);color:var(--red);padding:2px 7px;border-radius:5px;font-weight:700">⚠ САМЫЙ ДОРОГОЙ</span>':''}
+        ${isExpensive&&!isMostExpensive?'<span style="font-size:10px;background:var(--orange-bg);color:var(--orange-dark);padding:2px 7px;border-radius:5px;font-weight:700">! ДОРОГОЙ</span>':''}
+      </div>
+
+      <!-- Ключевые цифры -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+        <div class="bal-item red"><div class="bal-lbl">ОСТАТОК ДОЛГА</div><div class="bal-val sm neg">${fmt(debt)}</div></div>
+        <div class="bal-item"><div class="bal-lbl">ПЛАТЁЖ/МЕС</div><div class="bal-val sm">${payment>0?fmt(payment):'—'}</div></div>
+        <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА</div><div class="bal-val sm neg">${totalInterest>0?fmt(Math.round(totalInterest)):'—'}</div></div>
+      </div>
+
+      <!-- Пользовательские поля -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">СТАВКА % ГОД.</label>
+          <div style="display:flex;align-items:center;gap:4px">
+            <input class="fi" type="number" step="0.1" placeholder="0" value="${rate||''}"
+              id="ls-rate-${wallet.id}"
+              style="padding:7px 10px;font-size:13px;${isExpensive?'border-color:var(--red);background:var(--red-bg);color:var(--red);font-weight:700':''}"
+              onchange="window.saveLoanSetting('${wallet.id}')">
+            ${isExpensive?`<span style="font-size:11px;color:var(--red);font-weight:700">${rate}%</span>`:''}
           </div>
         </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
-          <button class="sbtn blue" onclick="window.editLoan(${i})">Изм.</button>
-          <button class="sbtn red" onclick="window.deleteLoan(${i})">Удал.</button>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">ПЛАТЁЖ/МЕС ₽</label>
+          <input class="fi" type="number" placeholder="0" value="${payment||''}"
+            id="ls-payment-${wallet.id}"
+            style="padding:7px 10px;font-size:13px"
+            onchange="window.saveLoanSetting('${wallet.id}')">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">ДЕНЬ СЧЁТА</label>
+          <input class="fi" type="number" min="1" max="28" placeholder="25" value="${payDay||''}"
+            id="ls-payday-${wallet.id}"
+            style="padding:7px 10px;font-size:13px"
+            onchange="window.saveLoanSetting('${wallet.id}')">
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.4px;display:block;margin-bottom:4px">БЕСПРОЦ. ПЕРИОД (дн.)</label>
+          <input class="fi" type="number" min="0" placeholder="0" value="${graceDays||''}"
+            id="ls-grace-${wallet.id}"
+            style="padding:7px 10px;font-size:13px"
+            onchange="window.saveLoanSetting('${wallet.id}')">
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px">
-        <div class="bal-item"><div class="bal-lbl">ОСТАТОК ДОЛГА</div><div class="bal-val sm neg">${fmt(Math.round(remaining))}</div></div>
-        <div class="bal-item"><div class="bal-lbl">ПЛАТЁЖ/МЕС</div><div class="bal-val sm">${fmt(loan.payment||0)}</div></div>
-        <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА</div><div class="bal-val sm neg">${fmt(Math.round(totalInterest))}</div></div>
-      </div>
-      <div style="background:var(--g50);border-radius:4px;height:8px;margin-bottom:6px">
-        <div style="height:8px;border-radius:4px;background:${isMostExpensive?'var(--red)':'var(--green)'};width:${pct}%"></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2)">
-        <span>Погашено ${pct}%</span>
-        ${nextPayment
-          ?`<span style="color:${alertPay?'var(--orange-dark)':'var(--text2)'};font-weight:${alertPay?'700':'400'}">${alertPay?'⚠ ':''}Платёж ${fmtD(nextPayment.date)}${daysToNext===0?' (сегодня)':daysToNext===1?' (завтра)':' через '+daysToNext+' дн.'}</span>`
-          :'<span style="color:var(--green-dark);font-weight:700">✓ Погашен</span>'}
-      </div>
-      <button onclick="window.toggleSchedule(${i})" style="margin-top:10px;background:var(--amber-light);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--amber-dark);cursor:pointer;font-weight:700">График погашения</button>
-      <div id="schedule-${i}" style="display:none;margin-top:10px;overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:400px">
+
+      <!-- Следующий платёж -->
+      ${nextPayment
+        ?`<div style="font-size:11px;color:${alertPay?'var(--orange-dark)':'var(--text2)'};font-weight:${alertPay?'700':'400'};margin-bottom:6px">${alertPay?'⚠ ':''}Следующий платёж: ${fmtD(nextPayment.date)}${daysToNext===0?' (сегодня)':daysToNext===1?' (завтра)':' через '+daysToNext+' дн.'}</div>`
+        :''}
+
+      <!-- График -->
+      ${schedule.length>0?`<button onclick="window.toggleLoanSchedule('${wallet.id}')" style="background:var(--amber-light);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;color:var(--amber-dark);cursor:pointer;font-weight:700">График погашения</button>
+      <div id="lsched-${wallet.id}" style="display:none;margin-top:10px;overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;min-width:380px">
           <tr style="border-bottom:1px solid var(--border)">
             <th style="text-align:left;padding:5px;color:var(--text2)">Дата</th>
             <th style="text-align:right;padding:5px;color:var(--text2)">Платёж</th>
-            <th style="text-align:right;padding:5px;color:var(--text2)">Осн. долг</th>
+            <th style="text-align:right;padding:5px;color:var(--text2)">Осн.</th>
             <th style="text-align:right;padding:5px;color:var(--text2)">%</th>
             <th style="text-align:right;padding:5px;color:var(--text2)">Остаток</th>
           </tr>
@@ -117,83 +168,81 @@ export function renderLoans(){
           </tr>`).join('')}
           ${schedule.length>24?`<tr><td colspan="5" style="padding:6px;text-align:center;color:var(--text2);font-size:10px">ещё ${schedule.length-24} платежей...</td></tr>`:''}
         </table>
-      </div>
+      </div>`
+      :'<div style="font-size:11px;color:var(--text2)">Укажите ставку и платёж для расчёта графика</div>'}
     </div>`;
   }).join('');
+
   el.innerHTML=html;
 }
 
-function calcSchedule(loan){
-  const mr=loan.rate/100/12,n=loan.months||12;
-  const pmt=mr>0?Math.round(loan.amount*mr*Math.pow(1+mr,n)/(Math.pow(1+mr,n)-1)):Math.round(loan.amount/n);
-  const rows=[];let bal=loan.amount;
-  const start=new Date((loan.startDate||today())+'T12:00:00');
-  const payDay=loan.payDay||1;
-  for(let i=0;i<n&&bal>0;i++){
-    const d=new Date(start.getFullYear(),start.getMonth()+i+1,payDay);
-    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay).padStart(2,'0');
-    const interest=Math.round(bal*mr);
-    const principal=Math.min(pmt-interest,bal);
-    bal=Math.max(bal-principal,0);
-    rows.push({date:ds,total:principal+interest,principal,interest,balance:Math.round(bal)});
-  }
-  return rows;
-}
+// ── Сохранить параметры кредита при изменении поля ───────────────
+window.saveLoanSetting=function(walletId){
+  const rate=parseFloat(document.getElementById('ls-rate-'+walletId)?.value)||0;
+  const payment=parseFloat(document.getElementById('ls-payment-'+walletId)?.value)||0;
+  const payDay=parseInt(document.getElementById('ls-payday-'+walletId)?.value)||25;
+  const graceDays=parseInt(document.getElementById('ls-grace-'+walletId)?.value)||0;
+  setLoanSettings(walletId,{rate,payment,payDay,graceDays});
+  // Перерисовать только сводку (не перерисовываем всю левую колонку — сбросит фокус)
+  renderLoansSummaryInternal();
+};
 
-function calcCardSchedule(loan){
-  const mr=loan.rate/100/12;
-  const payment=loan.payment||0;
-  if(!payment)return[];
-  if(payment<=Math.round(loan.amount*mr))return[];
-  const rows=[];let bal=loan.amount;
-  const now=new Date();
-  const payDay=loan.payDay||25;
-  for(let i=0;i<360&&bal>0.5;i++){
-    const d=new Date(now.getFullYear(),now.getMonth()+i+1,payDay);
-    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(payDay).padStart(2,'0');
-    const interest=(loan.graceDays>0&&i===0)?0:Math.round(bal*mr);
-    const pay=Math.min(payment,bal+interest);
-    const principal=Math.max(pay-interest,0);
-    bal=Math.max(bal-principal,0);
-    rows.push({date:ds,total:Math.round(pay),principal:Math.round(principal),interest:Math.round(interest),balance:Math.round(bal)});
-    if(bal<1)break;
-  }
-  return rows;
-}
+window.toggleLoanSchedule=function(walletId){
+  const el=document.getElementById('lsched-'+walletId);
+  if(el)el.style.display=el.style.display==='none'?'block':'none';
+};
 
+// ── ПРАВАЯ КОЛОНКА: сводка ────────────────────────────────────────
 function renderLoansSummaryInternal(){
   const el=$('loans-summary');if(!el||!state.D)return;
-  const loans=state.D.loans||[];
+  if(!state.D.loanSettings)state.D.loanSettings={};
+
   const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  if(!debtWallets.length){
+    el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Добавьте кошельки с отрицательным балансом в Настройках.</div>';
+    return;
+  }
+
   const totalWalletDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
   let totalInterest=0;
-  loans.forEach(l=>{
-    const sch=l.loanType==='card'?calcCardSchedule(l):calcSchedule(l);
-    totalInterest+=sch.reduce((s,p)=>s+p.interest,0);
+  let monthlyPayments=0;
+  debtWallets.forEach(w=>{
+    const ls=getLoanSettings(w.id);
+    const debt=Math.abs(w.balance);
+    monthlyPayments+=ls.payment||0;
+    if(ls.rate>0&&ls.payment>0){
+      totalInterest+=calcTotalInterest(debt,ls.rate,ls.payment,ls.payDay,ls.graceDays);
+    }
   });
-  const monthlyPayments=loans.reduce((s,l)=>s+(l.payment||0),0);
-  const {totalInc,totalAllocated,totalExp,free}=calcFreeBalance();
+
+  const{totalInc,totalAllocated,totalExp,free}=calcFreeBalance();
   const debtRatio=totalInc>0?Math.round(monthlyPayments/totalInc*100):0;
   const debtRatioOk=debtRatio<=40;
   const safeIncome=monthlyPayments>0?Math.round(monthlyPayments/0.40):0;
-  const maxRate=loans.length?Math.max(...loans.map(l=>l.rate||0)):0;
-  const expensive=loans.filter(l=>l.rate===maxRate&&maxRate>=EXPENSIVE_RATE)
-    .sort((a,b)=>calcRemaining(b)-calcRemaining(a))[0]||null;
+
+  // Самый дорогой кредит
+  const maxRate=Math.max(...debtWallets.map(w=>getLoanSettings(w.id).rate||0));
+  const expensive=maxRate>=EXPENSIVE_RATE
+    ?debtWallets.filter(w=>(getLoanSettings(w.id).rate||0)===maxRate)
+      .sort((a,b)=>Math.abs(b.balance)-Math.abs(a.balance))[0]
+    :null;
+
   let avalancheMonths=null;
   if(expensive&&free>0){
-    const rem=calcRemaining(expensive);
-    const mr=expensive.rate/100/12;
-    const totalPay=(expensive.payment||0)+free;
-    const interest=Math.round(rem*mr);
-    if(totalPay>interest&&mr>0)avalancheMonths=Math.ceil(-Math.log(1-(mr*rem/totalPay))/Math.log(1+mr));
+    const ls=getLoanSettings(expensive.id);
+    const debt=Math.abs(expensive.balance);
+    avalancheMonths=calcMonthsToClose(debt,ls.rate,free,ls.payment);
   }
 
-  let html=`<div class="bal-grid" style="margin-bottom:14px">
-    <div class="bal-item full red"><div class="bal-lbl">ОБЩИЙ ДОЛГ (кошельки)</div><div class="bal-val neg">${fmt(totalWalletDebt)}</div></div>
-    <div class="bal-item"><div class="bal-lbl">ПЛАТЕЖЕЙ/МЕС</div><div class="bal-val sm">${fmt(monthlyPayments)}</div></div>
-    <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА ВСЕГО</div><div class="bal-val sm neg">${fmt(Math.round(totalInterest))}</div></div>
+  let html=`
+  <!-- Базовая сводка -->
+  <div class="bal-grid" style="margin-bottom:14px">
+    <div class="bal-item full red"><div class="bal-lbl">ОБЩИЙ ДОЛГ</div><div class="bal-val neg">${fmt(totalWalletDebt)}</div></div>
+    <div class="bal-item"><div class="bal-lbl">ПЛАТЕЖЕЙ/МЕС</div><div class="bal-val sm">${monthlyPayments>0?fmt(monthlyPayments):'—'}</div></div>
+    <div class="bal-item red"><div class="bal-lbl">ПЕРЕПЛАТА ВСЕГО</div><div class="bal-val sm neg">${totalInterest>0?fmt(Math.round(totalInterest)):'—'}</div></div>
   </div>`;
 
+  // Расчёт свободного остатка
   if(totalInc>0){
     html+=`<div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px">
       <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">РАСЧЁТ СВОБОДНОГО ОСТАТКА</div>
@@ -207,6 +256,7 @@ function renderLoansSummaryInternal(){
     </div>`;
   }
 
+  // Нагрузка + мин. доход
   html+=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
     <div style="background:${debtRatioOk?'var(--green-bg)':'var(--red-bg)'};border:1.5px solid ${debtRatioOk?'var(--green)':'var(--red)'};border-radius:8px;padding:10px 12px">
       <div style="font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin-bottom:4px">ДОЛГОВАЯ НАГРУЗКА</div>
@@ -216,27 +266,37 @@ function renderLoansSummaryInternal(){
     <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:8px;padding:10px 12px">
       <div style="font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin-bottom:4px">МИН. БЕЗОПАСНЫЙ ДОХОД</div>
       <div style="font-size:20px;font-weight:700;color:var(--topbar)">${safeIncome>0?fmt(safeIncome):'—'}</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:3px">Чтобы платежи были ≤ 40%</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:3px">Чтобы платежи ≤ 40%</div>
     </div>
   </div>`;
 
+  // План «Лавина»
   if(expensive){
-    const rem=calcRemaining(expensive);
+    const ls=getLoanSettings(expensive.id);
+    const debt=Math.abs(expensive.balance);
     html+=`<div style="background:var(--red-bg);border:1.5px solid var(--red);border-radius:8px;padding:12px 14px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--red);letter-spacing:.5px;margin-bottom:6px">⚔ ПЛАН «ЛАВИНА»</div>
-      <div style="font-size:13px;font-weight:700;color:var(--topbar)">${esc(expensive.name)} · ${expensive.rate}% год.</div>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">Остаток: ${fmt(Math.round(rem))} · Обычный платёж: ${fmt(expensive.payment||0)}/мес</div>
+      <div style="font-size:13px;font-weight:700;color:var(--topbar)">${esc(expensive.name)} · ${ls.rate}% год.</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px">Остаток: ${fmt(Math.round(debt))} · Платёж: ${fmt(ls.payment||0)}/мес</div>
       ${free>0
         ?`<div style="font-size:12px;color:var(--green-dark);font-weight:700;margin-top:6px">+ ${fmt(Math.round(free))}/мес из свободного остатка</div>
-           ${avalancheMonths?`<div style="font-size:12px;color:var(--topbar);margin-top:3px">Закрытие за <b>${avalancheMonths} мес.</b>${expensive.months?' (вместо '+expensive.months+' мес. по плану)':''}</div>`:''}`
+           ${avalancheMonths?`<div style="font-size:12px;color:var(--topbar);margin-top:3px">Закрытие за <b>${avalancheMonths} мес.</b></div>`:''}`
         :'<div style="font-size:12px;color:var(--text2);margin-top:6px">Свободный остаток = 0 — добавьте доходы в ДДС</div>'}
     </div>`;
-  }else if(loans.length>0){
-    html+=`<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:14px">
-      <div style="font-size:11px;font-weight:700;color:var(--green-dark)">✓ Нет кредитов с высокой ставкой (>20%)</div>
-    </div>`;
+  }else if(debtWallets.length>0){
+    const allHaveRate=debtWallets.every(w=>(getLoanSettings(w.id).rate||0)>0);
+    if(!allHaveRate){
+      html+=`<div style="background:var(--blue-bg);border:1px solid var(--blue);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--blue)">
+        Укажите ставку % для каждого кредита слева — тогда появится план «Лавина»
+      </div>`;
+    }else{
+      html+=`<div style="background:var(--green-bg);border:1.5px solid var(--green);border-radius:8px;padding:10px 14px;margin-bottom:14px">
+        <div style="font-size:11px;font-weight:700;color:var(--green-dark)">✓ Нет кредитов с высокой ставкой (>20%)</div>
+      </div>`;
+    }
   }
 
+  // ИИ-анализ
   html+=`<div style="border:1.5px solid var(--border2);border-radius:8px;overflow:hidden">
     <div style="background:var(--topbar);color:#C9A96E;font-size:11px;font-weight:700;letter-spacing:.8px;padding:7px 12px;display:flex;justify-content:space-between;align-items:center">
       <span>🤖 ИИ-АНАЛИЗ ДОЛГОВОЙ НАГРУЗКИ</span>
@@ -250,146 +310,96 @@ function renderLoansSummaryInternal(){
   el.innerHTML=html;
 }
 
+// ── ИИ-анализ через Cloudflare Worker → Anthropic ────────────────
 window.runLoansAI=async function(){
   const el=$('loans-ai-result');if(!el||!state.D)return;
-  const loans=state.D.loans||[];
-  if(!loans.length){el.innerHTML='<div style="color:var(--text2)">Добавьте хотя бы один кредит.</div>';return;}
-  el.innerHTML='<div style="color:var(--text2)">⏳ Анализирую...</div>';
-  const {totalInc,totalAllocated,totalExp,free}=calcFreeBalance();
-  const monthlyPayments=loans.reduce((s,l)=>s+(l.payment||0),0);
   const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  if(!debtWallets.length){el.innerHTML='<div style="color:var(--text2)">Добавьте долговые кошельки.</div>';return;}
+
+  const workerUrl=appConfig.workerUrl;
+  if(!workerUrl){
+    el.innerHTML='<div style="color:var(--red);font-size:12px">⚠ Не настроен Cloudflare Worker.<br>Перейдите в <b>Настройки → Админ</b>, укажите URL воркера.<br>Убедитесь что в воркере добавлена переменная <b>ANTHROPIC_KEY</b>.</div>';
+    return;
+  }
+
+  el.innerHTML='<div style="color:var(--text2)">⏳ Анализирую...</div>';
+
+  const{totalInc,totalAllocated,totalExp,free}=calcFreeBalance();
+  const monthlyPayments=debtWallets.reduce((s,w)=>s+(getLoanSettings(w.id).payment||0),0);
   const totalWalletDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
   const debtRatio=totalInc>0?Math.round(monthlyPayments/totalInc*100):0;
   let totalInterest=0;
-  loans.forEach(l=>{const sch=l.loanType==='card'?calcCardSchedule(l):calcSchedule(l);totalInterest+=sch.reduce((s,p)=>s+p.interest,0);});
-  const loansInfo=loans.map(l=>`- ${l.name}: ${l.loanType==='card'?'кредитка':'кредит'}, ставка ${l.rate}% год., остаток ${Math.round(calcRemaining(l)).toLocaleString('ru-RU')} ₽, платёж ${(l.payment||0).toLocaleString('ru-RU')} ₽/мес`).join('\n');
+  debtWallets.forEach(w=>{
+    const ls=getLoanSettings(w.id);
+    if(ls.rate>0&&ls.payment>0)totalInterest+=calcTotalInterest(Math.abs(w.balance),ls.rate,ls.payment,ls.payDay,ls.graceDays);
+  });
+
+  const loansInfo=debtWallets.map(w=>{
+    const ls=getLoanSettings(w.id);
+    return`- ${w.name}: остаток ${Math.round(Math.abs(w.balance)).toLocaleString('ru-RU')} ₽, ставка ${ls.rate||'не указана'}% год., платёж ${(ls.payment||0).toLocaleString('ru-RU')} ₽/мес`;
+  }).join('\n');
+
   const prompt=`Ты — финансовый советник. Данные пользователя:
 
-КРЕДИТЫ:\n${loansInfo}
+КРЕДИТЫ И ДОЛГИ:
+${loansInfo}
 
 ФИНАНСЫ (текущий месяц):
 - Доход: ${Math.round(totalInc).toLocaleString('ru-RU')} ₽
 - Отчисления по финплану (накопления): ${Math.round(totalAllocated).toLocaleString('ru-RU')} ₽
 - Расходы: ${Math.round(totalExp).toLocaleString('ru-RU')} ₽
 - Свободный остаток: ${Math.round(free).toLocaleString('ru-RU')} ₽
-- Платежи/мес: ${Math.round(monthlyPayments).toLocaleString('ru-RU')} ₽
-- Долговая нагрузка: ${debtRatio}%
+- Суммарные платежи/мес: ${Math.round(monthlyPayments).toLocaleString('ru-RU')} ₽
+- Долговая нагрузка: ${debtRatio}% от дохода (норма ≤40%)
 - Общий долг: ${Math.round(totalWalletDebt).toLocaleString('ru-RU')} ₽
 - Суммарная переплата: ${Math.round(totalInterest).toLocaleString('ru-RU')} ₽
 
-Дай рекомендации (по-русски, кратко):
-1. Оценка долговой нагрузки
-2. Очерёдность погашения (метод лавины)
-3. Сроки закрытия самого дорогого кредита
-4. Стоит ли рефинансировать
-5. Скрытые резервы
+Дай персонализированные рекомендации (по-русски, кратко и конкретно):
+1. Оценка долговой нагрузки — критична ли ситуация
+2. Очерёдность погашения (метод лавины — сначала самый дорогой)
+3. Сколько месяцев займёт закрытие самого дорогого кредита при текущем свободном остатке
+4. Стоит ли рефинансировать (если ставка >20%)
+5. Скрытые резервы для ускорения погашения
 
-Формат: нумерованный список, 1-2 предложения, конкретные суммы и сроки.`;
+Формат: нумерованный список, каждый пункт 1-2 предложения, называй суммы и сроки.`;
+
   try{
-    const response=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const secret=appConfig.appSecret||'';
+    const uid=state.CU?.uid||'anon';
+    const response=await fetch(workerUrl.replace(/\/$/,'')+'/claude',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-App-Secret':secret,'X-User-Id':uid},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
     const data=await response.json();
+    if(!response.ok){
+      el.innerHTML=`<div style="color:var(--red);font-size:12px">Ошибка воркера (${response.status}): ${esc(data.error||JSON.stringify(data))}<br><br>Проверьте что в Variables воркера добавлена переменная <b>ANTHROPIC_KEY</b>.</div>`;
+      return;
+    }
     const text=data.content?.filter(b=>b.type==='text').map(b=>b.text).join('')||'';
-    if(!text){el.innerHTML='<div style="color:var(--red)">Нет ответа.</div>';return;}
+    if(!text){el.innerHTML='<div style="color:var(--red)">Нет ответа от ИИ.</div>';return;}
     const lines=text.split('\n').filter(l=>l.trim());
     let htmlResult='';
     lines.forEach(line=>{
       const t=line.trim();
       if(/^\d+\./.test(t)){
         const num=t.match(/^\d+/)[0];const rest=t.replace(/^\d+\.\s*/,'');
-        htmlResult+=`<div style="display:flex;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:.5px solid var(--border)"><div style="width:20px;height:20px;border-radius:50%;background:var(--amber);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${num}</div><div style="font-size:12px;color:var(--topbar);line-height:1.6">${esc(rest)}</div></div>`;
-      }else if(t){htmlResult+=`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;line-height:1.6">${esc(t)}</div>`;}
+        htmlResult+=`<div style="display:flex;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:.5px solid var(--border)">
+          <div style="width:20px;height:20px;border-radius:50%;background:var(--amber);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px">${num}</div>
+          <div style="font-size:12px;color:var(--topbar);line-height:1.6">${esc(rest)}</div>
+        </div>`;
+      }else if(t){
+        htmlResult+=`<div style="font-size:12px;color:var(--text2);margin-bottom:4px;line-height:1.6">${esc(t)}</div>`;
+      }
     });
     el.innerHTML=htmlResult||`<div style="font-size:12px;color:var(--topbar);line-height:1.7">${esc(text)}</div>`;
-  }catch(err){el.innerHTML=`<div style="color:var(--red);font-size:12px">Ошибка: ${esc(err.message)}</div>`;}
-};
-
-window.toggleSchedule=function(i){const el=document.getElementById('schedule-'+i);if(el)el.style.display=el.style.display==='none'?'block':'none';};
-
-window.openAddLoan=function(){
-  if(!state.D)return;
-  resetLoanModal(-1);
-  document.getElementById('modal-loan').classList.add('open');
-};
-
-window.editLoan=function(i){
-  if(!state.D||!state.D.loans[i])return;
-  const l=state.D.loans[i];
-  resetLoanModal(i);
-  $('loan-name').value=l.name||'';
-  $('loan-amount').value=l.amount||'';
-  $('loan-rate').value=l.rate||'';
-  $('loan-payment').value=l.payment||'';
-  $('loan-months').value=l.months||'';
-  $('loan-start').value=l.startDate||today();
-  $('loan-payday').value=l.payDay||1;
-  $('loan-type').value=l.loanType||'credit';
-  toggleLoanType(l.loanType||'credit');
-  if($('loan-grace'))$('loan-grace').value=l.graceDays||0;
-  const wSel=$('loan-wallet');if(wSel)wSel.value=l.walletId||'';
-  document.getElementById('modal-loan').classList.add('open');
-};
-
-function resetLoanModal(idx){
-  $('loan-idx').value=idx;
-  $('loan-name').value='';$('loan-amount').value='';$('loan-rate').value='';
-  $('loan-payment').value='';$('loan-months').value='';
-  $('loan-start').value=today();$('loan-payday').value=1;
-  if($('loan-grace'))$('loan-grace').value=0;
-  $('loan-type').value='credit';toggleLoanType('credit');
-  const wSel=$('loan-wallet');
-  if(wSel)wSel.innerHTML='<option value="">— не привязывать —</option>'+
-    state.D.wallets.map(w=>`<option value="${w.id}">${esc(w.name)} (${w.balance<0?'долг '+fmt(Math.abs(w.balance)):fmt(w.balance)})</option>`).join('');
-}
-
-function toggleLoanType(type){
-  const isCard=type==='card';
-  const cf=$('loan-credit-fields');const cf2=$('loan-card-fields');
-  if(cf)cf.style.display=isCard?'none':'';
-  if(cf2)cf2.style.display=isCard?'':'none';
-}
-window.toggleLoanType=toggleLoanType;
-
-window.onLoanWalletChange=function(walletId){
-  if(!walletId||!state.D)return;
-  const w=state.D.wallets.find(w=>w.id===walletId);if(!w)return;
-  const balance=Math.abs(Math.min(w.balance,0));
-  if(balance>0){$('loan-amount').value=balance;if(!$('loan-name').value)$('loan-name').value=w.name;}
-};
-
-window.saveLoan=function(){
-  if(!state.D)return;
-  if(!state.D.loans)state.D.loans=[];
-  const idx=+($('loan-idx')?.value??-1);
-  const loanType=$('loan-type')?.value||'credit';
-  const isCard=loanType==='card';
-  const amount=parseFloat($('loan-amount')?.value)||0;
-  const rate=parseFloat($('loan-rate')?.value)||0;
-  const months=parseInt($('loan-months')?.value)||0;
-  const payment=parseFloat($('loan-payment')?.value)||0;
-  const name=$('loan-name')?.value.trim()||'';
-  if(!name||!amount){alert('Заполните название и сумму');return;}
-  if(!isCard&&!months){alert('Укажите срок кредита (мес.)');return;}
-  const mr=rate/100/12;
-  let calcPayment=payment;
-  if(!calcPayment&&!isCard&&months>0)calcPayment=mr>0?Math.round(amount*mr*Math.pow(1+mr,months)/(Math.pow(1+mr,months)-1)):Math.round(amount/months);
-  const loan={
-    id:idx>=0?state.D.loans[idx].id:('loan'+Date.now()),
-    loanType,name,amount,rate,months:isCard?0:months,
-    startDate:$('loan-start')?.value||today(),
-    payDay:parseInt($('loan-payday')?.value||1)||1,
-    payment:calcPayment,
-    graceDays:isCard?parseInt($('loan-grace')?.value||0):undefined,
-    walletId:$('loan-wallet')?.value||null
-  };
-  if(idx>=0)state.D.loans[idx]=loan;else state.D.loans.push(loan);
-  sched();
-  document.getElementById('modal-loan').classList.remove('open');
-  renderLoans();renderLoansSummaryInternal();
-};
-
-window.deleteLoan=function(i){
-  if(!state.D||!confirm('Удалить кредит?'))return;
-  state.D.loans.splice(i,1);sched();renderLoans();renderLoansSummaryInternal();
+  }catch(err){
+    el.innerHTML=`<div style="color:var(--red);font-size:12px">Ошибка соединения: ${esc(err.message)}<br>Проверьте URL воркера в настройках.</div>`;
+  }
 };
 
 export{renderLoansSummaryInternal as renderLoansSummary};
