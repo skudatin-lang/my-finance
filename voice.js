@@ -343,10 +343,15 @@ export function createSmartVoiceButton(){
     await startRecording(
       async text=>{
         setIdle();
-        _showToast('🔍 «'+text+'» — разбираю...');
+        _showToast('🔍 «'+text+'»');
         try{
           const intent=await parseIntent(text);
-          handleVoiceIntent(intent,executeIntent);
+          // Пробуем сразу открыть форму через хук из index.html
+          const handled=window._voiceOpenDirect&&window._voiceOpenDirect(intent);
+          if(!handled){
+            // Fallback: модал подтверждения для неизвестных команд
+            handleVoiceIntent(intent,executeIntent);
+          }
         }catch(e){
           _showToast('⚠ Не удалось разобрать команду');
         }

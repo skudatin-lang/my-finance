@@ -19,10 +19,20 @@ function _renderWallets(){
   el.innerHTML=state.D.wallets.map((w,i)=>{
     const typeLabel={debit:'💳',cash:'💵',savings:'🏦',credit:'🔴',loan:'📋',debt:'🤝',debt_in:'🤝',invest:'📈',other:'📁'}[w.type||'debit']||'💳';
     const debtInfo=w.rate?` · ${w.rate}% · ${fmt(w.payment||0)}/мес`:'';
-    return`<div class="s-row">
+    // Проверяем достижение цели накоплений
+    const linkedPlan=w.planId?state.D.plan.find(p=>p.id===w.planId):null;
+    const goal=linkedPlan?.goal||0;
+    const goalReached=goal>0&&w.balance>=goal;
+    const goalHtml=goal>0?`<div style="font-size:10px;margin-top:2px;color:${goalReached?'var(--green-dark)':'var(--text2)'}">
+      ${goalReached?'🎯 Цель достигнута!':'Цель: '+fmt(goal)+' · '+Math.min(Math.round(w.balance/goal*100),100)+'%'}
+    </div>`:'';
+    const border=goalReached?'2px solid var(--green)':'1px solid var(--border)';
+    const bg=goalReached?'var(--green-bg)':'var(--card)';
+    return`<div class="s-row" style="background:${bg};border:${border};border-radius:8px;padding:8px 10px;margin-bottom:6px">
       <div>
-        <div class="s-name">${typeLabel} ${esc(w.name)}</div>
-        <div class="s-meta">${w.balance<0?'Долг: ':''}<span style="color:${w.balance<0?'var(--red)':'var(--green-dark)'}">${fmt(w.balance)}</span>${debtInfo}</div>
+        <div class="s-name">${typeLabel} ${w.name}${goalReached?' 🟢':''}</div>
+        <div class="s-meta">${w.balance<0?'Долг: ':''}<span style="color:${w.balance<0?'var(--red)':goalReached?'var(--green-dark)':'var(--green-dark)'}">${fmt(w.balance)}</span>${debtInfo}</div>
+        ${goalHtml}
       </div>
       <div style="display:flex;gap:5px">
         <button class="sbtn blue" onclick="window.openEditWallet(${i})">Изм.</button>
@@ -35,16 +45,30 @@ function _renderWallets(){
 function _renderPlan(){
   const el=$('plan-settings');if(!el)return;
   if(!state.D.plan.length){el.innerHTML='<div style="color:var(--text2);font-size:13px">Нет статей</div>';return;}
-  el.innerHTML=state.D.plan.map((p,i)=>`<div class="s-row">
-    <div>
-      <div class="s-name">${esc(p.label)}</div>
-      <div class="s-meta">${p.pct}% · ${p.type==='income'?'Накопление':'Расход'}</div>
-    </div>
-    <div style="display:flex;gap:5px">
-      <button class="sbtn blue" onclick="window.openEditPlanItem(${i})">Изм.</button>
-      <button class="sbtn red" onclick="window.deletePlanItem(${i})">Удал.</button>
-    </div>
-  </div>`).join('');
+  el.innerHTML=state.D.plan.map((p,i)=>{
+    // Для накоплений — найти привязанный кошелёк и показать прогресс к цели
+    let goalHtml='';
+    if(p.type==='income'&&p.goal){
+      const linkedWallet=state.D.wallets.find(w=>w.planId===p.id);
+      const balance=linkedWallet?.balance||0;
+      const pct=Math.min(Math.round(balance/p.goal*100),100);
+      const reached=balance>=p.goal;
+      goalHtml=`<div style="font-size:10px;color:${reached?'var(--green-dark)':'var(--text2)'};margin-top:2px">
+        ${reached?'🎯 Цель '+fmt(p.goal)+' достигнута!':'Цель: '+fmt(balance)+' / '+fmt(p.goal)+' ('+pct+'%)'}
+      </div>`;
+    }
+    return`<div class="s-row">
+      <div>
+        <div class="s-name">${esc(p.label)}</div>
+        <div class="s-meta">${p.pct}% · ${p.type==='income'?'Накопление':'Расход'}</div>
+        ${goalHtml}
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="sbtn blue" onclick="window.openEditPlanItem(${i})">Изм.</button>
+        <button class="sbtn red" onclick="window.deletePlanItem(${i})">Удал.</button>
+      </div>
+    </div>`;
+  }).join('');
   updPT();
 }
 
@@ -226,6 +250,10 @@ export function delExpCat(i){
 export function openAddPlanItem(){
   $('plan-item-modal-title').textContent='НОВАЯ СТАТЬЯ';
   $('pi-label').value='';$('pi-pct').value='';$('pi-type').value='expense';$('pi-idx').value=-1;
+  const goalBlock=document.getElementById('pi-goal-block');
+  const goalInput=document.getElementById('pi-goal');
+  if(goalBlock)goalBlock.style.display='none';
+  if(goalInput)goalInput.value='';
   document.getElementById('modal-plan-item').classList.add('open');
 }
 
@@ -234,6 +262,10 @@ export function openEditPlanItem(i){
   const p=state.D.plan[i];
   $('plan-item-modal-title').textContent='РЕДАКТИРОВАТЬ СТАТЬЮ';
   $('pi-label').value=p.label;$('pi-pct').value=p.pct;$('pi-type').value=p.type||'expense';$('pi-idx').value=i;
+  const goalBlock=document.getElementById('pi-goal-block');
+  const goalInput=document.getElementById('pi-goal');
+  if(goalBlock)goalBlock.style.display=p.type==='income'?'':'none';
+  if(goalInput)goalInput.value=p.goal||'';
   document.getElementById('modal-plan-item').classList.add('open');
 }
 
@@ -243,11 +275,16 @@ export function savePlanItem(){
   if(!label){alert('Введите название');return;}
   const pct=parseFloat($('pi-pct')?.value)||0;
   const type=$('pi-type')?.value||'expense';
+  const goalVal=parseFloat(document.getElementById('pi-goal')?.value)||0;
   const idx=parseInt($('pi-idx')?.value);
   if(idx>=0&&state.D.plan[idx]){
     state.D.plan[idx].label=label;state.D.plan[idx].pct=pct;state.D.plan[idx].type=type;
+    if(type==='income'&&goalVal>0)state.D.plan[idx].goal=goalVal;
+    else delete state.D.plan[idx].goal;
   }else{
-    state.D.plan.push({id:'p'+Date.now(),label,pct,type});
+    const item={id:'p'+Date.now(),label,pct,type};
+    if(type==='income'&&goalVal>0)item.goal=goalVal;
+    state.D.plan.push(item);
   }
   sched();
   document.getElementById('modal-plan-item').classList.remove('open');

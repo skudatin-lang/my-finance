@@ -296,6 +296,15 @@
       <div class="loans-right">
         <div style="font-size:14px;font-weight:700;color:var(--topbar);flex-shrink:0">Сводка и план погашения</div>
         <div id="loans-summary"></div>
+        <div style="margin-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:14px;font-weight:700;color:var(--topbar)">ИИ-рекомендации</div>
+            <button onclick="window.getLoansAI()" id="loans-ai-btn" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
+          </div>
+          <div id="loans-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:60px">
+            Нажмите «Спросить ИИ» для получения персональных рекомендаций по вашим кредитам
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -476,6 +485,12 @@
               <button class="btn-primary" style="flex:1;padding:9px" onclick="window.saveVoiceSettingsUI()">Сохранить</button>
               <button class="btn-sec" style="flex:1;margin-top:0;padding:9px" onclick="window.testVoiceWorker()">Проверить ✓</button>
             </div>
+
+            <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin:12px 0 6px">DEEPSEEK API (для ИИ-рекомендаций)</div>
+            <div class="fg"><label>DEEPSEEK API KEY</label>
+              <input class="fi" type="password" id="deepseek-api-key" placeholder="sk-...">
+            </div>
+            <button class="btn-sec" style="margin-top:0" onclick="window.saveDeepSeekKey()">Сохранить ключ</button>
           </div>
         </div>
         <div class="s-panel" style="width:380px">
@@ -674,10 +689,16 @@
     <div class="rf">
       <div class="fg"><label>ПРОЦЕНТ ОТ ДОХОДА %</label><input class="fi" type="number" id="pi-pct" placeholder="10" min="0" max="100" step="0.5"></div>
       <div class="fg"><label>ТИП</label>
-        <select class="fi" id="pi-type">
+        <select class="fi" id="pi-type" onchange="window.onPlanTypeChange(this.value)">
           <option value="expense">Расход (куда тратить)</option>
           <option value="income">Накопление (откладывать)</option>
         </select>
+      </div>
+    </div>
+    <div id="pi-goal-block" style="display:none">
+      <div class="fg"><label>ЦЕЛЬ НАКОПЛЕНИЯ ₽ (необязательно)</label>
+        <input class="fi" type="number" id="pi-goal" placeholder="например 500000" min="0">
+        <div style="font-size:11px;color:var(--blue);background:var(--blue-bg);padding:6px 8px;border-radius:6px;margin-top:5px">Когда баланс привязанного кошелька достигнет цели — он подсветится зелёным</div>
       </div>
     </div>
     <input type="hidden" id="pi-idx" value="-1">
@@ -1135,6 +1156,9 @@ function updateAdminVisibility(){
   if(uidEl&&state.CU)uidEl.textContent=state.CU.uid;
   if($('voice-proxy-url'))$('voice-proxy-url').value=appConfig.workerUrl||'';
   if($('voice-app-secret'))$('voice-app-secret').value=appConfig.appSecret||'';
+  // Загружаем DeepSeek ключ
+  const dsKey=document.getElementById('deepseek-api-key');
+  if(dsKey&&state.D?.aiSettings?.deepseekKey)dsKey.value=state.D.aiSettings.deepseekKey;
 }
 
 // ── DASHBOARD: today block ─────────────────────────────────────────
@@ -1229,8 +1253,152 @@ initAuth(
   }
 );
 
-$('auth-screen').style.display='none';
-$('loading-screen').style.display='flex';
+// ── Задача 1: Цель накоплений — показ/скрытие поля ─────────────────────
+window.onPlanTypeChange=function(type){
+  const block=document.getElementById('pi-goal-block');
+  if(block)block.style.display=type==='income'?'':'none';
+};
+
+// ── Задача 2: Голос — сразу открывать модалку ──────────────────────────
+// Переопределяем handleVoiceIntent из voice.js — пропускаем промежуточный
+// модал и сразу открываем форму операции с заполненными данными
+window._voiceOpenDirect=function(intent){
+  if(intent.intent==='add_expense'||intent.intent==='add_income'){
+    const type=intent.intent==='add_expense'?'expense':'income';
+    openModal('modal',true);
+    setTimeout(()=>{
+      window.setOpType(type);
+      const amtEl=document.getElementById('op-amount');
+      if(amtEl&&intent.amount)amtEl.value=intent.amount;
+      const noteEl=document.getElementById('op-note');
+      if(noteEl&&intent.note)noteEl.value=intent.note;
+      const catSel=document.getElementById('op-cat');
+      if(catSel&&intent.category){
+        for(let i=0;i<catSel.options.length;i++){
+          if(catSel.options[i].value.toLowerCase()===intent.category.toLowerCase()){
+            catSel.selectedIndex=i;break;
+          }
+        }
+      }
+      const walSel=document.getElementById('op-wallet');
+      if(walSel&&intent.wallet&&state.D){
+        const w=state.D.wallets.find(w=>w.name.toLowerCase().includes(intent.wallet.toLowerCase()));
+        if(w)walSel.value=w.id;
+      }
+    },80);
+    return true;
+  }
+  if(intent.intent==='add_transfer'){
+    openModal('modal',true);
+    setTimeout(()=>{
+      window.setOpType('transfer');
+      const amtEl=document.getElementById('op-amount');
+      if(amtEl&&intent.amount)amtEl.value=intent.amount;
+      if(state.D){
+        const wf=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.from_wallet||'').toLowerCase()));
+        const wt=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.to_wallet||'').toLowerCase()));
+        const fromSel=document.getElementById('op-wallet');
+        const toSel=document.getElementById('op-wallet2');
+        if(fromSel&&wf)fromSel.value=wf.id;
+        if(toSel&&wt)toSel.value=wt.id;
+      }
+    },80);
+    return true;
+  }
+  if(intent.intent==='add_shopping'){
+    window.openAddShopItem&&window.openAddShopItem();
+    return true;
+  }
+  return false;
+};
+
+// ── Задача 3: DeepSeek API ─────────────────────────────────────────────
+window.saveDeepSeekKey=function(){
+  const key=document.getElementById('deepseek-api-key')?.value.trim();
+  if(!key){alert('Введите ключ');return;}
+  if(!state.D)return;
+  if(!state.D.aiSettings)state.D.aiSettings={};
+  state.D.aiSettings.deepseekKey=key;
+  sched();
+  alert('Ключ сохранён');
+};
+
+window.getLoansAI=async function(){
+  if(!state.D)return;
+  const key=state.D.aiSettings?.deepseekKey;
+  if(!key){
+    document.getElementById('loans-ai-result').innerHTML=
+      '<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
+    return;
+  }
+  const btn=document.getElementById('loans-ai-btn');
+  const result=document.getElementById('loans-ai-result');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Анализирую...';}
+  result.innerHTML='<span style="color:var(--text2)">Анализирую ваши данные...</span>';
+
+  // Собираем контекст
+  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
+  const totalPayment=debtWallets.reduce((s,w)=>s+(w.payment||0),0);
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+
+  const loansDesc=debtWallets.map(w=>
+    `- ${w.name}: долг ${Math.abs(w.balance).toLocaleString('ru-RU')} ₽`+
+    (w.rate?`, ставка ${w.rate}%`:``) +
+    (w.payment?`, платёж ${w.payment.toLocaleString('ru-RU')} ₽/мес`:``)
+  ).join('\n');
+
+  const prompt=`Ты финансовый советник. Проанализируй кредитную нагрузку и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
+
+Финансовые данные:
+Доход за текущий месяц: ${mInc.toLocaleString('ru-RU')} ₽
+Расходы за текущий месяц: ${mExp.toLocaleString('ru-RU')} ₽
+Общий долг: ${totalDebt.toLocaleString('ru-RU')} ₽
+Ежемесячные платежи: ${totalPayment.toLocaleString('ru-RU')} ₽
+Долговая нагрузка: ${mInc>0?Math.round(totalPayment/mInc*100):0}% от дохода
+
+Кредиты:
+${loansDesc||'Нет данных о кредитах'}
+
+Дай рекомендации по: оптимизации погашения, рефинансированию если выгодно, высвобождению денег.`;
+
+  try{
+    const resp=await fetch('https://api.deepseek.com/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({
+        model:'deepseek-chat',
+        messages:[{role:'user',content:prompt}],
+        max_tokens:600,
+        temperature:0.7
+      })
+    });
+    if(!resp.ok){
+      const err=await resp.json().catch(()=>({}));
+      throw new Error(err.error?.message||'HTTP '+resp.status);
+    }
+    const data=await resp.json();
+    const text=data.choices?.[0]?.message?.content||'Нет ответа';
+    // Форматируем: заменяем **жирный** и переносы строк
+    const html=text
+      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+      .replace(/\n/g,'<br>');
+    result.innerHTML=`<div style="color:var(--topbar)">${html}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  }catch(e){
+    result.innerHTML=`<span style="color:var(--red)">⚠ Ошибка: ${e.message}</span>`;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
+  }
+};
+
+$('loading-screen').style.display='none';
+$('app-screen').style.display='none';
+$('auth-screen').style.display='flex';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW:',e));
 }
