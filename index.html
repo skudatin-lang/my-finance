@@ -39,11 +39,11 @@
       <div class="topbar-brand"><div class="topbar-title">МОИ ФИНАНСЫ</div></div>
       <div class="topbar-right">
         <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
-        <button class="tbtn add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
+        <button class="tbtn add" id="tour-btn-add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
         <button class="tbtn" onclick="window.openSearch()" title="Поиск" style="font-size:15px;padding:0 10px">🔍</button>
         <button class="tbtn" onclick="window.openQuickAdd()" title="Быстрая операция" style="font-size:15px;padding:0 10px">⚡</button>
         <button class="tbtn" id="tbtn-admin" onclick="window.showScreen('admin')" style="display:none;color:#ff9900">⚙ АДМИН</button>
-        <button class="tbtn" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
+        <button class="tbtn" id="tour-btn-settings" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
         <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
       </div>
     </div>
@@ -367,6 +367,10 @@
         </div>
         <input type="file" id="import-input" accept=".json" style="display:none" onchange="window.importDataFile(event)">
         <button class="btn-danger" onclick="window.clearOps()">Удалить все операции</button>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">ОБУЧЕНИЕ</div>
+          <button class="btn-sec" onclick="window.startTour()" style="width:100%">🎓 Пройти обучение заново</button>
+        </div>
       </div>
     </div>
   </div>
@@ -779,6 +783,7 @@ import{renderHealth}from'./health.js';
 import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderShoppingList,onCalendarDayChange}from'./shopping.js';
 import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton}from'./voice.js';
+import{tourStart,tourFinish,isTourDone}from'./tour.js';
 
 // ── Admin — единственный источник истины в core.js
 function isAdmin(){return !!(state.CU&&isOwner(state.CU.uid));}
@@ -1086,42 +1091,37 @@ window.saveQuickOp=function(){
   refreshCurrent();
 };
 
-// ── Onboarding ─────────────────────────────────────────────────────
+// ── Onboarding → Tour ──────────────────────────────────────────────────────
+// _tourSaveDone вызывается из tour.js при завершении
+window._tourSaveDone=function(){
+  if(!state.D)return;
+  state.D.onboardingDone=true;
+  state.D.tourDone=true;
+  sched();
+};
+
 function checkOnboarding(){
   if(!state.D)return;
-  if(state.D.onboardingDone)return;
+  // Уже прошёл тур или уже есть операции — не показываем
+  if(state.D.tourDone||state.D.onboardingDone)return;
   if(state.D.operations.length>0){state.D.onboardingDone=true;sched();return;}
-  showOnboarding();
+  // Небольшая задержка — дать приложению отрисоваться
+  setTimeout(()=>tourStart(),600);
 }
-let _obStep=0;
-const _obSteps=[
-  {title:'Добавьте кошельки 👛',desc:'Карта, наличные, накопительный счёт — укажите текущий баланс каждого.',action:'Открыть настройки кошельков',fn:()=>{document.getElementById('modal-onboarding').classList.remove('open');window.showScreen('settings');}},
-  {title:'Настройте финансовый план 📊',desc:'Разделите доход на статьи: обязательные расходы, накопления, кредиты. Итого должно быть 100%.',action:'Открыть план',fn:()=>{document.getElementById('modal-onboarding').classList.remove('open');window.showScreen('settings');}},
-  {title:'Добавьте первую операцию ✅',desc:'Запишите любой доход или расход — приложение начнёт строить аналитику.',action:'Добавить операцию',fn:()=>{document.getElementById('modal-onboarding').classList.remove('open');openModal('modal',true);}},
-];
-function showOnboarding(){
-  _obStep=0;renderOnboarding();
-  document.getElementById('modal-onboarding').classList.add('open');
-}
-function renderOnboarding(){
-  const el=$('onboarding-steps');if(!el)return;
-  el.innerHTML=_obSteps.map((s,i)=>`
-    <div style="display:flex;gap:14px;padding:14px 0;border-bottom:1px solid var(--border)${i===_obStep?';background:var(--amber-light);margin:0 -8px;padding:14px 8px;border-radius:8px':''}">
-      <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;font-weight:700;background:${i<_obStep?'var(--green)':i===_obStep?'var(--amber)':'var(--border)'};color:${i<=_obStep?'#fff':'var(--text2)'}">${i<_obStep?'✓':i+1}</div>
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:700;color:var(--topbar);margin-bottom:4px">${s.title}</div>
-        <div style="font-size:12px;color:var(--text2);line-height:1.5">${s.desc}</div>
-        ${i===_obStep?`<button class="btn-primary" style="margin-top:10px;width:auto;padding:8px 20px" onclick="window._obAction(${i})">${s.action}</button>`:''}
-      </div>
-    </div>`).join('')+`
-  <div style="display:flex;gap:8px;margin-top:16px">
-    <button class="btn-sec" style="flex:1;margin-top:0" onclick="window._obNext()">Пропустить шаг →</button>
-    <button class="btn-sec" style="flex:1;margin-top:0" onclick="window._obSkipAll()">Пропустить всё</button>
-  </div>`;
-}
-window._obAction=function(i){_obSteps[i].fn();};
-window._obNext=function(){_obStep=Math.min(_obStep+1,_obSteps.length-1);if(_obStep>=_obSteps.length-1&&state.D){state.D.onboardingDone=true;sched();}renderOnboarding();};
-window._obSkipAll=function(){if(state.D){state.D.onboardingDone=true;sched();}document.getElementById('modal-onboarding').classList.remove('open');};
+
+// Публичный метод — вызывается из кнопки в Настройках
+window.startTour=function(){
+  // Сбрасываем флаг чтобы тур можно было пройти повторно
+  if(state.D){state.D.tourDone=false;}
+  tourStart();
+};
+
+// Старый модал онбординга — оставляем скрытым (HTML ещё есть в разметке)
+window._obAction=function(){};
+window._obNext=function(){};
+window._obSkipAll=function(){document.getElementById('modal-onboarding')?.classList.remove('open');};
+
+
 
 // ── Mobile bottom nav ─────────────────────────────────────────────
 const _bottomNavScreens=['dashboard','reports','calendar','dds'];
