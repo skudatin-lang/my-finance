@@ -150,7 +150,7 @@ function startRec(){
   recognition=new SR();
   recognition.lang='ru-RU';
   recognition.continuous=false;
-  recognition.interimResults=true; // включаем чтобы видеть промежуточный текст
+  recognition.interimResults=false; // false — надёжнее работает в Safari
   recognition.maxAlternatives=3;
 
   recognition.onstart=()=>{
@@ -164,23 +164,16 @@ function startRec(){
   };
 
   recognition.onresult=e=>{
-    let interim='',final='';
-    for(let i=e.resultIndex;i<e.results.length;i++){
-      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
-      else interim+=e.results[i][0].transcript;
-    }
-    if(interim)document.getElementById('result-box').textContent='💬 '+interim;
-    if(final){
+    // interimResults=false — сразу финальный результат
+    const text=(e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript||'').trim();
+    if(text){
       isRecording=false;
       setBtn('idle');
-      showResult(final,'success');
-      log('OK','Распознано: "'+final+'"');
-      // Все альтернативы
-      const alts=[];
-      for(let i=0;i<e.results[0].length;i++)alts.push(e.results[0][i].transcript+' ('+Math.round(e.results[0][i].confidence*100)+'%)');
-      if(alts.length>1)log('ALT','Альтернативы: '+alts.join(' | '));
-      // Разобрать намерение
-      const intent=parseIntent(final);
+      showResult(text,'success');
+      log('OK','Распознано: "'+text+'"');
+      const conf=e.results[0][0].confidence;
+      if(conf)log('ALT','Уверенность: '+Math.round(conf*100)+'%');
+      const intent=parseIntent(text);
       showIntent(intent);
     }
   };
