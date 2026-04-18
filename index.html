@@ -796,6 +796,8 @@ import{renderLoans,renderLoansSummary}from'./loans.js';
 import{renderShoppingList,onCalendarDayChange}from'./shopping.js';
 import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton}from'./voice.js';
 import{tourStart,tourFinish,isTourDone}from'./tour.js';
+import{eventBus,EVENTS}from'./eventBus.js';
+import{registerModule,mountModule,notifyDataLoaded,loadPluginsFromConfig,getModules}from'./moduleRegistry.js';
 
 // ── Admin — единственный источник истины в core.js
 function isAdmin(){return !!(state.CU&&isOwner(state.CU.uid));}
@@ -952,12 +954,17 @@ function refreshCurrent(){
 window.showScreen=name=>{
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
-  $('screen-'+name).classList.add('active');
-  const tb=$('tnav-'+name);
+  const screenEl=document.getElementById('screen-'+name);
+  if(screenEl){screenEl.classList.add('active');}
+  const tb=document.getElementById('tnav-'+name);
   if(tb){tb.classList.add('active');setTimeout(()=>tb.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}),50);}
   refreshCurrent();
   updateBottomNav(name);
-  window.hideMobileMenu&&window.hideMobileMenu();
+  window.hideMobileMenu?.();
+  // Монтируем модуль если это внешний экран
+  mountModule(name);
+  // Уведомляем шину событий
+  eventBus.emit(EVENTS.SCREEN_CHANGED,{screen:name});
 };
 
 window.chMonth=d=>{state.repOff+=d;renderReports();};
@@ -996,7 +1003,13 @@ window.doSignOut=doSignOut;
 window.openNewOp=()=>openModal('modal',true);
 window.closeModal=id=>closeModal(id);
 window.setOpType=type=>setType(type);
-window.saveOp=()=>saveOperation(refreshCurrent);
+window.saveOp=()=>saveOperation((...args)=>{
+  refreshCurrent(...args);
+  // Уведомляем внешние модули о новой операции
+  const lastOp=state.D?.operations?.[state.D.operations.length-1];
+  if(lastOp)eventBus.emit(EVENTS.OPERATION_ADDED,{op:lastOp});
+  eventBus.emit(EVENTS.BALANCE_CHANGED,{wallets:state.D?.wallets||[]});
+});
 window.openEditOp=id=>openEditOp(id);
 window.saveEdit=()=>saveEditOp(refreshCurrent);
 window.deleteOp=id=>deleteOp(id,refreshCurrent);
@@ -1256,6 +1269,14 @@ initAuth(
     window._myUID=state.CU.uid;
     document.body.appendChild(createSmartVoiceButton());
     window._refreshCurrentScreen=refreshCurrent;
+    // Уведомляем EventBus и модули о загрузке данных
+    eventBus.emit(EVENTS.USER_LOGGED_IN,{uid:state.CU.uid,email:state.CU.email});
+    eventBus.emit(EVENTS.DATA_LOADED,{data:state.D});
+    notifyDataLoaded(state.D);
+    // Загружаем внешние плагины из plugins.json (если есть)
+    loadPluginsFromConfig().then(()=>{
+      console.info('moduleRegistry: plugins loaded, registered:',getModules().map(m=>m.id));
+    });
     checkOnboarding();
     updateAdminVisibility();
     renderReports();
@@ -1264,6 +1285,7 @@ initAuth(
     $('app-screen').style.display='none';
     $('loading-screen').style.display='none';
     $('auth-screen').style.display='flex';
+    eventBus.emit(EVENTS.USER_LOGGED_OUT,{});
   }
 );
 

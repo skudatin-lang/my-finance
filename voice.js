@@ -1,5 +1,5 @@
 // voice.js — Web Speech API, бесплатно, без серверов
-import{state,sched,fmt,today}from'./core.js';
+import{state,sched,fmt,today,appConfig}from'./core.js';
 
 let _recognition=null;
 let _isRecording=false;
@@ -115,32 +115,79 @@ export function stopRecording(){
   _forceReset();
 }
 
-// ── Разбор намерений (локально, без GPT) ─────────────────────────────────
+// ── Разбор намерений ─────────────────────────────────────────────────────
+// Если есть DeepSeek ключ — используем ИИ (точно), иначе — регулярки (offline)
 export async function parseIntent(text){
   if(!state.D||!text)return{intent:'unknown',raw_text:text};
-  const t=text.toLowerCase().trim();
+  if(appConfig.deepseekKey){
+    try{
+      const result=await _parseIntentAI(text);
+      if(result&&result.intent!=='unknown')return result;
+    }catch(e){
+      console.warn('AI voice parse failed, fallback to regex:',e.message);
+    }
+  }
+  return _parseIntentRegex(text);
+}
 
-  // Список покупок
+// ── ИИ-парсинг через DeepSeek ────────────────────────────────────────────
+async function _parseIntentAI(text){
+  const cats=state.D.expenseCats.map(c=>c.name).join(', ');
+  const incomeCats=state.D.incomeCats.join(', ');
+  const wallets=state.D.wallets.map(w=>w.name).join(', ');
+  const prompt=`Ты парсишь голосовые команды для финансового приложения.
+Верни ТОЛЬКО валидный JSON без markdown и пояснений.
+
+Категории расходов: ${cats}
+Категории доходов: ${incomeCats}
+Кошельки: ${wallets}
+
+Команда: "${text.replace(/"/g,"'")}"
+
+Форматы ответа:
+Расход: {"intent":"add_expense","amount":число,"category":"из списка","wallet":"или пусто","note":"или пусто"}
+Доход: {"intent":"add_income","amount":число,"category":"из списка","wallet":"или пусто","note":"или пусто"}
+Перевод: {"intent":"add_transfer","amount":число,"from_wallet":"откуда","to_wallet":"куда"}
+Баланс: {"intent":"check_balance","wallet":"или пусто"}
+Покупки: {"intent":"add_shopping","items":[{"name":"товар","qty":1,"price":0}]}
+Непонятно: {"intent":"unknown","raw_text":"текст"}
+
+Правила: amount — число (тысяча=1000, пятьсот=500). Без явного "доход/получил" — это расход. category выбирай только из списка.`;
+
+  const resp=await fetch('https://api.deepseek.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+appConfig.deepseekKey},
+    body:JSON.stringify({model:'deepseek-chat',messages:[{role:'user',content:prompt}],max_tokens:150,temperature:0.1})
+  });
+  if(!resp.ok)throw new Error('HTTP '+resp.status);
+  const data=await resp.json();
+  const raw=(data.choices?.[0]?.message?.content||'').replace(/```json|```/g,'').trim();
+  const parsed=JSON.parse(raw);
+  const valid=['add_expense','add_income','add_transfer','add_shopping','check_balance','unknown'];
+  if(!valid.includes(parsed.intent))return{intent:'unknown',raw_text:text};
+  if(parsed.amount!==undefined)parsed.amount=parseFloat(parsed.amount)||0;
+  return parsed;
+}
+
+// ── Regex-парсинг (offline fallback) ─────────────────────────────────────
+function _parseIntentRegex(text){
+  const t=text.toLowerCase().trim();
   if(['купить','купи','куплю','добавь в список','нужно купить'].some(v=>t.includes(v))){
     const items=_parseShoppingItems(t);
     if(items.length)return{intent:'add_shopping',items};
   }
-  // Баланс
   if(/баланс|сколько|остаток/.test(t)){
     const w=_findWallet(t);
     return{intent:'check_balance',wallet:w?.name||''};
   }
-  // Перевод
   if(/перевёл|перевел|перевести|перевод/.test(t)){
     const wallets=_transferWallets(t);
     return{intent:'add_transfer',amount:_amount(t),from_wallet:wallets.from,to_wallet:wallets.to};
   }
-  // Доход
   if(['получил','получила','заработал','заработала','пришло','пришла','зарплата','аванс','начислили'].some(v=>t.includes(v))){
     const w=_findWallet(t);
     return{intent:'add_income',amount:_amount(t),category:_cat(t,'income'),wallet:w?.name||'',note:''};
   }
-  // Расход по умолчанию
   const amount=_amount(t);
   if(amount>0){
     const w=_findWallet(t);
