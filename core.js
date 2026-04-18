@@ -69,7 +69,7 @@ export function opHtml(o,showDel){
   const label=isTr?`Перевод \u2192 ${esc(wName(o.walletTo))}`:(esc(o.category)||'—');
   const pid=isTr?o.planId:catPlanId(o.category);
   const badge=pid?`<span class="op-badge">${esc(planById(pid)?.label||'')}</span>`:'';
-  const editBtn=showDel&&!isTr&&!isPlanned(o.type)?`<button class="op-btn edit" onclick="window.openEditOp('${esc(o.id)}')" title="Редактировать">&#9998;</button>`:'';
+  const editBtn=showDel&&!isPlanned(o.type)?`<button class="op-btn edit" onclick="window.openEditOp('${esc(o.id)}')" title="Редактировать">&#9998;</button>`:'';
   const delBtn=showDel?`<button class="op-btn del" onclick="window.deleteOp('${esc(o.id)}')" title="Удалить">&#10005;</button>`:'';
   const noteTxt=o.note?`<div class="op-note">${esc(o.note)}</div>`:'';
   return`<div class="op-item">
