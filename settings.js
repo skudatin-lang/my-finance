@@ -3,6 +3,21 @@ import{$,state,sched,fmt,today}from'./core.js';
 // ── Helpers ───────────────────────────────────────────────────────────────
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+// Ключевые слова статей которые по умолчанию считаются «тратными»
+const SPENDABLE_KEYWORDS=['постоян','перемен','бытов','ежедн'];
+function _isSpendable(p){
+  if(p.spendable===true)return true;
+  if(p.spendable===false)return false;
+  const lbl=(p.label||'').toLowerCase();
+  return SPENDABLE_KEYWORDS.some(kw=>lbl.includes(kw));
+}
+
+export function toggleSpendable(i,val){
+  if(!state.D||!state.D.plan[i])return;
+  state.D.plan[i].spendable=val;
+  sched();
+}
+
 // ── renderSettings ────────────────────────────────────────────────────────
 export function renderSettings(){
   if(!state.D)return;
@@ -58,10 +73,14 @@ function _renderPlan(){
       </div>`;
     }
     return`<div class="s-row">
-      <div>
+      <div style="flex:1">
         <div class="s-name">${esc(p.label)}</div>
         <div class="s-meta">${p.pct}% · ${p.type==='income'?'Накопление':'Расход'}</div>
         ${goalHtml}
+        ${p.type==='expense'?`<label style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;font-size:11px;color:var(--text2)">
+          <input type="checkbox" ${_isSpendable(p)?'checked':''} style="accent-color:var(--amber);width:14px;height:14px" onchange="window.toggleSpendable(${i},this.checked)">
+          учитывать в «можно потратить»
+        </label>`:''}
       </div>
       <div style="display:flex;gap:5px">
         <button class="sbtn blue" onclick="window.openEditPlanItem(${i})">Изм.</button>

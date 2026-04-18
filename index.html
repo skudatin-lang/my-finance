@@ -969,11 +969,11 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,appConfig,loadAppConfig,saveAppConfig,isOwner,fmt,calcHealthScore}from'./core.js';
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,appConfig,loadAppConfig,saveAppConfig,isOwner,fmt,calcHealthScore,planSpent}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
-import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat,openAddPlanItem,openEditPlanItem,savePlanItem,deletePlanItem,exportCSV,exportAllCSV}from'./settings.js';
+import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat,openAddPlanItem,openEditPlanItem,savePlanItem,deletePlanItem,toggleSpendable,exportCSV,exportAllCSV}from'./settings.js';
 import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
 import{renderDashboard}from'./dashboard.js';
 import{renderRecurring,applyRecurring}from'./recurring.js';
@@ -1452,6 +1452,7 @@ initAuth(
     window.openEditPlanItem=openEditPlanItem;
     window.savePlanItem=savePlanItem;
     window.deletePlanItem=deletePlanItem;
+    window.toggleSpendable=toggleSpendable;
     window.state=state;
     window._myUID=state.CU.uid;
     document.body.appendChild(createSmartVoiceButton());
@@ -1702,12 +1703,47 @@ function renderSimpleDashboard(){
   const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
   const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
   const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
-  const mBal=mInc-mExp;
   const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
 
-  // Главная цифра — «сколько осталось потратить»
-  // Если нет данных о доходе, показываем баланс месяца
-  const canSpend=mInc>0?Math.max(mInc-mExp,0):mBal;
+  // ── Главная цифра: остаток по «тратным» статьям финплана ─────────────────
+  // Считаем только статьи где spendable:true (флаг пользователя)
+  // ИЛИ по умолчанию — статьи название которых содержит «постоян» / «перемен»
+  // Кредиты, накопления, зарплатные статьи — НЕ считаем, они резервируются отдельно
+  let canSpend = 0;
+  let totalBudget = 0;
+  let totalSpentOnPlan = 0;
+  let hasPlan = false;
+
+  const SPENDABLE_KEYWORDS = ['постоян', 'перемен', 'бытов', 'ежедн'];
+
+  function isSpendablePlan(p) {
+    if(p.spendable === true) return true;  // явный флаг пользователя
+    if(p.spendable === false) return false; // явно исключён
+    // дефолт — по ключевым словам в названии
+    const lbl = (p.label || '').toLowerCase();
+    return SPENDABLE_KEYWORDS.some(kw => lbl.includes(kw));
+  }
+
+  if(mInc > 0 && state.D.plan && state.D.plan.length > 0){
+    const spendablePlans = state.D.plan.filter(p => p.type === 'expense' && isSpendablePlan(p));
+    if(spendablePlans.length > 0){
+      hasPlan = true;
+      spendablePlans.forEach(p => {
+        const budget = Math.round(mInc * p.pct / 100);
+        const spent = planSpent(p, mOps);
+        totalBudget += budget;
+        totalSpentOnPlan += spent;
+      });
+      canSpend = totalBudget - totalSpentOnPlan;
+    }
+  }
+
+  // Fallback: нет финплана или нет совпадений — доход − расход
+  if(!hasPlan){
+    canSpend = mInc > 0 ? mInc - mExp : 0;
+    totalBudget = mInc;
+    totalSpentOnPlan = mExp;
+  }
 
   const amountEl=document.getElementById('simple-main-amount');
   if(amountEl){
@@ -1715,8 +1751,18 @@ function renderSimpleDashboard(){
     amountEl.className='simple-amount'+(canSpend<0?' negative':canSpend>0?' positive':'');
   }
 
-  // Кольцо прогресса
-  const pct=mInc>0?Math.min(Math.round(mExp/mInc*100),100):0;
+  // Подпись под суммой — уточняем что считается
+  const amountLabel=document.querySelector('.simple-amount-label');
+  if(amountLabel){
+    amountLabel.textContent = hasPlan
+      ? 'остаток по статьям расходов'
+      : 'можно потратить до конца месяца';
+  }
+
+  // Кольцо прогресса — % израсходованного бюджета по плану
+  const pct = totalBudget > 0
+    ? Math.min(Math.round(totalSpentOnPlan / totalBudget * 100), 100)
+    : 0;
   const ring=document.getElementById('simple-ring');
   const ringPct=document.getElementById('simple-ring-pct');
   if(ring){
@@ -1732,6 +1778,7 @@ function renderSimpleDashboard(){
   if(statusEl){
     let msg,cls;
     if(!mInc&&!mExp){msg='Добавьте первую операцию';cls='';}
+    else if(canSpend<0){msg='⚠ Перерасход по плану';cls='bad';}
     else if(pct>=90){msg='⚠ Почти весь бюджет потрачен';cls='bad';}
     else if(pct>=70){msg='! Осталось меньше трети';cls='warn';}
     else{msg='✓ Всё под контролем';cls='good';}
