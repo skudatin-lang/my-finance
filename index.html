@@ -65,12 +65,17 @@
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-row1">
-      <div class="topbar-brand"><div class="topbar-title">МОИ ФИНАНСЫ</div></div>
+      <div class="topbar-brand">
+        <div class="topbar-logo-icon">₽</div>
+        <div class="topbar-title">МОИ ФИНАНСЫ</div>
+      </div>
       <div class="topbar-right">
         <img class="user-avatar" id="user-avatar" src="" alt="" style="display:none">
         <button class="tbtn add" id="tour-btn-add" onclick="window.openNewOp()">+ ОПЕРАЦИЯ</button>
-        <button class="tbtn" onclick="window.openSearch()" title="Поиск" style="font-size:15px;padding:0 10px">🔍</button>
-        <button class="tbtn" onclick="window.openQuickAdd()" title="Быстрая операция" style="font-size:15px;padding:0 10px">⚡</button>
+        <button class="tbtn icon" onclick="window.openSearch()" title="Поиск">🔍</button>
+        <button class="tbtn icon" onclick="window.openQuickAdd()" title="Быстрая операция">⚡</button>
+        <!-- Переключатель темы -->
+        <button class="theme-toggle" id="theme-toggle-btn" onclick="window.toggleTheme()" title="Сменить тему" style="margin:0 6px"></button>
         <button class="tbtn" id="tbtn-admin" onclick="window.showScreen('admin')" style="display:none;color:#ff9900">⚙ АДМИН</button>
         <button class="tbtn" id="tour-btn-settings" onclick="window.showScreen('settings')">НАСТРОЙКИ</button>
         <button class="tbtn" onclick="window.doSignOut()">ВЫЙТИ</button>
@@ -90,17 +95,19 @@
 
   <!-- ── MOBILE BOTTOM NAV ── -->
   <nav class="bottom-nav" id="bottom-nav">
+    <!-- 4 вкладки + FAB по центру -->
     <button class="bnav-btn" id="bnav-dashboard" onclick="window.showScreen('dashboard')">
-      <span class="bnav-icon">📊</span>ГЛАВНАЯ
+      <span class="bnav-icon">🏠</span>ГЛАВНАЯ
     </button>
     <button class="bnav-btn" id="bnav-reports" onclick="window.showScreen('reports')">
       <span class="bnav-icon">📋</span>ОТЧЁТЫ
     </button>
+    <!-- FAB — центральная кнопка добавления -->
+    <div class="bnav-spacer">
+      <button class="bnav-fab" onclick="window.openNewOp()" title="Добавить операцию">+</button>
+    </div>
     <button class="bnav-btn" id="bnav-calendar" onclick="window.showScreen('calendar')">
       <span class="bnav-icon">📅</span>КАЛЕНДАРЬ
-    </button>
-    <button class="bnav-btn" id="bnav-dds" onclick="window.showScreen('dds')">
-      <span class="bnav-icon">💵</span>ДДС
     </button>
     <button class="bnav-btn" id="bnav-more" onclick="window.showMobileMenu()">
       <span class="bnav-icon">☰</span>ЕЩЁ
@@ -108,12 +115,14 @@
   </nav>
 
   <!-- ── MOBILE MORE MENU ── -->
-  <div id="mobile-more-menu" style="display:none;position:fixed;bottom:60px;left:0;right:0;background:var(--topbar);z-index:149;padding:8px 0;border-top:1px solid rgba(255,255,255,.15)">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0">
-      <button onclick="window.showScreen('loans');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💳</span>КРЕДИТЫ</button>
-      <button onclick="window.showScreen('health');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">💚</span>ЗДОРОВЬЕ</button>
-      <button id="bnav-admin" onclick="window.showScreen('admin');window.hideMobileMenu()" style="display:none;background:none;border:none;color:#ff9900;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚙</span>АДМИН</button>
-      <button onclick="window.showScreen('settings');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:18px">⚙️</span>НАСТРОЙКИ</button>
+  <div id="mobile-more-menu" style="display:none">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:8px 0">
+      <button onclick="window.showScreen('dds');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💵</span>ДДС</button>
+      <button onclick="window.showScreen('loans');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💳</span>КРЕДИТЫ</button>
+      <button onclick="window.showScreen('health');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💚</span>ЗДОРОВЬЕ</button>
+      <button onclick="window.showScreen('settings');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">⚙️</span>НАСТРОЙКИ</button>
+      <button onclick="window.toggleTheme();window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px" id="theme-mobile-btn"><span style="font-size:20px">🌙</span>ТЕМА</button>
+      <button id="bnav-admin" onclick="window.showScreen('admin');window.hideMobileMenu()" style="display:none;background:none;border:none;color:#ff9900;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">⚙</span>АДМИН</button>
     </div>
   </div>
 
@@ -413,9 +422,88 @@
   </div>
 
   <!-- ── DASHBOARD ── -->
+  <!-- ── DASHBOARD SIMPLE (default for new users) ── -->
+  <div id="screen-dashboard-simple" class="screen">
+    <div class="simple-hero">
+      <!-- Шапка -->
+      <div class="simple-header">
+        <div>
+          <div class="simple-greeting" id="simple-greeting">Привет! 👋</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.3)" id="simple-month-lbl"></div>
+        </div>
+        <div class="simple-header-right">
+          <!-- Streak -->
+          <div class="simple-streak" id="simple-streak" onclick="window._showStreakInfo()" style="display:none">
+            🔥 <span id="simple-streak-count">0</span>
+          </div>
+          <img class="simple-avatar" id="simple-avatar" src="" style="display:none">
+          <!-- Переключить в про-режим -->
+          <button class="mode-switch-btn" onclick="window.switchToPro()">Про →</button>
+        </div>
+      </div>
+
+      <!-- Главная цифра + кольцо -->
+      <div class="simple-center">
+        <div class="simple-amount-label">можно потратить до конца месяца</div>
+        <div class="simple-amount" id="simple-main-amount">₽ 0</div>
+
+        <!-- SVG-кольцо прогресса бюджета -->
+        <div class="simple-ring-wrap">
+          <svg class="simple-ring-svg" viewBox="0 0 110 110">
+            <circle class="simple-ring-bg" cx="55" cy="55" r="45"/>
+            <circle class="simple-ring-fill" id="simple-ring" cx="55" cy="55" r="45"
+              stroke="#51CF66" stroke-dashoffset="0"/>
+          </svg>
+          <div class="simple-ring-center">
+            <div class="simple-ring-pct" id="simple-ring-pct">0%</div>
+            <div class="simple-ring-sub">бюджет</div>
+          </div>
+        </div>
+        <div class="simple-status-msg good" id="simple-status">Загрузка...</div>
+      </div>
+
+      <!-- FAB -->
+      <button class="simple-fab" onclick="window.openNewOp()" title="Добавить операцию">+</button>
+      <div class="simple-fab-hint">добавить трату или доход</div>
+
+      <!-- 2 карточки: доход и расход -->
+      <div class="simple-cards">
+        <div class="simple-card" onclick="window.showScreen('reports')">
+          <div class="simple-card-icon">📈</div>
+          <div class="simple-card-title">Доход</div>
+          <div class="simple-card-val pos" id="simple-inc">₽ 0</div>
+        </div>
+        <div class="simple-card" onclick="window.showScreen('reports')">
+          <div class="simple-card-icon">📉</div>
+          <div class="simple-card-title">Расход</div>
+          <div class="simple-card-val neg" id="simple-exp">₽ 0</div>
+        </div>
+        <div class="simple-card" onclick="window.showScreen('loans')">
+          <div class="simple-card-icon">💳</div>
+          <div class="simple-card-title">Долги</div>
+          <div class="simple-card-val neg" id="simple-debt">₽ 0</div>
+        </div>
+        <div class="simple-card" onclick="window.showScreen('health')">
+          <div class="simple-card-icon">❤️</div>
+          <div class="simple-card-title">Здоровье</div>
+          <div class="simple-card-val" id="simple-health">—</div>
+        </div>
+      </div>
+
+      <!-- Последние 3 операции -->
+      <div class="simple-ops">
+        <div class="simple-ops-title">Последние операции</div>
+        <div id="simple-recent-ops"></div>
+        <div class="simple-see-all" onclick="window.showScreen('reports')">Все операции →</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DASHBOARD PRO (полный, бывший screen-dashboard) ── -->
   <div id="screen-dashboard" class="screen">
-    <div style="display:flex;justify-content:flex-end;padding:8px var(--gap) 0;">
-      <button onclick="window.openWidgetSettings()" style="background:var(--card);border:1.5px solid var(--border2);border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;letter-spacing:.5px">⚙ Настроить виджеты</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px var(--gap) 0;">
+      <button onclick="window.switchToSimple()" style="background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer">← Простой режим</button>
+      <button onclick="window.openWidgetSettings()" style="background:var(--card);border:1.5px solid var(--border);border-radius:8px;padding:5px 14px;font-size:11px;font-weight:700;color:var(--text2);cursor:pointer;letter-spacing:.4px">⚙ Виджеты</button>
     </div>
     <div class="dash-wrap">
       <div class="dash-left">
@@ -448,40 +536,34 @@
         <!-- Список покупок -->
         <div class="panel" style="flex:1;min-height:80px;cursor:pointer" onclick="window.showScreen('calendar')">
           <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-            <span>&#128722; СПИСОК ПОКУПОК</span>
-            <span style="font-size:10px;opacity:.7;font-weight:400">&#8594; КАЛЕНДАРЬ</span>
+            <span>🛒 СПИСОК ПОКУПОК</span>
+            <span style="font-size:10px;opacity:.7;font-weight:400">→ КАЛЕНДАРЬ</span>
           </div>
           <div class="panel-body"><div id="dash-shopping-main"></div></div>
         </div>
       </div>
       <div class="dash-right">
         <div class="dash-right-grid">
-
           <div id="dash-widget-plan" onclick="window.showScreen('dds')" class="dash-card clickable">
             <div class="dash-card-head">ФИНАНСОВЫЙ ПЛАН <span class="dash-card-link">→ ДДС</span></div>
             <div class="dash-card-body"><div id="dash-plan"></div></div>
           </div>
-
           <div id="dash-widget-debts" onclick="window.showScreen('loans')" class="dash-card clickable">
             <div class="dash-card-head">КРЕДИТЫ И ДОЛГИ <span class="dash-card-link">→ КРЕДИТЫ</span></div>
             <div class="dash-card-body"><div id="dash-debts"></div></div>
           </div>
-
           <div id="dash-widget-health" onclick="window.showScreen('health')" class="dash-card clickable">
             <div class="dash-card-head">ФИНАНСОВОЕ ЗДОРОВЬЕ <span class="dash-card-link">→ ЗДОРОВЬЕ</span></div>
             <div class="dash-card-body"><div id="dash-health-score"></div></div>
           </div>
-
           <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" class="dash-card clickable">
             <div class="dash-card-head">РАСХОДЫ ПО КАТЕГОРИЯМ <span class="dash-card-link">→ ОТЧЁТЫ</span></div>
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
           </div>
-
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
             <div class="dash-card-body" style="height:180px"><canvas id="dash-chart"></canvas></div>
           </div>
-
         </div>
       </div>
     </div>
@@ -808,7 +890,7 @@
 </div>
 
 <script type="module">
-import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,appConfig,loadAppConfig,saveAppConfig,isOwner,fmt}from'./core.js';
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,appConfig,loadAppConfig,saveAppConfig,isOwner,fmt,calcHealthScore}from'./core.js';
 import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
 import{renderDDS}from'./dds.js';
 import{renderCalendar,showCalDay}from'./calendar.js';
@@ -963,33 +1045,34 @@ function _loadVoiceToSettings(){
 
 function refreshCurrent(){
   const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
-  if(cur==='dashboard'){renderDashboard();window._renderDashMain&&window._renderDashMain();}
+  if(cur==='dashboard-simple'){renderSimpleDashboard();}
+  else if(cur==='dashboard'){renderDashboard();window._renderDashMain&&window._renderDashMain();}
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
   else if(cur==='calendar'){renderCalendar();renderShoppingList();window._renderCalRecurring&&window._renderCalRecurring();}
   else if(cur==='settings'){renderSettings();_loadVoiceToSettings();}
   else if(cur==='loans'){renderLoans();renderLoansSummary();}
   else if(cur==='health')renderHealth();
-  else if(cur==='admin'){
-    updateAdminVisibility();
-  }
-  if(cur!=='dashboard')window._renderDashMain&&window._renderDashMain();
+  else if(cur==='admin'){updateAdminVisibility();}
+  if(cur!=='dashboard'&&cur!=='dashboard-simple')window._renderDashMain&&window._renderDashMain();
 }
 
 window.showScreen=name=>{
+  // Если просят 'dashboard' — смотрим режим пользователя
+  const resolvedName=(name==='dashboard'&&_getMode()==='simple')?'dashboard-simple':name;
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
-  const screenEl=document.getElementById('screen-'+name);
+  const screenEl=document.getElementById('screen-'+resolvedName);
   if(screenEl){screenEl.classList.add('active');}
-  const tb=document.getElementById('tnav-'+name);
+  // Для подсветки навбара: dashboard-simple → tnav-dashboard
+  const navKey=resolvedName==='dashboard-simple'?'dashboard':resolvedName;
+  const tb=document.getElementById('tnav-'+navKey);
   if(tb){tb.classList.add('active');setTimeout(()=>tb.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}),50);}
   refreshCurrent();
-  updateBottomNav(name);
+  updateBottomNav(navKey);
   window.hideMobileMenu?.();
-  // Монтируем модуль если это внешний экран
-  mountModule(name);
-  // Уведомляем шину событий
-  eventBus.emit(EVENTS.SCREEN_CHANGED,{screen:name});
+  mountModule(resolvedName);
+  eventBus.emit(EVENTS.SCREEN_CHANGED,{screen:resolvedName});
 };
 
 window.chMonth=d=>{state.repOff+=d;renderReports();};
@@ -1304,7 +1387,20 @@ initAuth(
     });
     checkOnboarding();
     updateAdminVisibility();
-    renderReports();
+    // Запускаем в нужном режиме: новые пользователи → простой, остальные → запомненный
+    const startMode=_getMode();
+    if(startMode==='simple'){
+      renderSimpleDashboard();
+      // Показываем простой дашборд как стартовый экран
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      const simpleScreen=document.getElementById('screen-dashboard-simple');
+      if(simpleScreen)simpleScreen.classList.add('active');
+      const tb=document.getElementById('tnav-dashboard');
+      if(tb)tb.classList.add('active');
+      updateBottomNav('dashboard');
+    }else{
+      renderReports();
+    }
   },
   ()=>{
     $('app-screen').style.display='none';
@@ -1472,7 +1568,187 @@ ${loansDesc||'Нет данных о кредитах'}
   }
 };
 
-// ── Авторизация с проверкой согласия (152-ФЗ) ────────────────────────────
+// ── Режимы: простой / про ─────────────────────────────────────────────────
+function _getMode(){
+  if(!state.D)return'simple';
+  return state.D.uiMode||'simple';
+}
+function _setMode(mode){
+  if(!state.D)return;
+  state.D.uiMode=mode;
+  sched();
+}
+
+window.switchToPro=function(){
+  _setMode('pro');
+  window.showScreen('dashboard');
+};
+window.switchToSimple=function(){
+  _setMode('simple');
+  window.showScreen('dashboard-simple');
+};
+
+// ── Streak (серия дней) ───────────────────────────────────────────────────
+function _calcStreak(){
+  if(!state.D)return 0;
+  const ops=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type));
+  if(!ops.length)return 0;
+  const days=new Set(ops.map(o=>o.date).filter(Boolean));
+  let streak=0;
+  const now=new Date();
+  for(let i=0;i<365;i++){
+    const d=new Date(now);d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    if(days.has(ds))streak++;
+    else if(i>0)break; // прерываем только если пропуск не сегодня
+  }
+  return streak;
+}
+
+window._showStreakInfo=function(){
+  const s=_calcStreak();
+  _showNotice(`🔥 Серия ${s} ${s===1?'день':s<5?'дня':'дней'}! Добавляй операции каждый день`,'amber',4000);
+};
+
+// ── Рендер простого дашборда ─────────────────────────────────────────────
+function renderSimpleDashboard(){
+  if(!state.D)return;
+  const now=new Date();
+  const MONTHS_RU=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const dayOfMonth=now.getDate();
+  const daysLeft=daysInMonth-dayOfMonth;
+
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const mBal=mInc-mExp;
+  const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
+
+  // Главная цифра — «сколько осталось потратить»
+  // Если нет данных о доходе, показываем баланс месяца
+  const canSpend=mInc>0?Math.max(mInc-mExp,0):mBal;
+
+  const amountEl=document.getElementById('simple-main-amount');
+  if(amountEl){
+    amountEl.textContent='₽ '+Math.abs(Math.round(canSpend)).toLocaleString('ru-RU');
+    amountEl.className='simple-amount'+(canSpend<0?' negative':canSpend>0?' positive':'');
+  }
+
+  // Кольцо прогресса
+  const pct=mInc>0?Math.min(Math.round(mExp/mInc*100),100):0;
+  const ring=document.getElementById('simple-ring');
+  const ringPct=document.getElementById('simple-ring-pct');
+  if(ring){
+    const circumference=283;
+    const offset=circumference-(circumference*pct/100);
+    ring.style.strokeDashoffset=offset;
+    ring.style.stroke=pct>=90?'#FF6B6B':pct>=70?'#FFB800':'#51CF66';
+  }
+  if(ringPct)ringPct.textContent=pct+'%';
+
+  // Статус
+  const statusEl=document.getElementById('simple-status');
+  if(statusEl){
+    let msg,cls;
+    if(!mInc&&!mExp){msg='Добавьте первую операцию';cls='';}
+    else if(pct>=90){msg='⚠ Почти весь бюджет потрачен';cls='bad';}
+    else if(pct>=70){msg='! Осталось меньше трети';cls='warn';}
+    else{msg='✓ Всё под контролем';cls='good';}
+    statusEl.textContent=msg;
+    statusEl.className='simple-status-msg '+cls;
+  }
+
+  // Карточки
+  const incEl=document.getElementById('simple-inc');
+  const expEl=document.getElementById('simple-exp');
+  const debtEl=document.getElementById('simple-debt');
+  const healthEl=document.getElementById('simple-health');
+  if(incEl)incEl.textContent='₽ '+Math.round(mInc).toLocaleString('ru-RU');
+  if(expEl)expEl.textContent='₽ '+Math.round(mExp).toLocaleString('ru-RU');
+  if(debtEl){debtEl.textContent=totalDebt>0?'₽ '+Math.round(totalDebt).toLocaleString('ru-RU'):'Нет долгов';debtEl.className='simple-card-val'+(totalDebt>0?' neg':'');}
+
+  // Здоровье из calcHealthScore
+  try{
+    const h=calcHealthScore();
+    if(healthEl&&h){
+      const col=h.score>=80?' pos':h.score>=50?' warn':' neg';
+      healthEl.textContent=h.score+'/100';
+      healthEl.className='simple-card-val'+col;
+    }
+  }catch(e){}
+
+  // Подпись месяца
+  const lbl=document.getElementById('simple-month-lbl');
+  if(lbl)lbl.textContent=MONTHS_RU[now.getMonth()].toUpperCase()+' '+now.getFullYear();
+
+  // Приветствие с именем
+  const greet=document.getElementById('simple-greeting');
+  if(greet&&state.CU){
+    const name=state.CU.displayName?.split(' ')[0]||'';
+    const hour=now.getHours();
+    const hi=hour<12?'Доброе утро':'Добрый вечер';
+    greet.textContent=(name?hi+', '+name+'! 👋':hi+'! 👋');
+  }
+
+  // Аватар
+  const av=document.getElementById('simple-avatar');
+  if(av&&state.CU?.photoURL){av.src=state.CU.photoURL;av.style.display='';}
+
+  // Streak
+  const streak=_calcStreak();
+  const streakEl=document.getElementById('simple-streak');
+  const streakCount=document.getElementById('simple-streak-count');
+  if(streakEl){
+    if(streak>=2){streakEl.style.display='flex';if(streakCount)streakCount.textContent=streak;}
+    else streakEl.style.display='none';
+  }
+
+  // Последние операции
+  const recentEl=document.getElementById('simple-recent-ops');
+  if(recentEl){
+    const recent=[...mOps].sort((a,b)=>a.date<b.date?1:-1).slice(0,3);
+    if(!recent.length){
+      recentEl.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,.3);text-align:center;padding:12px 0">Нет операций за этот месяц</div>';
+    }else{
+      recentEl.innerHTML=recent.map(o=>{
+        const isInc=o.type==='income';
+        const amt=(isInc?'+ ':'− ')+'₽ '+Math.round(o.amount).toLocaleString('ru-RU');
+        return`<div class="simple-op">
+          <div class="simple-op-left">
+            <div class="simple-op-cat">${o.category||'—'}</div>
+            <div class="simple-op-date">${o.date?o.date.split('-').reverse().join('.'):''}${o.note?' · '+o.note:''}</div>
+          </div>
+          <div class="simple-op-amt ${isInc?'pos':'neg'}">${amt}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+// ── Тема: светлая / тёмная ────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('mf_theme') || 'light';
+  if(saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+
+window.toggleTheme = function(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('mf_theme', next);
+  // Обновляем иконку в мобильном меню
+  const mobileBtn = document.getElementById('theme-mobile-btn');
+  if(mobileBtn) mobileBtn.querySelector('span').textContent = next === 'dark' ? '☀️' : '🌙';
+};
+
+// Восстанавливаем иконку при загрузке
+(function(){
+  const mobileBtn = document.getElementById('theme-mobile-btn');
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if(mobileBtn) mobileBtn.querySelector('span').textContent = isDark ? '☀️' : '🌙';
+})();
 window.signInWithConsent=function(){
   const check=document.getElementById('consent-check');
   const err=document.getElementById('consent-error');
