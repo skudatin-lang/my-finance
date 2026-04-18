@@ -93,9 +93,9 @@ function _createTourDOM() {
   card.style.cssText = `
     position:fixed;z-index:9001;
     background:var(--card);border:2px solid var(--amber);border-radius:14px;
-    padding:18px 20px;max-width:320px;min-width:260px;
-    box-shadow:0 8px 32px rgba(0,0,0,.35);
-    transition:all .25s ease;
+    padding:14px 16px;max-width:360px;min-width:240px;
+    box-shadow:0 8px 32px rgba(0,0,0,.45);
+    transition:top .25s ease, left .25s ease;
   `;
   card.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
@@ -160,6 +160,26 @@ function _positionCard(el, position) {
   const card = document.getElementById('tour-card');
   if (!card) return;
 
+  const isMobile = window.innerWidth <= 700;
+
+  // На мобиле — карточка всегда ВВЕРХУ экрана, под топбаром
+  // Так целевой элемент (кнопки навбара, FAB) остаётся виден внизу
+  if (isMobile) {
+    card.style.transform = '';
+    card.style.left = '10px';
+    card.style.right = '10px';
+    card.style.width = 'auto';
+    card.style.maxWidth = 'none';
+    // Под топбаром (~88px) — карточка сверху, элементы снизу видны
+    card.style.top = '92px';
+    return;
+  }
+
+  // Десктоп — позиционирование рядом с элементом
+  card.style.right = '';
+  card.style.width = '';
+  card.style.maxWidth = '320px';
+
   if (position === 'center' || !el) {
     card.style.top = '50%';
     card.style.left = '50%';
@@ -178,7 +198,6 @@ function _positionCard(el, position) {
   if (position === 'bottom') {
     top = r.bottom + pad;
     left = r.left + r.width / 2 - cw / 2;
-    // Если выходит снизу — показываем сверху
     if (top + ch > window.innerHeight - 20) top = r.top - ch - pad;
   } else if (position === 'top') {
     top = r.top - ch - pad;
@@ -186,7 +205,6 @@ function _positionCard(el, position) {
     if (top < 10) top = r.bottom + pad;
   }
 
-  // Не выходим за края экрана
   left = Math.max(12, Math.min(left, window.innerWidth - cw - 12));
   top  = Math.max(12, Math.min(top,  window.innerHeight - ch - 12));
 
@@ -228,7 +246,10 @@ function _renderStep(idx) {
     if (targetEl) {
       _positionSpotlight(targetEl);
       // Скроллим элемент в видимость если нужно
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      // На мобиле кнопки топбара не скроллим — они фиксированы
+      if (targetEl.closest('.topbar') || targetEl.closest('.bottom-nav')) {
+        targetEl.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
     } else {
       _clearSpotlight();
     }

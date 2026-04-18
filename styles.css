@@ -165,6 +165,7 @@ body {
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0,0,0,.2);
   z-index: 100;
+  overflow: hidden; /* предотвращаем выход nav за границы */
 }
 .topbar-row1 {
   display: flex; align-items: stretch;
@@ -174,6 +175,7 @@ body {
   display: flex; align-items: stretch;
   height: 40px; flex-shrink: 0;
   border-top: 1px solid rgba(255,255,255,.08);
+  background: var(--topbar); /* явный фон — важен для мобильного свайпа */
 }
 .topbar-brand {
   padding: 0 18px;
@@ -197,6 +199,9 @@ body {
   scrollbar-width: none;
   scroll-behavior: smooth;
   cursor: grab;
+  background: var(--topbar);
+  /* Отступ справа — чтобы при свайпе до конца фон не обрывался */
+  padding-right: 16px;
 }
 .topbar-nav::-webkit-scrollbar { display: none; }
 .tnav-btn {
@@ -720,19 +725,28 @@ select.fi {
     border-top: 1px solid rgba(255,255,255,.1);
     height: 62px; z-index: 150;
     box-shadow: 0 -4px 16px rgba(0,0,0,.2);
+    overflow: visible;
   }
-  /* Centre FAB button */
+  /* FAB — выступает над навбаром */
   .bnav-fab {
     position: absolute;
-    top: -22px; left: 50%; transform: translateX(-50%);
-    width: 52px; height: 52px; border-radius: 50%;
+    top: -24px; left: 50%; transform: translateX(-50%);
+    width: 56px; height: 56px; border-radius: 50%;
     background: var(--amber); border: 3px solid var(--bg);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; color: #fff; cursor: pointer;
-    box-shadow: 0 4px 16px rgba(186,117,23,.5);
-    z-index: 160; transition: transform .15s;
+    font-size: 26px; color: #fff; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(186,117,23,.6);
+    z-index: 200; transition: transform .15s;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    pointer-events: all;
   }
-  .bnav-fab:hover { transform: translateX(-50%) scale(1.08); }
+  .bnav-fab:active { transform: translateX(-50%) scale(0.93); }
+  .bnav-spacer {
+    flex: 1; position: relative;
+    pointer-events: none;
+  }
+  .bnav-spacer .bnav-fab { pointer-events: all; }
   .bnav-btn {
     flex: 1; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 3px;
@@ -754,8 +768,8 @@ select.fi {
     transition: color .15s;
   }
   .bnav-more.active { color: var(--amber); }
-  /* Spacer for FAB */
-  .bnav-spacer { flex: 1; pointer-events: none; }
+  /* Spacer for FAB - НЕ блокируем pointer-events */
+  .bnav-spacer { flex: 1; position: relative; }
 
   #app-screen { padding-bottom: 62px; }
   #smart-voice-btn { bottom: 80px !important; }
@@ -1274,3 +1288,18 @@ body.mode-simple #screen-dashboard-pro  { display: none !important; }
   padding-bottom: 12px;
 }
 .faq-item.open .faq-answer { display: block; }
+
+/* ── TOUR CARD — мобильная адаптация ── */
+@media (max-width: 700px) {
+  #tour-card {
+    /* JS управляет позицией, но гарантируем правильный вид */
+    border-radius: 14px !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,.4) !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+  /* Оверлей тура не должен блокировать клики по bottom nav */
+  #tour-overlay {
+    bottom: 62px !important; /* высота bottom nav */
+  }
+}

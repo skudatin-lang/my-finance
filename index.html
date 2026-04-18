@@ -2,26 +2,28 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#BA7517">
 <meta name="description" content="Личный учёт доходов, расходов и финансового плана">
+
+<!-- iOS PWA — критично для запуска из иконки -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Финансы">
-<!-- CSP: разрешаем только нужные источники -->
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self';
-  script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdnjs.cloudflare.com;
-  style-src 'self' 'unsafe-inline';
-  connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.deepseek.com https://*.workers.dev https://stt.api.cloud.yandex.net;
-  img-src 'self' data: https://lh3.googleusercontent.com;
-  font-src 'self';
-  frame-src 'none';
-  object-src 'none';
-">
-<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+
+<!-- iOS иконки — нужны явно, Safari игнорирует manifest для иконок -->
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="120x120" href="icon-192.png">
+
+<!-- Splash screen iOS (опционально, убирает белый экран при запуске) -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<!-- Android / стандарт -->
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="shortcut icon" href="icon-192.png">
 <title>Мои финансы</title>
@@ -1999,8 +2001,32 @@ $('loading-screen').style.display='none';
 $('app-screen').style.display='none';
 $('auth-screen').style.display='flex';
 if('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js').catch(e=>console.warn('SW:',e));
+  // Регистрируем SW с явным scope
+  navigator.serviceWorker.register('./sw.js', { scope: './' })
+    .then(reg => {
+      // Проверяем обновление при каждом запуске
+      reg.update();
+    })
+    .catch(e => console.warn('SW registration failed:', e));
 }
+
+// Обработка shortcuts из manifest.json
+// Например: ?action=new-op открывает форму добавления операции
+(function handleShortcuts(){
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get('action');
+  if(action === 'new-op'){
+    // Ждём когда приложение загрузится, потом открываем форму
+    const interval = setInterval(() => {
+      if(window.openNewOp && window.state?.CU){
+        clearInterval(interval);
+        window.openNewOp();
+      }
+    }, 300);
+    // Timeout через 10 сек
+    setTimeout(() => clearInterval(interval), 10000);
+  }
+})();
 </script>
 </body>
 </html>

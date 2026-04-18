@@ -1,7 +1,6 @@
 // Service Worker — my-finance PWA
-// ВАЖНО: при каждом деплое новых файлов меняйте версию CACHE (v3 → v4 → ...)
-// Это гарантирует что браузер загрузит свежие файлы, а не старый кэш
-const CACHE = 'my-finance-v3';
+// ВАЖНО: меняй CACHE при каждом деплое новых файлов
+const CACHE = 'my-finance-v4';
 
 const ASSETS = [
   './',
@@ -31,7 +30,7 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
 ];
 
-// Домены которые НИКОГДА не кэшируем — всегда сеть
+// Домены — никогда не кэшируем (всегда сеть)
 const NETWORK_ONLY = [
   'firebase',
   'googleapis.com',
@@ -48,7 +47,6 @@ self.addEventListener('install', e => {
       .then(c => c.addAll(ASSETS.map(u => new Request(u, { cache: 'reload' }))))
       .catch(err => console.warn('SW cache failed:', err))
   );
-  // Активируем новый SW немедленно, не ждём закрытия вкладок
   self.skipWaiting();
 });
 
@@ -56,35 +54,46 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(
-        keys
-          .filter(k => k !== CACHE)
-          .map(k => {
-            console.log('SW: removing old cache', k);
-            return caches.delete(k);
-          })
+        keys.filter(k => k !== CACHE).map(k => caches.delete(k))
       )
     )
   );
-  // Берём контроль над всеми вкладками немедленно
   self.clients.claim();
 });
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
 
-  // Только GET запросы кэшируем
+  // Только GET
   if (e.request.method !== 'GET') return;
 
-  // Сетевые запросы к API — никогда не кэшируем
+  // API и Firebase — только сеть
   if (NETWORK_ONLY.some(domain => url.includes(domain))) return;
 
-  // Стратегия: сеть первая, кэш как fallback
-  // Это гарантирует свежие файлы при наличии сети
-  // и работу офлайн при её отсутствии
+  // Навигационные запросы (открытие приложения из иконки) —
+  // всегда отдаём index.html из кэша если он есть
+  // Это критично для iOS: без этого приложение не запускается офлайн
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then(response => {
+          // Обновляем кэш
+          const clone = response.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
+          return response;
+        })
+        .catch(() => {
+          // Нет сети — отдаём кэшированный index.html
+          return caches.match('./index.html') || caches.match('./');
+        })
+    );
+    return;
+  }
+
+  // Остальные ресурсы — сеть первая, кэш как fallback
   e.respondWith(
     fetch(e.request)
       .then(response => {
-        // Обновляем кэш свежим ответом
         if (response && response.status === 200) {
           const clone = response.clone();
           caches.open(CACHE).then(c => c.put(e.request, clone));
