@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Политика конфиденциальности — Мои Финансы</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#F0E6C8;color:#3D2B1A;line-height:1.7;padding:0}
+  .wrap{max-width:760px;margin:0 auto;padding:40px 24px 80px}
+  .logo{display:flex;align-items:center;gap:12px;margin-bottom:40px}
+  .logo-icon{width:48px;height:48px;background:#BA7517;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;color:#fff;font-weight:700;flex-shrink:0}
+  .logo-text{font-size:20px;font-weight:700;color:#3D2B1A}
+  h1{font-size:26px;font-weight:700;color:#3D2B1A;margin-bottom:8px}
+  .date{font-size:13px;color:#7A5C30;margin-bottom:36px}
+  h2{font-size:16px;font-weight:700;color:#3D2B1A;margin:32px 0 12px;padding-bottom:6px;border-bottom:1.5px solid #D4B483}
+  p{margin-bottom:12px;font-size:14px;color:#5C3D1E}
+  ul{margin:0 0 12px 20px;font-size:14px;color:#5C3D1E}
+  li{margin-bottom:6px}
+  .highlight{background:#fff8e8;border:1.5px solid #D4B483;border-radius:8px;padding:14px 16px;margin:16px 0;font-size:14px}
+  .back{display:inline-flex;align-items:center;gap:6px;color:#BA7517;text-decoration:none;font-size:14px;font-weight:600;margin-bottom:32px}
+  .back:hover{text-decoration:underline}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+  th{background:#BA7517;color:#fff;padding:8px 12px;text-align:left;font-weight:600}
+  td{padding:8px 12px;border-bottom:1px solid #D4B483;vertical-align:top}
+  tr:nth-child(even) td{background:#fdf6e8}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="logo">
+    <div class="logo-icon">₽</div>
+    <div class="logo-text">Мои Финансы</div>
+  </div>
+
+  <a class="back" href="./index.html">← Вернуться в приложение</a>
+
+  <h1>Политика конфиденциальности</h1>
+  <div class="date">Редакция от 18 апреля 2026 г.</div>
+
+  <div class="highlight">
+    Настоящая Политика конфиденциальности определяет порядок обработки персональных данных
+    пользователей сервиса «Мои Финансы» (далее — Сервис) в соответствии с Федеральным законом
+    от 27.07.2006 № 152-ФЗ «О персональных данных».
+  </div>
+
+  <h2>1. Оператор персональных данных</h2>
+  <p>
+    Оператором персональных данных является физическое лицо — разработчик Сервиса
+    (самозанятый / ИП, реквизиты указываются при коммерческом запуске).
+    Контактный адрес для запросов по персональным данным: <strong>skudatin@gmail.com</strong>
+  </p>
+
+  <h2>2. Какие данные мы собираем</h2>
+  <table>
+    <tr><th>Данные</th><th>Источник</th><th>Цель</th></tr>
+    <tr>
+      <td>Email-адрес, имя, фото профиля</td>
+      <td>Google OAuth при авторизации</td>
+      <td>Идентификация пользователя, отображение аватара</td>
+    </tr>
+    <tr>
+      <td>Уникальный идентификатор (UID)</td>
+      <td>Google Firebase Authentication</td>
+      <td>Привязка данных к аккаунту</td>
+    </tr>
+    <tr>
+      <td>Финансовые данные (операции, балансы, категории)</td>
+      <td>Вводятся пользователем вручную или голосом</td>
+      <td>Основная функциональность Сервиса</td>
+    </tr>
+    <tr>
+      <td>Резервная копия данных</td>
+      <td>Автоматически в localStorage браузера</td>
+      <td>Восстановление при сбоях сети</td>
+    </tr>
+  </table>
+
+  <p>
+    Мы <strong>не собираем</strong>: данные банковских карт, номера телефонов, адреса,
+    данные о местоположении, биометрические данные.
+  </p>
+
+  <h2>3. Как и где хранятся данные</h2>
+  <p>
+    Финансовые данные хранятся в облачной базе данных <strong>Google Cloud Firestore</strong>
+    (регион eur3, Европейский союз). Данные передаются по зашифрованному каналу HTTPS/TLS.
+    Резервная копия хранится в localStorage вашего браузера и не передаётся на сервер.
+  </p>
+  <div class="highlight">
+    ⚠ Обращаем внимание: серверы Google Cloud расположены в Европейском союзе. 
+    Мы планируем перенос хранилища на российские серверы. 
+    До момента переноса использование Сервиса означает согласие с хранением 
+    данных за рубежом в соответствии с п. 4 ст. 12 152-ФЗ 
+    (трансграничная передача при наличии согласия субъекта).
+  </div>
+
+  <h2>4. Кому передаются данные</h2>
+  <table>
+    <tr><th>Получатель</th><th>Страна</th><th>Цель</th></tr>
+    <tr>
+      <td>Google LLC (Firebase, Auth)</td>
+      <td>США / ЕС</td>
+      <td>Аутентификация и хранение данных</td>
+    </tr>
+    <tr>
+      <td>DeepSeek (Hangzhou DeepSeek AI)</td>
+      <td>Китай</td>
+      <td>AI-анализ кредитов и голосовой ввод (только при использовании функций)</td>
+    </tr>
+    <tr>
+      <td>Cloudflare Inc.</td>
+      <td>США</td>
+      <td>Обработка API-запросов (Worker)</td>
+    </tr>
+  </table>
+  <p>
+    Финансовые данные <strong>не передаются</strong> в DeepSeek в полном объёме.
+    При AI-анализе передаются только агрегированные числа (суммы долгов, доходов, расходов)
+    без привязки к личности пользователя.
+  </p>
+
+  <h2>5. Срок хранения данных</h2>
+  <p>
+    Данные хранятся до момента удаления аккаунта пользователем или до истечения
+    3 лет с момента последнего входа в Сервис. Резервные копии в localStorage
+    автоматически удаляются через 7 дней.
+  </p>
+
+  <h2>6. Права пользователя</h2>
+  <p>В соответствии с 152-ФЗ вы имеете право:</p>
+  <ul>
+    <li><strong>Получить информацию</strong> о том, какие ваши данные обрабатываются — по запросу на email</li>
+    <li><strong>Исправить</strong> неточные данные — через настройки Google-аккаунта</li>
+    <li><strong>Удалить данные</strong> — через раздел Настройки → «Удалить все мои данные»</li>
+    <li><strong>Отозвать согласие</strong> — удалив аккаунт в Сервисе</li>
+    <li><strong>Ограничить обработку</strong> — не используя AI-функции</li>
+    <li><strong>Обратиться в Роскомнадзор</strong> с жалобой если считаете, что ваши права нарушены</li>
+  </ul>
+
+  <h2>7. Безопасность</h2>
+  <p>
+    Для защиты данных применяются:
+  </p>
+  <ul>
+    <li>Шифрование передачи данных (HTTPS/TLS 1.3)</li>
+    <li>Аутентификация через Google OAuth 2.0</li>
+    <li>Правила доступа Firestore Security Rules — каждый пользователь видит только свои данные</li>
+    <li>API-ключи хранятся только на стороне сервера (Cloudflare Worker)</li>
+    <li>Content Security Policy ограничивает загрузку сторонних скриптов</li>
+  </ul>
+
+  <h2>8. Cookies и localStorage</h2>
+  <p>
+    Сервис использует localStorage браузера для хранения резервной копии финансовых данных
+    (ключи вида <code>mf_backup_ДАТА</code>). Сторонние трекеры и рекламные cookies не используются.
+    Google Firebase может устанавливать служебные cookies для поддержания сессии аутентификации.
+  </p>
+
+  <h2>9. Дети</h2>
+  <p>
+    Сервис предназначен для лиц старше 18 лет. Мы не собираем намеренно данные
+    несовершеннолетних. При обнаружении таких данных они будут немедленно удалены.
+  </p>
+
+  <h2>10. Изменения политики</h2>
+  <p>
+    При существенных изменениях мы уведомим пользователей через интерфейс Сервиса
+    при следующем входе. Дата редакции указана в начале документа.
+    Продолжение использования Сервиса после изменений означает согласие с новой редакцией.
+  </p>
+
+  <h2>11. Контакты</h2>
+  <p>
+    По вопросам обработки персональных данных обращайтесь:<br>
+    Email: <strong>skudatin@gmail.com</strong><br>
+    Срок ответа: не более 30 дней с момента получения запроса (в соответствии со ст. 20 152-ФЗ).
+  </p>
+
+</div>
+</body>
+</html>
