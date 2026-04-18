@@ -522,9 +522,12 @@
           <div class="simple-status-msg good" id="simple-status">Загрузка...</div>
         </div>
 
-        <!-- FAB -->
-        <button class="simple-fab" onclick="window.openNewOp()" title="Добавить операцию">+</button>
-        <div class="simple-fab-hint">добавить трату или доход</div>
+        <!-- FAB убран — используем кнопку + в нижнем меню -->
+        <!-- На десктопе — отдельная кнопка в левой колонке -->
+        <button class="simple-desktop-add-btn" onclick="window.openNewOp()">
+          ＋ Добавить операцию
+        </button>
+
       </div>
 
       <!-- ── ПРАВАЯ КОЛОНКА: карточки + операции ── -->

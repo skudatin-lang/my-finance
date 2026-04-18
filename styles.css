@@ -727,23 +727,30 @@ select.fi {
     box-shadow: 0 -4px 16px rgba(0,0,0,.2);
     overflow: visible;
   }
-  /* FAB — выступает над навбаром */
+  /* FAB — единственная кнопка добавления операции */
   .bnav-fab {
     position: absolute;
-    top: -24px; left: 50%; transform: translateX(-50%);
-    width: 56px; height: 56px; border-radius: 50%;
-    background: var(--amber); border: 3px solid var(--bg);
+    top: -26px; left: 50%; transform: translateX(-50%);
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--amber); border: 4px solid var(--bg);
     display: flex; align-items: center; justify-content: center;
-    font-size: 26px; color: #fff; cursor: pointer;
-    box-shadow: 0 4px 20px rgba(186,117,23,.6);
-    z-index: 200; transition: transform .15s;
+    font-size: 30px; color: #fff; cursor: pointer;
+    box-shadow: 0 4px 20px rgba(186,117,23,.7);
+    /* iOS: z-index выше всего контента страницы */
+    z-index: 9999;
+    transition: transform .15s;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     pointer-events: all;
+    /* Убираем любые возможные блокировки кликов */
+    -webkit-user-select: none;
+    user-select: none;
   }
-  .bnav-fab:active { transform: translateX(-50%) scale(0.93); }
+  .bnav-fab:active { transform: translateX(-50%) scale(0.9); background: var(--amber-dark); }
   .bnav-spacer {
-    flex: 1; position: relative;
+    flex: 1;
+    position: relative;
+    /* spacer сам не кликабелен, но FAB внутри — да */
     pointer-events: none;
   }
   .bnav-spacer .bnav-fab { pointer-events: all; }
@@ -902,16 +909,37 @@ select.fi {
     overflow: hidden;
   }
 
-  /* Левая колонка: шапка + кольцо + FAB */
+  /* Левая колонка: шапка + кольцо + кнопка добавления */
   .simple-left-col {
     width: 380px;
     flex-shrink: 0;
     display: flex;
     flex-direction: column;
+    align-items: center;
     border-right: 1px solid rgba(255,255,255,.08);
     overflow-y: auto;
-    padding-bottom: 24px;
+    padding-bottom: 32px;
   }
+  /* На десктопе показываем встроенную кнопку добавления в левой колонке */
+  .simple-desktop-add-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--amber);
+    border: none;
+    border-radius: 14px;
+    padding: 14px 32px;
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+    margin-top: 16px;
+    box-shadow: 0 4px 16px rgba(186,117,23,.4);
+    transition: all .15s;
+    width: calc(100% - 40px);
+    justify-content: center;
+  }
+  .simple-desktop-add-btn:hover { background: var(--amber-dark); transform: translateY(-1px); }
 
   /* Правая колонка: карточки + операции */
   .simple-right-col {
@@ -934,13 +962,16 @@ select.fi {
     flex: 1;
   }
 
-  .simple-fab-hint { margin-bottom: 24px; }
+  /* на десктопе FAB скрыт — он только в мобильном bottom nav */
+  .simple-fab-hint { display: none; }
 }
 
-/* ── МОБИЛЬ: вертикальный layout (без изменений) ── */
+/* ── МОБИЛЬ: вертикальный layout ── */
 @media (max-width: 700px) {
   .simple-left-col,
   .simple-right-col { display: contents; }
+  /* Десктопная кнопка скрыта — на мобиле используется FAB в bottom nav */
+  .simple-desktop-add-btn { display: none !important; }
 }
 
 /* Шапка простого режима */
@@ -1053,26 +1084,8 @@ select.fi {
 .simple-status-msg.warn { background: rgba(255,180,0,.15); color: #FFB800; }
 .simple-status-msg.bad  { background: rgba(255,107,107,.15); color: #FF6B6B; }
 
-/* FAB кнопка на простом экране */
-.simple-fab {
-  width: 64px; height: 64px;
-  border-radius: 50%;
-  background: var(--amber);
-  border: none;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 30px; color: #fff; cursor: pointer;
-  box-shadow: 0 6px 24px rgba(186,117,23,.5);
-  transition: transform .15s, box-shadow .15s;
-  margin: 8px auto 4px;
-  flex-shrink: 0;
-}
-.simple-fab:hover { transform: scale(1.08); box-shadow: 0 8px 28px rgba(186,117,23,.6); }
-.simple-fab-hint {
-  font-size: 11px;
-  color: rgba(255,255,255,.3);
-  text-align: center;
-  margin-bottom: 16px;
-}
+/* simple-fab удалён — используем только bnav-fab в нижнем меню */
+.simple-fab-hint { display: none; }
 
 /* Карточки-подсказки под FAB */
 .simple-cards {
