@@ -88,31 +88,93 @@ export function saveOperation(onDone){
 
 export function openEditOp(id){
   const o=state.D.operations.find(op=>op.id===id);if(!o)return;
-  if(isPlanned(o.type)||o.type==='transfer'){alert('Редактирование доступно только для доходов и расходов');return;}
+  // Плановые операции не редактируем
+  if(isPlanned(o.type)){alert('Плановые операции не редактируются');return;}
+
+  const titleEl=document.getElementById('edit-op-title');
+  const regularFields=document.getElementById('edit-op-regular-fields');
+  const transferFields=document.getElementById('edit-op-transfer-fields');
+  const typeInput=document.getElementById('edit-op-type');
+
   $('edit-op-id').value=id;
   $('edit-op-amount').value=o.amount;
   $('edit-op-date').value=o.date;
   $('edit-op-note').value=o.note||'';
-  $('edit-op-wallet').innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
-  $('edit-op-wallet').value=o.wallet;
-  const cats=o.type==='income'?state.D.incomeCats:state.D.expenseCats.map(c=>c.name);
-  $('edit-op-cat').innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
-  $('edit-op-cat').value=o.category||'';
+  if(typeInput)typeInput.value=o.type;
+
+  const walletOpts=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+
+  if(o.type==='transfer'){
+    // Режим редактирования перевода
+    if(titleEl)titleEl.textContent='РЕДАКТИРОВАТЬ ПЕРЕВОД';
+    if(regularFields)regularFields.style.display='none';
+    if(transferFields)transferFields.style.display='';
+
+    const fromSel=document.getElementById('edit-op-from');
+    const toSel=document.getElementById('edit-op-to');
+    const planSel=document.getElementById('edit-op-plan');
+
+    if(fromSel){fromSel.innerHTML=walletOpts;fromSel.value=o.wallet;}
+    if(toSel){toSel.innerHTML=walletOpts;toSel.value=o.walletTo;}
+    if(planSel){
+      planSel.innerHTML='<option value="">— не указывать —</option>'+
+        state.D.plan.map(p=>`<option value="${p.id}">${p.label}</option>`).join('');
+      planSel.value=o.planId||'';
+    }
+  }else{
+    // Режим редактирования дохода / расхода
+    if(titleEl)titleEl.textContent=o.type==='income'?'РЕДАКТИРОВАТЬ ДОХОД':'РЕДАКТИРОВАТЬ РАСХОД';
+    if(regularFields)regularFields.style.display='';
+    if(transferFields)transferFields.style.display='none';
+
+    $('edit-op-wallet').innerHTML=walletOpts;
+    $('edit-op-wallet').value=o.wallet;
+    const cats=o.type==='income'?state.D.incomeCats:state.D.expenseCats.map(c=>c.name);
+    $('edit-op-cat').innerHTML=cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+    $('edit-op-cat').value=o.category||'';
+  }
+
   document.getElementById('modal-edit-op').classList.add('open');
 }
 
 export function saveEditOp(onDone){
-  const id=$('edit-op-id').value,idx=state.D.operations.findIndex(o=>o.id===id);if(idx===-1)return;
-  const o=state.D.operations[idx],newAmt=parseFloat($('edit-op-amount').value);
+  const id=$('edit-op-id').value;
+  const idx=state.D.operations.findIndex(o=>o.id===id);if(idx===-1)return;
+  const o=state.D.operations[idx];
+  const newAmt=parseFloat($('edit-op-amount').value);
   if(!newAmt||newAmt<=0){alert('Введите сумму');return;}
-  const newW=$('edit-op-wallet').value;
-  // Guard: transfer self-transfer check (shouldn't happen in edit, but just in case)
-  if(o.type==='transfer'&&newW===o.walletTo){alert('Нельзя переводить на тот же кошелёк');return;}
-  const wOld=state.D.wallets.find(w=>w.id===o.wallet);
-  if(wOld){if(o.type==='income')wOld.balance-=o.amount;else wOld.balance+=o.amount;}
-  const wNew=state.D.wallets.find(w=>w.id===newW);
-  if(wNew){if(o.type==='income')wNew.balance+=newAmt;else wNew.balance-=newAmt;}
-  state.D.operations[idx]={...o,amount:newAmt,date:$('edit-op-date').value,wallet:newW,category:$('edit-op-cat').value,note:$('edit-op-note').value.trim()};
+  const newDate=$('edit-op-date').value;
+  const newNote=$('edit-op-note').value.trim();
+
+  if(o.type==='transfer'){
+    const newFrom=document.getElementById('edit-op-from')?.value;
+    const newTo=document.getElementById('edit-op-to')?.value;
+    if(!newFrom||!newTo){alert('Укажите кошельки');return;}
+    if(newFrom===newTo){alert('Нельзя переводить на тот же кошелёк');return;}
+    // Откатываем старый перевод
+    const wfOld=state.D.wallets.find(w=>w.id===o.wallet);
+    const wtOld=state.D.wallets.find(w=>w.id===o.walletTo);
+    if(wfOld)wfOld.balance+=o.amount;
+    if(wtOld)wtOld.balance-=o.amount;
+    // Применяем новый перевод
+    const wfNew=state.D.wallets.find(w=>w.id===newFrom);
+    const wtNew=state.D.wallets.find(w=>w.id===newTo);
+    if(wfNew)wfNew.balance-=newAmt;
+    if(wtNew)wtNew.balance+=newAmt;
+    const newPlanId=document.getElementById('edit-op-plan')?.value||'';
+    const pl=newPlanId?state.D.plan.find(p=>p.id===newPlanId):null;
+    state.D.operations[idx]={...o,amount:newAmt,date:newDate,note:newNote,
+      wallet:newFrom,walletTo:newTo,
+      planId:newPlanId||undefined,planLabel:pl?pl.label:undefined};
+  }else{
+    const newW=$('edit-op-wallet').value;
+    const wOld=state.D.wallets.find(w=>w.id===o.wallet);
+    if(wOld){if(o.type==='income')wOld.balance-=o.amount;else wOld.balance+=o.amount;}
+    const wNew=state.D.wallets.find(w=>w.id===newW);
+    if(wNew){if(o.type==='income')wNew.balance+=newAmt;else wNew.balance-=newAmt;}
+    state.D.operations[idx]={...o,amount:newAmt,date:newDate,wallet:newW,
+      category:$('edit-op-cat').value,note:newNote};
+  }
   sched();document.getElementById('modal-edit-op').classList.remove('open');onDone();
 }
 

@@ -673,13 +673,27 @@
 
 <div class="modal-overlay" id="modal-edit-op">
   <div class="modal">
-    <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ ОПЕРАЦИЮ</span><button class="modal-close" onclick="window.closeModal('modal-edit-op')">&#10005;</button></div>
+    <div class="modal-hdr"><span class="modal-title" id="edit-op-title">РЕДАКТИРОВАТЬ ОПЕРАЦИЮ</span><button class="modal-close" onclick="window.closeModal('modal-edit-op')">&#10005;</button></div>
     <div class="fg"><label>СУММА</label><input class="fi" type="number" id="edit-op-amount"></div>
     <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="edit-op-date"></div>
-    <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="edit-op-wallet"></select></div>
-    <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="edit-op-cat"></select></div>
+    <!-- Поля для доходов и расходов -->
+    <div id="edit-op-regular-fields">
+      <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="edit-op-wallet"></select></div>
+      <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="edit-op-cat"></select></div>
+    </div>
+    <!-- Поля только для переводов -->
+    <div id="edit-op-transfer-fields" style="display:none">
+      <div class="fg"><label>ОТКУДА</label><select class="fi" id="edit-op-from"></select></div>
+      <div class="fg"><label>КУДА</label><select class="fi" id="edit-op-to"></select></div>
+      <div class="fg"><label>СТАТЬЯ ФИНПЛАНА</label>
+        <select class="fi" id="edit-op-plan">
+          <option value="">— не указывать —</option>
+        </select>
+      </div>
+    </div>
     <div class="fg"><label>ЗАМЕТКА</label><input class="fi" id="edit-op-note"></div>
     <input type="hidden" id="edit-op-id">
+    <input type="hidden" id="edit-op-type">
     <button class="btn-primary" onclick="window.saveEdit()">Сохранить</button>
     <button class="btn-sec" onclick="window.closeModal('modal-edit-op')">Отмена</button>
   </div>
@@ -1714,13 +1728,27 @@ function renderSimpleDashboard(){
     }else{
       recentEl.innerHTML=recent.map(o=>{
         const isInc=o.type==='income';
-        const amt=(isInc?'+ ':'− ')+'₽ '+Math.round(o.amount).toLocaleString('ru-RU');
+        const isTr=o.type==='transfer';
+        // Название операции
+        let catLabel,amtLabel,amtClass;
+        if(isTr){
+          const wFrom=state.D.wallets.find(w=>w.id===o.wallet);
+          const wTo=state.D.wallets.find(w=>w.id===o.walletTo);
+          catLabel='Перевод → '+(wTo?.name||'?');
+          amtLabel='₽ '+Math.round(o.amount).toLocaleString('ru-RU');
+          amtClass=''; // переводы нейтральные
+        }else{
+          catLabel=o.category||'—';
+          amtLabel=(isInc?'+ ':'− ')+'₽ '+Math.round(o.amount).toLocaleString('ru-RU');
+          amtClass=isInc?'pos':'neg';
+        }
+        const wName=!isTr?(state.D.wallets.find(w=>w.id===o.wallet)?.name||''):'';
         return`<div class="simple-op">
           <div class="simple-op-left">
-            <div class="simple-op-cat">${o.category||'—'}</div>
-            <div class="simple-op-date">${o.date?o.date.split('-').reverse().join('.'):''}${o.note?' · '+o.note:''}</div>
+            <div class="simple-op-cat">${catLabel}</div>
+            <div class="simple-op-date">${o.date?o.date.split('-').reverse().join('.'):''}${wName?' · '+wName:''}${o.note?' · '+o.note:''}</div>
           </div>
-          <div class="simple-op-amt ${isInc?'pos':'neg'}">${amt}</div>
+          <div class="simple-op-amt ${amtClass}" style="${isTr?'color:rgba(255,255,255,.5)':''}">${amtLabel}</div>
         </div>`;
       }).join('');
     }
