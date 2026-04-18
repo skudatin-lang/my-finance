@@ -425,77 +425,81 @@
   <!-- ── DASHBOARD SIMPLE (default for new users) ── -->
   <div id="screen-dashboard-simple" class="screen">
     <div class="simple-hero">
-      <!-- Шапка -->
-      <div class="simple-header">
-        <div>
-          <div class="simple-greeting" id="simple-greeting">Привет! 👋</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.3)" id="simple-month-lbl"></div>
-        </div>
-        <div class="simple-header-right">
-          <!-- Streak -->
-          <div class="simple-streak" id="simple-streak" onclick="window._showStreakInfo()" style="display:none">
-            🔥 <span id="simple-streak-count">0</span>
+
+      <!-- ── ЛЕВАЯ КОЛОНКА: приветствие + кольцо + FAB ── -->
+      <div class="simple-left-col">
+        <!-- Шапка -->
+        <div class="simple-header">
+          <div>
+            <div class="simple-greeting" id="simple-greeting">Привет! 👋</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.3)" id="simple-month-lbl"></div>
           </div>
-          <img class="simple-avatar" id="simple-avatar" src="" style="display:none">
-          <!-- Переключить в про-режим -->
-          <button class="mode-switch-btn" onclick="window.switchToPro()">Про →</button>
-        </div>
-      </div>
-
-      <!-- Главная цифра + кольцо -->
-      <div class="simple-center">
-        <div class="simple-amount-label">можно потратить до конца месяца</div>
-        <div class="simple-amount" id="simple-main-amount">₽ 0</div>
-
-        <!-- SVG-кольцо прогресса бюджета -->
-        <div class="simple-ring-wrap">
-          <svg class="simple-ring-svg" viewBox="0 0 110 110">
-            <circle class="simple-ring-bg" cx="55" cy="55" r="45"/>
-            <circle class="simple-ring-fill" id="simple-ring" cx="55" cy="55" r="45"
-              stroke="#51CF66" stroke-dashoffset="0"/>
-          </svg>
-          <div class="simple-ring-center">
-            <div class="simple-ring-pct" id="simple-ring-pct">0%</div>
-            <div class="simple-ring-sub">бюджет</div>
+          <div class="simple-header-right">
+            <div class="simple-streak" id="simple-streak" onclick="window._showStreakInfo()" style="display:none">
+              🔥 <span id="simple-streak-count">0</span>
+            </div>
+            <img class="simple-avatar" id="simple-avatar" src="" style="display:none">
+            <button class="mode-switch-btn" onclick="window.switchToPro()">Про →</button>
           </div>
         </div>
-        <div class="simple-status-msg good" id="simple-status">Загрузка...</div>
+
+        <!-- Главная цифра + кольцо -->
+        <div class="simple-center">
+          <div class="simple-amount-label">можно потратить до конца месяца</div>
+          <div class="simple-amount" id="simple-main-amount">₽ 0</div>
+          <div class="simple-ring-wrap">
+            <svg class="simple-ring-svg" viewBox="0 0 110 110">
+              <circle class="simple-ring-bg" cx="55" cy="55" r="45"/>
+              <circle class="simple-ring-fill" id="simple-ring" cx="55" cy="55" r="45"
+                stroke="#51CF66" stroke-dashoffset="0"/>
+            </svg>
+            <div class="simple-ring-center">
+              <div class="simple-ring-pct" id="simple-ring-pct">0%</div>
+              <div class="simple-ring-sub">бюджет</div>
+            </div>
+          </div>
+          <div class="simple-status-msg good" id="simple-status">Загрузка...</div>
+        </div>
+
+        <!-- FAB -->
+        <button class="simple-fab" onclick="window.openNewOp()" title="Добавить операцию">+</button>
+        <div class="simple-fab-hint">добавить трату или доход</div>
       </div>
 
-      <!-- FAB -->
-      <button class="simple-fab" onclick="window.openNewOp()" title="Добавить операцию">+</button>
-      <div class="simple-fab-hint">добавить трату или доход</div>
+      <!-- ── ПРАВАЯ КОЛОНКА: карточки + операции ── -->
+      <div class="simple-right-col">
+        <!-- 4 карточки -->
+        <div class="simple-cards">
+          <div class="simple-card" onclick="window.showScreen('reports')">
+            <div class="simple-card-icon">📈</div>
+            <div class="simple-card-title">Доход</div>
+            <div class="simple-card-val pos" id="simple-inc">₽ 0</div>
+          </div>
+          <div class="simple-card" onclick="window.showScreen('reports')">
+            <div class="simple-card-icon">📉</div>
+            <div class="simple-card-title">Расход</div>
+            <div class="simple-card-val neg" id="simple-exp">₽ 0</div>
+          </div>
+          <div class="simple-card" onclick="window.showScreen('loans')">
+            <div class="simple-card-icon">💳</div>
+            <div class="simple-card-title">Долги</div>
+            <div class="simple-card-val neg" id="simple-debt">₽ 0</div>
+          </div>
+          <div class="simple-card" onclick="window.showScreen('health')">
+            <div class="simple-card-icon">❤️</div>
+            <div class="simple-card-title">Здоровье</div>
+            <div class="simple-card-val" id="simple-health">—</div>
+          </div>
+        </div>
 
-      <!-- 2 карточки: доход и расход -->
-      <div class="simple-cards">
-        <div class="simple-card" onclick="window.showScreen('reports')">
-          <div class="simple-card-icon">📈</div>
-          <div class="simple-card-title">Доход</div>
-          <div class="simple-card-val pos" id="simple-inc">₽ 0</div>
-        </div>
-        <div class="simple-card" onclick="window.showScreen('reports')">
-          <div class="simple-card-icon">📉</div>
-          <div class="simple-card-title">Расход</div>
-          <div class="simple-card-val neg" id="simple-exp">₽ 0</div>
-        </div>
-        <div class="simple-card" onclick="window.showScreen('loans')">
-          <div class="simple-card-icon">💳</div>
-          <div class="simple-card-title">Долги</div>
-          <div class="simple-card-val neg" id="simple-debt">₽ 0</div>
-        </div>
-        <div class="simple-card" onclick="window.showScreen('health')">
-          <div class="simple-card-icon">❤️</div>
-          <div class="simple-card-title">Здоровье</div>
-          <div class="simple-card-val" id="simple-health">—</div>
+        <!-- Последние операции -->
+        <div class="simple-ops">
+          <div class="simple-ops-title">Последние операции</div>
+          <div id="simple-recent-ops"></div>
+          <div class="simple-see-all" onclick="window.showScreen('reports')">Все операции →</div>
         </div>
       </div>
 
-      <!-- Последние 3 операции -->
-      <div class="simple-ops">
-        <div class="simple-ops-title">Последние операции</div>
-        <div id="simple-recent-ops"></div>
-        <div class="simple-see-all" onclick="window.showScreen('reports')">Все операции →</div>
-      </div>
     </div>
   </div>
 
@@ -1719,10 +1723,11 @@ function renderSimpleDashboard(){
     else streakEl.style.display='none';
   }
 
-  // Последние операции
+  // Последние операции — на десктопе больше
   const recentEl=document.getElementById('simple-recent-ops');
   if(recentEl){
-    const recent=[...mOps].sort((a,b)=>a.date<b.date?1:-1).slice(0,3);
+    const isDesktop=window.innerWidth>700;
+    const recent=[...mOps].sort((a,b)=>a.date<b.date?1:-1).slice(0,isDesktop?6:3);
     if(!recent.length){
       recentEl.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,.3);text-align:center;padding:12px 0">Нет операций за этот месяц</div>';
     }else{
