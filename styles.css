@@ -765,7 +765,11 @@ select.fi {
 /* ── MOBILE LAYOUT OVERRIDES ── */
 @media (max-width: 700px) {
   body { overflow: auto; height: auto; }
-  #app-screen { height: auto; min-height: 100vh; overflow: hidden; }
+  #app-screen { height: auto; min-height: 100vh; overflow: visible; }
+
+  /* Simple hero на мобиле — вертикальный скролл */
+  #screen-dashboard-simple { overflow: visible; height: auto; }
+  .simple-hero { overflow: visible; min-height: calc(100vh - 110px); }
 
   .topbar { flex-wrap: wrap; height: auto; padding: 0; }
   .topbar-brand { order: 1; flex: 1; padding: 0 14px; height: 48px; }
@@ -1215,3 +1219,58 @@ body.mode-simple #screen-dashboard-pro  { display: none !important; }
   cursor: pointer;
 }
 
+
+/* ── SUPPORT BUTTONS (в настройках) ── */
+.support-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg2);
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all .15s;
+}
+.support-btn:hover {
+  border-color: var(--amber);
+  background: var(--amber-light);
+}
+
+/* ── FAQ ACCORDION ── */
+.faq-item {
+  border-bottom: 1px solid var(--border);
+}
+.faq-item:last-child { border-bottom: none; }
+.faq-question {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  background: none;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  gap: 10px;
+}
+.faq-question:hover { color: var(--amber); }
+.faq-arrow {
+  font-size: 12px;
+  color: var(--text3);
+  flex-shrink: 0;
+  transition: transform .2s;
+}
+.faq-item.open .faq-arrow { transform: rotate(180deg); }
+.faq-answer {
+  display: none;
+  font-size: 12px;
+  color: var(--text2);
+  line-height: 1.7;
+  padding-bottom: 12px;
+}
+.faq-item.open .faq-answer { display: block; }

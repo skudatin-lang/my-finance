@@ -410,12 +410,71 @@
           <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">ОБУЧЕНИЕ</div>
           <button class="btn-sec" onclick="window.startTour()" style="width:100%">🎓 Пройти обучение заново</button>
         </div>
-        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-          <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:8px">ДОКУМЕНТЫ</div>
-          <div style="display:flex;flex-direction:column;gap:6px">
-            <a href="./privacy.html" target="_blank" style="font-size:12px;color:var(--amber-dark);text-decoration:none;padding:6px 0;border-bottom:1px solid var(--border)">📄 Политика конфиденциальности →</a>
-            <a href="./terms.html" target="_blank" style="font-size:12px;color:var(--amber-dark);text-decoration:none;padding:6px 0">📄 Пользовательское соглашение →</a>
+      </div>
+    </div>
+
+    <!-- ── FAQ ── -->
+    <div class="s-panel" style="width:100%;max-width:600px">
+      <div class="s-panel-head">❓ ЧАСТЫЕ ВОПРОСЫ</div>
+      <div class="s-panel-body" id="faq-body">
+        <!-- JS рендерит аккордеон -->
+      </div>
+    </div>
+
+    <!-- ── ПОДДЕРЖКА ── -->
+    <div class="s-panel" style="width:100%;max-width:500px">
+      <div class="s-panel-head">💬 ПОДДЕРЖКА</div>
+      <div class="s-panel-body">
+        <div style="font-size:13px;color:var(--text);margin-bottom:14px;line-height:1.6">
+          Если что-то пошло не так или есть идея — напишите нам. Отвечаем в течение 24 часов.
+        </div>
+        <a href="https://t.me/skudatin" target="_blank" class="support-btn">
+          <span style="font-size:18px">✈️</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Telegram</div>
+            <div style="font-size:11px;color:var(--text2)">Быстрый ответ — @skudatin</div>
           </div>
+          <span style="margin-left:auto;font-size:14px;color:var(--text3)">→</span>
+        </a>
+        <a href="mailto:skudatin@gmail.com" target="_blank" class="support-btn" style="margin-top:8px">
+          <span style="font-size:18px">📧</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Email</div>
+            <div style="font-size:11px;color:var(--text2)">skudatin@gmail.com</div>
+          </div>
+          <span style="margin-left:auto;font-size:14px;color:var(--text3)">→</span>
+        </a>
+        <div style="margin-top:14px;padding:10px 12px;background:var(--blue-bg);border-radius:8px;font-size:11px;color:var(--blue);line-height:1.5">
+          💡 Скоро здесь появится AI-ассистент поддержки в Telegram
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ДОКУМЕНТЫ ── -->
+    <div class="s-panel" style="width:100%;max-width:500px">
+      <div class="s-panel-head">📄 ДОКУМЕНТЫ И БЕЗОПАСНОСТЬ</div>
+      <div class="s-panel-body">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:12px;line-height:1.6">
+          Ваши данные защищены шифрованием. Мы никогда не продаём данные третьим лицам.
+        </div>
+        <a href="./privacy.html" target="_blank" class="support-btn">
+          <span style="font-size:18px">🔒</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Политика конфиденциальности</div>
+            <div style="font-size:11px;color:var(--text2)">Как мы храним и защищаем данные</div>
+          </div>
+          <span style="margin-left:auto;font-size:14px;color:var(--text3)">→</span>
+        </a>
+        <a href="./terms.html" target="_blank" class="support-btn" style="margin-top:8px">
+          <span style="font-size:18px">📋</span>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">Пользовательское соглашение</div>
+            <div style="font-size:11px;color:var(--text2)">Условия использования сервиса</div>
+          </div>
+          <span style="margin-left:auto;font-size:14px;color:var(--text3)">→</span>
+        </a>
+        <div style="margin-top:12px;padding:10px 12px;background:var(--amber-light);border-radius:8px;font-size:11px;color:var(--text2);line-height:1.5">
+          Версия приложения: <strong>2.0</strong> · Данные хранятся в Firebase (ЕС)
         </div>
       </div>
     </div>
@@ -1068,7 +1127,7 @@ function refreshCurrent(){
   else if(cur==='reports')renderReports();
   else if(cur==='dds')renderDDS();
   else if(cur==='calendar'){renderCalendar();renderShoppingList();window._renderCalRecurring&&window._renderCalRecurring();}
-  else if(cur==='settings'){renderSettings();_loadVoiceToSettings();}
+  else if(cur==='settings'){renderSettings();_loadVoiceToSettings();renderFAQ();}
   else if(cur==='loans'){renderLoans();renderLoansSummary();}
   else if(cur==='health')renderHealth();
   else if(cur==='admin'){updateAdminVisibility();}
@@ -1760,7 +1819,71 @@ function renderSimpleDashboard(){
   }
 }
 
-// ── Тема: светлая / тёмная ────────────────────────────────────────────────
+// ── FAQ (часто задаваемые вопросы) ───────────────────────────────────────
+const FAQ_ITEMS = [
+  {
+    q: 'С чего начать работу с приложением?',
+    a: 'Сначала добавьте кошельки с реальными балансами в Настройках → Кошельки. Затем настройте финансовый план (сколько % дохода на что тратите). После этого просто вносите операции каждый день — и приложение начнёт строить аналитику.'
+  },
+  {
+    q: 'Как добавить операцию быстро?',
+    a: 'Три способа: 1) Кнопка «+ ОПЕРАЦИЯ» в верхней панели. 2) Нажмите кнопку микрофона 🎤 справа внизу и скажите голосом — например: «потратил восемьсот рублей на продукты». 3) Кнопка ⚡ для быстрого ввода без лишних полей.'
+  },
+  {
+    q: 'Что такое финансовый план и зачем он нужен?',
+    a: 'Финансовый план — это конверты для вашего бюджета. Вы заранее решаете, сколько процентов дохода пойдёт на продукты, кредиты, накопления и т.д. Приложение следит за тем, как вы придерживаетесь плана, и показывает алерты при превышении.'
+  },
+  {
+    q: 'Что такое ДДС?',
+    a: 'ДДС — Движение Денежных Средств. Это таблица где видно сколько денег планировалось и сколько фактически потрачено по каждой статье финансового плана за месяц. Помогает понять где перерасход, а где экономия.'
+  },
+  {
+    q: 'Как работает голосовой ввод?',
+    a: 'Нажмите кнопку 🎤 в правом нижнем углу и скажите что сделали: «потратил пятьсот на кафе», «получил зарплату 50 тысяч», «перевёл тысячу на карту». Приложение само определит тип операции, сумму и категорию — вам останется только подтвердить.'
+  },
+  {
+    q: 'Как добавить перевод между кошельками?',
+    a: 'Нажмите «+ ОПЕРАЦИЯ» → выберите тип «Перевод» → укажите «Откуда» и «Куда» → введите сумму. Перевод не считается доходом или расходом — он просто перемещает деньги между вашими счетами.'
+  },
+  {
+    q: 'Безопасны ли мои данные?',
+    a: 'Да. Данные хранятся в зашифрованном виде в Google Firebase. Каждый пользователь видит только свои данные — это защищено на уровне базы данных (Firestore Security Rules). Мы не продаём данные и не используем их для рекламы.'
+  },
+  {
+    q: 'Как работает финансовое здоровье?',
+    a: 'Индекс от 0 до 100 рассчитывается по четырём показателям: подушка безопасности (есть ли накопления на 3–6 месяцев), норма сбережений (откладываете ли вы 10–20% дохода), долговая нагрузка (не превышает ли 30% дохода) и регулярность дохода. Советы по улучшению — на экране Здоровье.'
+  },
+  {
+    q: 'Как отменить подписку?',
+    a: 'Зайдите в Настройки → Управление подпиской. Подписку можно отменить в любой момент — доступ сохраняется до конца оплаченного периода. При отмене за 24 часа до следующего списания повторного платежа не будет.'
+  },
+  {
+    q: 'Что делать если что-то работает неправильно?',
+    a: 'Попробуйте обновить страницу (Ctrl+R). Если не помогает — напишите нам в Telegram @skudatin или на почту skudatin@gmail.com с описанием проблемы. Отвечаем в течение 24 часов.'
+  },
+];
+
+function renderFAQ() {
+  const el = document.getElementById('faq-body');
+  if(!el) return;
+  el.innerHTML = FAQ_ITEMS.map((item, i) => `
+    <div class="faq-item" id="faq-${i}">
+      <button class="faq-question" onclick="window._toggleFAQ(${i})">
+        <span>${item.q}</span>
+        <span class="faq-arrow">▼</span>
+      </button>
+      <div class="faq-answer">${item.a}</div>
+    </div>
+  `).join('');
+}
+
+window._toggleFAQ = function(i) {
+  const item = document.getElementById('faq-' + i);
+  if(!item) return;
+  item.classList.toggle('open');
+};
+
+// Тема: светлая / тёмная ────────────────────────────────────────────────
 (function(){
   const saved = localStorage.getItem('mf_theme') || 'light';
   if(saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
