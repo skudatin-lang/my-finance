@@ -7,11 +7,13 @@
 
 /* ── CSS ПЕРЕМЕННЫЕ ── */
 :root {
-  /* Светлая тема (бежевая, оригинальная) */
-  --bg:          #F0E6C8;
-  --bg2:         #E8D8B0;
-  --card:        #FDF6E3;
-  --card2:       #FAF0D0;
+  /* Светлая тема (бежевая)
+     Логика: --bg (фон экрана) ТЕМНЕЕ чем --card (блоки/карточки)
+     Блоки как будто «приподняты» над фоном — как бумага на столе */
+  --bg:          #E8D5A8;   /* фон экрана — тёмный бежевый */
+  --bg2:         #DFC898;   /* ещё чуть темнее — для вложенных элементов */
+  --card:        #FDF6E3;   /* карточки/блоки — светлый кремовый, выделяются */
+  --card2:       #FAF0D0;   /* второй уровень карточек */
   --topbar:      #3D2B1A;
   --topbar2:     #2A1C0E;
   --border:      #D4B483;
@@ -44,7 +46,8 @@
   /* Streak / gamification */
   --streak:      #FF6B35;
   /* Hero gradient */
-  --hero-grad: linear-gradient(160deg,#2A1C0E 0%,#3D2B1A 50%,#4A3520 100%);
+  /* Hero-градиент — бежевая палитра, чуть темнее фона для глубины */
+  --hero-grad: linear-gradient(160deg, #D4BF8A 0%, #DFC898 50%, #E8D5A8 100%);
 }
 
 /* ── ТЁМНАЯ ТЕМА ── */
@@ -120,25 +123,25 @@ body {
   display: flex; align-items: center; justify-content: center;
   margin: 0 auto 20px;
   font-size: 38px; color: #fff; font-weight: 700;
-  box-shadow: 0 8px 24px rgba(186,117,23,.45);
+  box-shadow: 0 8px 24px rgba(186,117,23,.35);
 }
 .auth-title {
-  font-size: 30px; font-weight: 800; color: #fff;
+  font-size: 30px; font-weight: 800; color: var(--topbar);
   margin-bottom: 6px; letter-spacing: .5px;
 }
-.auth-sub { font-size: 14px; color: rgba(255,255,255,.5); margin-bottom: 40px; }
+.auth-sub { font-size: 14px; color: var(--text2); margin-bottom: 40px; }
 .google-btn {
   display: flex; align-items: center; gap: 12px;
-  background: rgba(255,255,255,.1);
-  border: 1.5px solid rgba(255,255,255,.2);
+  background: var(--card);
+  border: 1.5px solid var(--border);
   border-radius: 14px;
   padding: 14px 28px;
-  font-size: 15px; font-weight: 600; color: #fff;
+  font-size: 15px; font-weight: 600; color: var(--topbar);
   cursor: pointer;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(61,43,26,.12);
   transition: all .2s;
 }
-.google-btn:hover { background: rgba(255,255,255,.18); transform: translateY(-1px); }
+.google-btn:hover { background: var(--amber-light); border-color: var(--amber); transform: translateY(-1px); }
 
 /* ── LOADING ── */
 #loading-screen {
@@ -712,6 +715,19 @@ select.fi {
   transition: transform .3s;
 }
 [data-theme="dark"] .theme-toggle { background: var(--amber); }
+
+/* В тёмной теме simple-hero тёмный — возвращаем белые цвета */
+[data-theme="dark"] .simple-hero {
+  --hero-text:        #FFFFFF;
+  --hero-text2:       rgba(255,255,255,.55);
+  --hero-text3:       rgba(255,255,255,.35);
+  --hero-card-bg:     rgba(255,255,255,.07);
+  --hero-card-border: rgba(255,255,255,.1);
+  --hero-card-hover:  rgba(255,255,255,.13);
+  --hero-op-bg:       rgba(255,255,255,.06);
+  --hero-ring-bg:     rgba(255,255,255,.1);
+  --hero-divider:     rgba(255,255,255,.08);
+}
 [data-theme="dark"] .theme-toggle::after { transform: translateX(16px); }
 
 /* ── BOTTOM NAV (mobile) ── */
@@ -899,6 +915,16 @@ select.fi {
   background: var(--hero-grad);
   overflow-y: auto;
   width: 100%;
+  /* Переопределяем цвета для бежевого hero */
+  --hero-text:        var(--topbar);
+  --hero-text2:       var(--text2);
+  --hero-text3:       var(--text3);
+  --hero-card-bg:     var(--card);
+  --hero-card-border: var(--border);
+  --hero-card-hover:  var(--amber-light);
+  --hero-op-bg:       rgba(61,43,26,.07);
+  --hero-ring-bg:     rgba(61,43,26,.1);
+  --hero-divider:     rgba(61,43,26,.1);
 }
 
 /* ── ДЕСКТОП: горизонтальный layout ── */
@@ -916,7 +942,7 @@ select.fi {
     display: flex;
     flex-direction: column;
     align-items: center;
-    border-right: 1px solid rgba(255,255,255,.08);
+    border-right: 1px solid var(--hero-divider);
     overflow-y: auto;
     padding-bottom: 32px;
   }
@@ -986,7 +1012,7 @@ select.fi {
 .simple-greeting {
   font-size: 13px;
   font-weight: 600;
-  color: rgba(255,255,255,.5);
+  color: var(--hero-text2);
   letter-spacing: .3px;
 }
 .simple-header-right {
@@ -997,7 +1023,7 @@ select.fi {
 .simple-avatar {
   width: 32px; height: 32px;
   border-radius: 50%;
-  border: 2px solid rgba(255,255,255,.2);
+  border: 2px solid var(--hero-card-border);
 }
 
 /* Центральный блок — главная цифра */
@@ -1013,7 +1039,7 @@ select.fi {
 }
 .simple-amount-label {
   font-size: 12px;
-  color: rgba(255,255,255,.45);
+  color: var(--hero-text2);
   letter-spacing: .5px;
   margin-bottom: 8px;
   text-transform: uppercase;
@@ -1021,7 +1047,7 @@ select.fi {
 .simple-amount {
   font-size: 52px;
   font-weight: 800;
-  color: #fff;
+  color: var(--hero-text);
   line-height: 1;
   letter-spacing: -1px;
   margin-bottom: 6px;
@@ -1042,7 +1068,7 @@ select.fi {
 }
 .simple-ring-bg {
   fill: none;
-  stroke: rgba(255,255,255,.1);
+  stroke: var(--hero-ring-bg);
   stroke-width: 8;
 }
 .simple-ring-fill {
@@ -1063,12 +1089,12 @@ select.fi {
 .simple-ring-pct {
   font-size: 20px;
   font-weight: 800;
-  color: #fff;
+  color: var(--hero-text);
   line-height: 1;
 }
 .simple-ring-sub {
   font-size: 9px;
-  color: rgba(255,255,255,.4);
+  color: var(--hero-text2);
   margin-top: 2px;
 }
 .simple-status-msg {
@@ -1077,8 +1103,8 @@ select.fi {
   margin-top: 4px;
   padding: 5px 14px;
   border-radius: 20px;
-  background: rgba(255,255,255,.08);
-  color: rgba(255,255,255,.7);
+  background: rgba(61,43,26,.08);
+  color: var(--hero-text2);
 }
 .simple-status-msg.good { background: rgba(81,207,102,.15); color: #51CF66; }
 .simple-status-msg.warn { background: rgba(255,180,0,.15); color: #FFB800; }
@@ -1097,20 +1123,20 @@ select.fi {
   flex-shrink: 0;
 }
 .simple-card {
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.1);
+  background: var(--hero-card-bg);
+  border: 1px solid var(--hero-card-border);
   border-radius: 14px;
   padding: 12px 14px;
   cursor: pointer;
   transition: background .15s;
   text-align: left;
 }
-.simple-card:hover { background: rgba(255,255,255,.12); }
+.simple-card:hover { background: var(--hero-card-hover); }
 .simple-card-icon { font-size: 18px; margin-bottom: 4px; }
 .simple-card-title {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255,255,255,.5);
+  color: var(--hero-text2);
   letter-spacing: .4px;
   text-transform: uppercase;
   margin-bottom: 2px;
@@ -1118,7 +1144,7 @@ select.fi {
 .simple-card-val {
   font-size: 15px;
   font-weight: 700;
-  color: #fff;
+  color: var(--hero-text);
 }
 .simple-card-val.pos { color: #51CF66; }
 .simple-card-val.neg { color: #FF6B6B; }
@@ -1132,7 +1158,7 @@ select.fi {
 .simple-ops-title {
   font-size: 10px;
   font-weight: 700;
-  color: rgba(255,255,255,.35);
+  color: var(--hero-text2);
   letter-spacing: .8px;
   text-transform: uppercase;
   margin-bottom: 8px;
@@ -1142,7 +1168,7 @@ select.fi {
   justify-content: space-between;
   align-items: center;
   padding: 9px 12px;
-  background: rgba(255,255,255,.06);
+  background: var(--hero-op-bg);
   border-radius: 10px;
   margin-bottom: 6px;
 }
@@ -1150,12 +1176,12 @@ select.fi {
 .simple-op-cat {
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
+  color: var(--hero-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.simple-op-date { font-size: 10px; color: rgba(255,255,255,.35); margin-top: 1px; }
+.simple-op-date { font-size: 10px; color: var(--hero-text2); margin-top: 1px; }
 .simple-op-amt {
   font-size: 14px;
   font-weight: 700;
@@ -1167,12 +1193,12 @@ select.fi {
 .simple-see-all {
   text-align: center;
   font-size: 12px;
-  color: rgba(255,255,255,.3);
+  color: var(--hero-text2);
   cursor: pointer;
   padding: 6px;
   margin-top: 2px;
 }
-.simple-see-all:hover { color: rgba(255,255,255,.6); }
+.simple-see-all:hover { color: var(--amber); }
 
 /* ── ПРАВАЯ КОЛОНКА ДЕСКТОП ── */
 @media (min-width: 701px) {
@@ -1216,17 +1242,17 @@ select.fi {
 
 /* Переключатель режима — кнопка в шапке */
 .mode-switch-btn {
-  background: rgba(255,255,255,.1);
-  border: 1px solid rgba(255,255,255,.15);
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 20px;
   padding: 4px 12px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(255,255,255,.6);
+  color: var(--topbar);
   cursor: pointer;
   transition: all .15s;
 }
-.mode-switch-btn:hover { background: rgba(255,255,255,.18); color: #fff; }
+.mode-switch-btn:hover { background: var(--amber-light); color: var(--amber-dark); }
 
 /* В про-режиме simple-экран скрыт */
 body.mode-pro #screen-dashboard-simple { display: none !important; }
