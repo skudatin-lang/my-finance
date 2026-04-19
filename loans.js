@@ -34,15 +34,15 @@ export function renderLoans(){
     }
     html+=`<div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-        <div style="font-size:14px;font-weight:700;color:var(--topbar)">${w.name}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${w.name}</div>
         <div style="font-size:16px;font-weight:700;color:var(--red)">− ${fmt(debt)}</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:var(--text2)">
-        ${rate?`<div>Ставка: <b style="color:var(--topbar)">${rate}%</b></div>`:''}
-        ${payment?`<div>Платёж: <b style="color:var(--topbar)">${fmt(payment)}/мес</b></div>`:''}
+        ${rate?`<div>Ставка: <b style="color:var(--text)">${rate}%</b></div>`:''}
+        ${payment?`<div>Платёж: <b style="color:var(--text)">${fmt(payment)}/мес</b></div>`:''}
         ${interest?`<div>% в мес: <b style="color:var(--orange-dark)">${fmt(interest)}</b></div>`:''}
-        ${monthsLeft?`<div>Осталось: <b style="color:var(--topbar)">~${monthsLeft} мес</b></div>`:''}
-        ${nextDate?`<div style="grid-column:1/-1">Следующий платёж: <b style="color:var(--topbar)">${nextDate}</b></div>`:''}
+        ${monthsLeft?`<div>Осталось: <b style="color:var(--text)">~${monthsLeft} мес</b></div>`:''}
+        ${nextDate?`<div style="grid-column:1/-1">Следующий платёж: <b style="color:var(--text)">${nextDate}</b></div>`:''}
       </div>
       ${payment?`<div style="background:var(--g50);border-radius:4px;height:6px;margin-top:10px">
         <div style="height:6px;border-radius:4px;background:var(--red);width:100%"></div>
@@ -82,7 +82,7 @@ export function renderLoansSummary(){
       </div>
       <div style="background:var(--amber-light);border-radius:8px;padding:10px;border:1px solid var(--border)">
         <div style="font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.6px">ПЛАТЕЖЕЙ/МЕС</div>
-        <div style="font-size:18px;font-weight:700;color:var(--topbar)">${fmt(totalPayment)}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">${fmt(totalPayment)}</div>
       </div>
     </div>
     ${totalInterest?`<div style="background:var(--orange-bg);border:1px solid var(--orange);border-radius:7px;padding:8px 12px;font-size:12px;color:var(--orange-dark);margin-bottom:12px">
@@ -90,7 +90,7 @@ export function renderLoansSummary(){
     </div>`:''}
     ${sorted.length?`<div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:6px">СТРАТЕГИЯ «ЛАВИНА» (сначала гасите высокую ставку):</div>`:''}
     ${sorted.map((w,i)=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:.5px solid var(--border);font-size:12px">
-      <span style="color:var(--topbar);font-weight:600">${i+1}. ${w.name}</span>
+      <span style="color:var(--text);font-weight:600">${i+1}. ${w.name}</span>
       <span style="color:var(--orange-dark)">${w.rate}% · ${fmt(Math.abs(w.balance))}</span>
     </div>`).join('')}
     <div style="font-size:11px;color:var(--text2);margin-top:10px">

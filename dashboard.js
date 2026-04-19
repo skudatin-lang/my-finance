@@ -129,7 +129,7 @@ function renderTop3(){
     const arrow=r.delta===null?'':(r.delta>0?`<span style="color:var(--red);font-size:11px">▲ ${r.delta}%</span>`:(r.delta<0?`<span style="color:var(--green);font-size:11px">▼ ${Math.abs(r.delta)}%</span>`:''));
     const tip=r.delta!==null&&r.delta>20?`<div style="font-size:10px;color:var(--orange-dark);margin-top:2px">+${r.delta}% vs прошлый месяц</div>`:''
     return`<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);">
-      <div><div style="font-size:13px;font-weight:700;color:var(--topbar)">${i+1}. ${r.cat}</div>${tip}</div>
+      <div><div style="font-size:13px;font-weight:700;color:var(--text)">${i+1}. ${r.cat}</div>${tip}</div>
       <div style="text-align:right"><div style="font-size:13px;font-weight:700;color:var(--orange-dark)">− ${fmt(r.cur)}</div>${arrow}</div>
     </div>`;
   }).join('');
@@ -251,7 +251,7 @@ function renderGoalsDash(){
     const forecast=monthsLeft?`~${monthsLeft} мес.`:'—';
     return`<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border)">
       <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:700;color:var(--topbar)">${g.name}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${g.name}</span>
         <span style="font-size:12px;color:var(--text2)">${fmt(Math.max(saved,0))} / ${fmt(g.target)}</span>
       </div>
       <div style="background:var(--g50);border-radius:4px;height:8px;margin-bottom:4px">
@@ -302,11 +302,11 @@ function renderDebtsDash(){
       </div>
       <div style="background:var(--amber-light);border-radius:7px;padding:8px 10px;border:1px solid var(--border)">
         <div style="font-size:9px;font-weight:700;color:var(--text2);letter-spacing:.6px">ПЛАТЕЖЕЙ/МЕС</div>
-        <div style="font-size:16px;font-weight:700;color:var(--topbar)">${fmt(monthlyPayments)}</div>
+        <div style="font-size:16px;font-weight:700;color:var(--text)">${fmt(monthlyPayments)}</div>
       </div>
     </div>
     ${upcoming.map(l=>`<div style="padding:6px 0;border-bottom:.5px solid var(--border);display:flex;justify-content:space-between;font-size:12px">
-      <span style="color:var(--topbar);font-weight:600">${l.name}</span>
+      <span style="color:var(--text);font-weight:600">${l.name}</span>
       <span style="color:${l.daysLeft<=3?'var(--orange-dark)':'var(--text2)'}">
         ${fmt(l.payment||0)} · ${l.daysLeft===0?'сегодня':l.daysLeft===1?'завтра':'через '+l.daysLeft+' дн.'}
       </span>
@@ -367,7 +367,7 @@ function renderPortfolioDash(){
   el.innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <div>
-        <div style="font-size:14px;font-weight:700;color:var(--topbar)">${fmt(Math.round(total))}</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${fmt(Math.round(total))}</div>
         <div style="font-size:11px;color:var(--text2)">${portfolio.length} активов · вложено ${fmt(Math.round(cost))}</div>
       </div>
       <div style="text-align:right">
@@ -380,7 +380,7 @@ function renderPortfolioDash(){
       const v=a.qty*(a.currentPrice||a.buyPrice);
       const share=total>0?Math.round(v/total*100):0;
       return '<div style="display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-top:.5px solid var(--border)">'+
-        '<span style="font-weight:600;color:var(--topbar)">'+a.ticker+'</span>'+
+        '<span style="font-weight:600;color:var(--text)">'+a.ticker+'</span>'+
         '<span style="color:var(--text2)">'+share+'% · '+fmt(Math.round(v))+'</span>'+
       '</div>';
     }).join('')}
@@ -396,7 +396,7 @@ function renderAssetsDash(){
     return;
   }
   const totalValue=assets.reduce((s,a)=>s+a.value,0);
-  let html=`<div style="font-size:14px;font-weight:700;color:var(--topbar);margin-bottom:6px">${fmt(totalValue)}</div>`;
+  let html=`<div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:6px">${fmt(totalValue)}</div>`;
   html+=assets.map(a=>{
     let totalCost=0,filledM=0;
     for(let i=0;i<3;i++){
@@ -412,7 +412,7 @@ function renderAssetsDash(){
     const daysSince=a.lastUpdated?Math.floor((new Date(today())-new Date(a.lastUpdated))/(1000*60*60*24)):999;
     return`<div style="padding:5px 0;border-top:.5px solid var(--border);font-size:11px">
       <div style="display:flex;justify-content:space-between">
-        <span style="font-weight:600;color:var(--topbar)">${a.icon||'🏠'} ${a.name}</span>
+        <span style="font-weight:600;color:var(--text)">${a.icon||'🏠'} ${a.name}</span>
         <span style="color:var(--text2)">${fmt(a.value)}</span>
       </div>
       <div style="display:flex;justify-content:space-between;margin-top:2px">
@@ -432,7 +432,7 @@ window.openWidgetSettings=function(){
   document.getElementById('widget-checkboxes').innerHTML=
     '<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Выберите виджеты для правой колонки дашборда:</div>'+
     rightWidgets.map(w=>`
-      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--topbar);">
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px;color:var(--text);">
         <input type="checkbox" ${vis[w.id]!==false?'checked':''} id="wchk-${w.id}" style="accent-color:var(--amber);width:16px;height:16px">
         ${w.label}
       </label>`).join('');
@@ -461,7 +461,7 @@ function renderPlanDash(factOps,mInc){
     const color=p.type==='income'?'var(--green)':over?'var(--red)':'var(--orange)';
     return`<div style="margin-bottom:7px">
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
-        <span style="font-weight:600;color:var(--topbar)">${p.label}</span>
+        <span style="font-weight:600;color:var(--text)">${p.label}</span>
         <span style="color:${color}">${fmt(spent)} / ${fmt(alloc)}</span>
       </div>
       <div style="background:var(--g50);border-radius:3px;height:4px">
@@ -484,7 +484,7 @@ function renderLimitsDash(factOps){
     const color=pct>=100?'var(--red)':pct>=80?'var(--orange)':'var(--amber)';
     return`<div style="margin-bottom:7px">
       <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
-        <span style="font-weight:600;color:var(--topbar)">${lim.cat}</span>
+        <span style="font-weight:600;color:var(--text)">${lim.cat}</span>
         <span style="color:${color}">${pct}% · ${fmt(spent)} / ${fmt(lim.limit)}</span>
       </div>
       <div style="background:var(--g50);border-radius:3px;height:4px">
@@ -513,7 +513,7 @@ function renderForecastDash(){
   const proj=yrBal+avg*monthsLeft;
   const color=proj>=0?'var(--green-dark)':'var(--red)';
   el.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center">
-    <div><div style="font-size:11px;color:var(--text2)">За год накоплено</div><div style="font-size:14px;font-weight:700;color:var(--topbar)">${fmt(yrBal)}</div></div>
+    <div><div style="font-size:11px;color:var(--text2)">За год накоплено</div><div style="font-size:14px;font-weight:700;color:var(--text)">${fmt(yrBal)}</div></div>
     <div style="text-align:right"><div style="font-size:11px;color:var(--text2)">Прогноз к декабрю</div><div style="font-size:14px;font-weight:700;color:${color}">${proj<0?'−':''}${fmt(proj)}</div></div>
   </div>
   <div style="font-size:10px;color:var(--text2);margin-top:5px">Ср. баланс/мес: ${avg>=0?'+':''}${fmt(Math.round(avg))} · осталось ${monthsLeft} мес.</div>`;
@@ -526,7 +526,7 @@ function renderAnomaliesDash(factOps){
   if(!anomalies.length){el.innerHTML='<div style="color:var(--green-dark);font-size:12px">✓ Аномальных трат нет</div>';return;}
   el.innerHTML=anomalies.slice(0,3).map(a=>
     `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:.5px solid var(--border);font-size:12px">
-      <span style="color:var(--topbar);font-weight:600">${a.cat}</span>
+      <span style="color:var(--text);font-weight:600">${a.cat}</span>
       <span style="color:var(--red)">+${a.pct}% vs среднего</span>
     </div>`
   ).join('');
@@ -560,7 +560,7 @@ function renderCatDetailDash(factOps){
   const max=rows[0][1];
   el.innerHTML=rows.map(([cat,amt])=>`<div style="margin-bottom:6px">
     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px">
-      <span style="color:var(--topbar);font-weight:600">${cat}</span>
+      <span style="color:var(--text);font-weight:600">${cat}</span>
       <span style="color:var(--orange-dark)">− ${fmt(amt)}</span>
     </div>
     <div style="background:var(--g50);border-radius:3px;height:3px">

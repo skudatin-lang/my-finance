@@ -314,7 +314,7 @@
   <div id="screen-health" class="screen">
     <div style="max-width:900px;margin:0 auto;width:100%">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)">
-        <div style="font-size:18px;font-weight:700;color:var(--topbar)">Финансовое здоровье</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">Финансовое здоровье</div>
       </div>
       <div class="panel">
         <div class="panel-head">ИНДЕКС ФИНАНСОВОГО ЗДОРОВЬЯ</div>
@@ -329,18 +329,18 @@
       <!-- Левая колонка: карточки из кошельков -->
       <div class="loans-left">
         <div style="flex-shrink:0;margin-bottom:4px">
-          <div style="font-size:14px;font-weight:700;color:var(--topbar)">Кредиты и долги</div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Кредиты и долги</div>
           <div style="font-size:11px;color:var(--text2);margin-top:3px">Данные подтягиваются из кошельков с отрицательным балансом. Добавьте ставку и платёж для расчётов.</div>
         </div>
         <div id="loans-list"></div>
       </div>
       <!-- Правая колонка: сводка + план + ИИ -->
       <div class="loans-right">
-        <div style="font-size:14px;font-weight:700;color:var(--topbar);flex-shrink:0">Сводка и план погашения</div>
+        <div style="font-size:14px;font-weight:700;color:var(--text);flex-shrink:0">Сводка и план погашения</div>
         <div id="loans-summary"></div>
         <div style="margin-top:16px">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-size:14px;font-weight:700;color:var(--topbar)">ИИ-рекомендации</div>
+            <div style="font-size:14px;font-weight:700;color:var(--text)">ИИ-рекомендации</div>
             <button onclick="window.getLoansAI()" id="loans-ai-btn" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
           </div>
           <div id="loans-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:60px">
@@ -641,7 +641,7 @@
   <div id="screen-admin" class="screen">
     <div style="max-width:800px;margin:0 auto;width:100%;padding:var(--gap);overflow-y:auto">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:var(--gap)">
-        <div style="font-size:18px;font-weight:700;color:var(--topbar)">Панель администратора</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text)">Панель администратора</div>
         <span style="font-size:11px;background:var(--red-bg);color:var(--red);padding:2px 8px;border-radius:10px;font-weight:700">ТОЛЬКО ДЛЯ ВЛАДЕЛЬЦА</span>
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:var(--gap)">
@@ -663,7 +663,7 @@
 
             <!-- Диагностика -->
             <div style="background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:11px;color:var(--text2);margin-bottom:10px;line-height:1.8">
-              <b style="color:var(--topbar)">Шаги настройки Worker:</b><br>
+              <b style="color:var(--text)">Шаги настройки Worker:</b><br>
               1. <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--amber-dark)">workers.cloudflare.com</a> → создать Worker → вставить <b>cloudflare_worker.js</b><br>
               2. Settings → Variables → добавить:<br>
               &nbsp;&nbsp;• <b>YANDEX_API_KEY</b> = ключ с console.yandex.cloud<br>
@@ -921,7 +921,7 @@
       <span class="modal-title vi-title">ГОЛОСОВАЯ КОМАНДА</span>
       <button class="modal-close" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">&#10005;</button>
     </div>
-    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.6;color:var(--topbar)" class="vi-body"></div>
+    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.6;color:var(--text)" class="vi-body"></div>
     <div class="notice blue" style="margin-bottom:12px;font-size:11px">Проверьте правильность и подтвердите или откройте форму редактирования</div>
     <button class="btn-primary vi-confirm">Подтвердить</button>
     <button class="btn-sec vi-edit" style="margin-top:8px">Редактировать вручную</button>
@@ -934,7 +934,7 @@
   <div style="background:var(--card);width:100%;max-width:520px;min-height:100vh;overflow-y:auto;padding:28px 24px;margin:0 auto" id="onboarding-inner">
     <div style="text-align:center;margin-bottom:24px">
       <div style="font-size:36px;margin-bottom:8px">💰</div>
-      <div style="font-size:20px;font-weight:700;color:var(--topbar);letter-spacing:.5px">МОИ ФИНАНСЫ</div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);letter-spacing:.5px">МОИ ФИНАНСЫ</div>
       <div style="font-size:13px;color:var(--text2);margin-top:6px">Давайте настроим приложение за 3 простых шага</div>
     </div>
     <div id="onboarding-steps"></div>
@@ -1022,7 +1022,7 @@ window._renderShopWidget=function(){
       const ds=d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
       html2+=`<div style="font-size:10px;color:var(--text2);margin-top:5px;margin-bottom:2px">${ds}</div>`;
       shown[date].forEach(i=>{
-        html2+=`<div style="font-size:12px;padding:2px 0;display:flex;align-items:center;gap:5px"><span>&#128722;</span><span style="color:var(--topbar)">${i.name}</span>${i.qty>1?`<span style="color:var(--text2);font-size:11px">×${i.qty}</span>`:''}</div>`;
+        html2+=`<div style="font-size:12px;padding:2px 0;display:flex;align-items:center;gap:5px"><span>&#128722;</span><span style="color:var(--text)">${i.name}</span>${i.qty>1?`<span style="color:var(--text2);font-size:11px">×${i.qty}</span>`:''}</div>`;
       });
     });
     if(pendingAll>6)html2+=`<div style="font-size:10px;color:var(--text2);margin-top:3px">и ещё ${pendingAll-6} позиций...</div>`;
@@ -1254,7 +1254,7 @@ window.doSearch=function(q){
       const w=state.D.wallets.find(w=>w.id===o.wallet);
       return`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--border)">
         <div>
-          <div style="font-size:13px;font-weight:700;color:var(--topbar)">${o.category||'—'}</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${o.category||'—'}</div>
           <div style="font-size:11px;color:var(--text2)">${o.date||''}${w?' · '+w.name:''}${o.note?' · '+o.note:''}</div>
         </div>
         <div style="font-size:14px;font-weight:700;color:${col}">${pfx}${fmt(o.amount)}</div>
@@ -1403,7 +1403,7 @@ window._renderDashMain=function(){
         const amtColor=isIn?'var(--green-dark)':isOut?'var(--orange-dark)':'var(--blue)';
         const amtSign=isIn?'+ ':isTr?'':'− ';
         html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:.5px solid var(--border)">
-          <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:700;color:var(--topbar);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div><div style="font-size:10px;color:var(--text2)">${wName(o.wallet||'')}</div></div>
+          <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div><div style="font-size:10px;color:var(--text2)">${wName(o.wallet||'')}</div></div>
           <div style="font-size:12px;font-weight:700;color:${amtColor};white-space:nowrap;margin-left:8px">${amtSign}${fmt(o.amount)}</div>
         </div>`;
       });
@@ -1639,7 +1639,7 @@ ${loansDesc||'Нет данных о кредитах'}
     const html=text
       .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
       .replace(/\n/g,'<br>');
-    result.innerHTML=`<div style="color:var(--topbar)">${html}</div>
+    result.innerHTML=`<div style="color:var(--text)">${html}</div>
       <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
   }catch(e){
     const isBalance=e.message.includes('недостаточно средств');
