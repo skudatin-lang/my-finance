@@ -1,6 +1,6 @@
 // Service Worker — my-finance PWA
 // ВАЖНО: меняй CACHE при каждом деплое новых файлов
-const CACHE = 'my-finance-v4';
+const CACHE = 'my-finance-v5';
 
 const ASSETS = [
   './',
