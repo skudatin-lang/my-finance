@@ -2,10 +2,10 @@
   "name": "Мои Финансы",
   "short_name": "Финансы",
   "description": "Личный учёт доходов, расходов и финансового плана",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#1a1a2e",
+  "background_color": "#E8D5A8",
   "theme_color": "#BA7517",
   "orientation": "portrait-primary",
   "lang": "ru",
@@ -41,9 +41,8 @@
       "name": "Добавить операцию",
       "short_name": "+ Операция",
       "description": "Быстро добавить доход или расход",
-      "url": "/?action=new-op",
+      "url": "./index.html?action=new-op",
       "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
     }
-  ],
-  "screenshots": []
+  ]
 }

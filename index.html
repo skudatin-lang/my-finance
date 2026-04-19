@@ -2051,11 +2051,12 @@ $('loading-screen').style.display='none';
 $('app-screen').style.display='none';
 $('auth-screen').style.display='flex';
 if('serviceWorker' in navigator){
-  // Регистрируем SW с явным scope
-  navigator.serviceWorker.register('./sw.js', { scope: './' })
+  // Регистрируем SW без явного scope — берётся автоматически из расположения файла
+  // Важно: scope SW должен совпадать со scope в manifest.json
+  navigator.serviceWorker.register('./sw.js')
     .then(reg => {
-      // Проверяем обновление при каждом запуске
-      reg.update();
+      reg.update(); // проверяем обновление при каждом запуске
+      console.log('SW registered, scope:', reg.scope);
     })
     .catch(e => console.warn('SW registration failed:', e));
 }
