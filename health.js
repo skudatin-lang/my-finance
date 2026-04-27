@@ -14,11 +14,11 @@ async function fetchHealthAi(){
     'Потенциал инвестиций: '+h.s5+'%',
     h.totalDebt>0?'Общий долг: '+Math.round(h.totalDebt)+' ₽':'Долгов нет',
   ].join('\n');
-  const resp=await fetch('https://api.proxyapi.ru/deepseek/chat/completions',{
+  const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
     body:JSON.stringify({
-      model:'deepseek-chat',
+      model:'deepseek/deepseek-chat',
       max_tokens:350,
       temperature:0.4,
       messages:[

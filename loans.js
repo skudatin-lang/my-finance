@@ -13,11 +13,11 @@ async function fetchDebtAi(){
     w.payment?'платёж '+Math.round(w.payment)+' ₽/мес':'',
   ].filter(Boolean).join(', ')).join('\n');
   const context='Общий долг: '+Math.round(totalDebt)+' ₽\nПлатежей в месяц: '+Math.round(totalPayment)+' ₽\n\nКредиты:\n'+debtList;
-  const resp=await fetch('https://api.proxyapi.ru/deepseek/chat/completions',{
+  const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
     body:JSON.stringify({
-      model:'deepseek-chat',
+      model:'deepseek/deepseek-chat',
       max_tokens:400,
       temperature:0.3,
       messages:[
