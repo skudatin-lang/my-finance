@@ -99,7 +99,7 @@ function buildAiContext(){
 async function fetchAiAdvice(){
   const key=appConfig.deepseekKey;
   if(!key)throw new Error('Добавьте DeepSeek API ключ в Панели администратора');
-  const resp=await fetch('https://api.proxyapi.ru/deepseek/v1/chat/completions',{
+  const resp=await fetch('https://api.proxyapi.ru/deepseek/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
     body:JSON.stringify({

@@ -14,7 +14,7 @@ async function fetchHealthAi(){
     'Потенциал инвестиций: '+h.s5+'%',
     h.totalDebt>0?'Общий долг: '+Math.round(h.totalDebt)+' ₽':'Долгов нет',
   ].join('\n');
-  const resp=await fetch('https://api.proxyapi.ru/deepseek/v1/chat/completions',{
+  const resp=await fetch('https://api.proxyapi.ru/deepseek/chat/completions',{
     method:'POST',
     headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
     body:JSON.stringify({
