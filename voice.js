@@ -1,21 +1,10 @@
-// voice.js — Web Speech API, бесплатно, без серверов
-import{state,sched,fmt,today,appConfig}from'./core.js';
+// voice.js — Web Speech API, скопировано с рабочего voice-test.html
+import{state,sched,fmt,today}from'./core.js';
 
 let _recognition=null;
 let _isRecording=false;
-let _watchdog=null;
 
-// ── Принудительный сброс всех состояний ──────────────────────────────────
-function _forceReset(){
-  if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
-  if(_recognition){
-    try{_recognition.abort();}catch(e){}
-    _recognition=null;
-  }
-  _isRecording=false;
-}
-
-// ── Совместимость со старым кодом ─────────────────────────────────────────
+// ── Совместимость со старым кодом ─────────────────────────────────
 export function loadVoiceSettings(){}
 export function saveVoiceSettings(sttUrl,gptUrl,appSecret){
   if(!state.D)return;
@@ -26,152 +15,101 @@ export function saveVoiceSettings(sttUrl,gptUrl,appSecret){
 export function isVoiceConfigured(){
   return!!(window.SpeechRecognition||window.webkitSpeechRecognition);
 }
+
+// Определяем standalone PWA режим (iOS Home Screen)
+function _isStandalone(){
+  return navigator.standalone===true||window.matchMedia('(display-mode: standalone)').matches;
+}
 export function isRecording(){return _isRecording;}
 
-// ── Запись ────────────────────────────────────────────────────────────────
+// ── Сброс ─────────────────────────────────────────────────────────
+function _reset(onStateChange){
+  if(_recognition){try{_recognition.abort();}catch(e){}_recognition=null;}
+  _isRecording=false;
+  onStateChange&&onStateChange(false);
+}
+
+// ── Запись — ТОЧНО по образцу рабочего voice-test.html ────────────
 export async function startRecording(onResult,onError,onStateChange){
-  // Если уже идёт запись — сбрасываем принудительно
-  if(_isRecording||_recognition){
-    _forceReset();
-    onStateChange&&onStateChange(false);
-    return;
-  }
+  if(_isRecording){_reset(onStateChange);return;}
 
   const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
   if(!SR){
-    onError&&onError('Голосовой ввод не поддерживается. Используйте Chrome или Safari.');
+    // В standalone PWA (добавлено на экран) iOS отключает Web Speech API
+    if(_isStandalone()){
+      onError&&onError('Голосовой ввод недоступен в режиме "на экране". Откройте приложение в Safari — нажмите ⋯ → "Открыть в Safari"');
+    }else{
+      onError&&onError('Голосовой ввод не поддерживается. Используйте Chrome или Safari.');
+    }
     return;
   }
 
-  // Флаг вынесен ЗА try — доступен во всех обработчиках включая onend
-  let _handled=false;
+  _recognition=new SR();
+  _recognition.lang='ru-RU';
+  _recognition.continuous=false;
+  _recognition.interimResults=true;   // ← КАК В ТЕСТЕ: true, иначе Safari не работает
+  _recognition.maxAlternatives=3;     // ← КАК В ТЕСТЕ
 
-  const _done=(text,isError)=>{
-    if(_handled)return;
-    _handled=true;
-    _forceReset();
-    onStateChange&&onStateChange(false);
-    if(isError)onError&&onError(text);
-    else if(text)onResult&&onResult(text);
-    else onError&&onError('Речь не распознана — говорите чётче');
+  _recognition.onstart=()=>{
+    _isRecording=true;
+    onStateChange&&onStateChange(true);
+  };
+
+  // ── КАК В ТЕСТЕ: обрабатываем interim и final внутри onresult ──
+  _recognition.onresult=e=>{
+    let interim='',final='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else interim+=e.results[i][0].transcript;
+    }
+    // Финальный результат — передаём наверх
+    if(final){
+      _isRecording=false;
+      onStateChange&&onStateChange(false);
+      onResult&&onResult(final.trim());
+    }
+    // Промежуточный — можно игнорировать, он не нужен для логики
+  };
+
+  _recognition.onerror=e=>{
+    // aborted — нормально, если уже получили результат
+    if(e.error==='aborted')return;
+    _reset(onStateChange);
+    const msgs={
+      'not-allowed':'Нет доступа к микрофону — разрешите в настройках браузера',
+      'no-speech':'Ничего не услышано — говорите сразу после нажатия 🎤',
+      'network':'Требуется интернет для распознавания речи',
+      'audio-capture':'Микрофон не найден или занят другим приложением',
+      'service-not-allowed':'Требуется HTTPS для голосового ввода',
+    };
+    onError&&onError(msgs[e.error]||'Ошибка: '+e.error);
+  };
+
+  // ── КАК В ТЕСТЕ: onend только сбрасывает флаг если нужно ───────
+  _recognition.onend=()=>{
+    if(_isRecording){
+      // Закончилось без результата — тихо сбрасываем
+      _reset(onStateChange);
+    }
   };
 
   try{
-    _recognition=new SR();
-    _recognition.lang='ru-RU';
-    _recognition.continuous=false;
-    _recognition.interimResults=false;
-    _recognition.maxAlternatives=1;
-
-    _recognition.onstart=()=>{
-      _isRecording=true;
-      onStateChange&&onStateChange(true);
-      // Защита: если через 15 сек ничего — принудительный сброс
-      _watchdog=setTimeout(()=>{
-        _done('Время ожидания вышло — попробуйте ещё раз',true);
-      },15000);
-    };
-
-    _recognition.onresult=e=>{
-      if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
-      const text=(e.results&&e.results[0]&&e.results[0][0]&&e.results[0][0].transcript||'').trim();
-      if(text)_done(text,false);
-      else _done('',false);
-    };
-
-    _recognition.onerror=e=>{
-      if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
-      if(e.error==='aborted')return;
-      const msgs={
-        'not-allowed':'Нет доступа к микрофону — разрешите в настройках браузера',
-        'no-speech':'Ничего не услышано — говорите сразу после нажатия 🎤',
-        'network':'Требуется интернет для распознавания речи',
-        'audio-capture':'Микрофон не найден или занят другим приложением',
-        'service-not-allowed':'Требуется HTTPS для голосового ввода',
-      };
-      _done(msgs[e.error]||'Ошибка: '+e.error,true);
-    };
-
-    _recognition.onend=()=>{
-      if(_watchdog){clearTimeout(_watchdog);_watchdog=null;}
-      // onend всегда вызывается после onresult/onerror
-      // Если _handled уже true — ничего не делаем
-      if(!_handled){
-        _done('Речь не распознана — говорите чётче и ближе к микрофону',true);
-      }
-    };
-
     _recognition.start();
-
   }catch(e){
-    _handled=true; // предотвращаем повторный вызов из onend
-    _forceReset();
-    onStateChange&&onStateChange(false);
+    _reset(onStateChange);
     onError&&onError('Не удалось запустить: '+e.message);
   }
 }
 
 export function stopRecording(){
-  _forceReset();
+  _reset();
 }
 
-// ── Разбор намерений ─────────────────────────────────────────────────────
-// Если есть DeepSeek ключ — используем ИИ (точно), иначе — регулярки (offline)
+// ── Разбор намерений (локально, без GPT) ─────────────────────────
 export async function parseIntent(text){
   if(!state.D||!text)return{intent:'unknown',raw_text:text};
-  if(appConfig.deepseekKey){
-    try{
-      const result=await _parseIntentAI(text);
-      if(result&&result.intent!=='unknown')return result;
-    }catch(e){
-      console.warn('AI voice parse failed, fallback to regex:',e.message);
-    }
-  }
-  return _parseIntentRegex(text);
-}
-
-// ── ИИ-парсинг через DeepSeek ────────────────────────────────────────────
-async function _parseIntentAI(text){
-  const cats=state.D.expenseCats.map(c=>c.name).join(', ');
-  const incomeCats=state.D.incomeCats.join(', ');
-  const wallets=state.D.wallets.map(w=>w.name).join(', ');
-  const prompt=`Ты парсишь голосовые команды для финансового приложения.
-Верни ТОЛЬКО валидный JSON без markdown и пояснений.
-
-Категории расходов: ${cats}
-Категории доходов: ${incomeCats}
-Кошельки: ${wallets}
-
-Команда: "${text.replace(/"/g,"'")}"
-
-Форматы ответа:
-Расход: {"intent":"add_expense","amount":число,"category":"из списка","wallet":"или пусто","note":"или пусто"}
-Доход: {"intent":"add_income","amount":число,"category":"из списка","wallet":"или пусто","note":"или пусто"}
-Перевод: {"intent":"add_transfer","amount":число,"from_wallet":"откуда","to_wallet":"куда"}
-Баланс: {"intent":"check_balance","wallet":"или пусто"}
-Покупки: {"intent":"add_shopping","items":[{"name":"товар","qty":1,"price":0}]}
-Непонятно: {"intent":"unknown","raw_text":"текст"}
-
-Правила: amount — число (тысяча=1000, пятьсот=500). Без явного "доход/получил" — это расход. category выбирай только из списка.`;
-
-  const resp=await fetch('https://api.deepseek.com/v1/chat/completions',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+appConfig.deepseekKey},
-    body:JSON.stringify({model:'deepseek-chat',messages:[{role:'user',content:prompt}],max_tokens:150,temperature:0.1})
-  });
-  if(!resp.ok)throw new Error('HTTP '+resp.status);
-  const data=await resp.json();
-  const raw=(data.choices?.[0]?.message?.content||'').replace(/```json|```/g,'').trim();
-  const parsed=JSON.parse(raw);
-  const valid=['add_expense','add_income','add_transfer','add_shopping','check_balance','unknown'];
-  if(!valid.includes(parsed.intent))return{intent:'unknown',raw_text:text};
-  if(parsed.amount!==undefined)parsed.amount=parseFloat(parsed.amount)||0;
-  return parsed;
-}
-
-// ── Regex-парсинг (offline fallback) ─────────────────────────────────────
-function _parseIntentRegex(text){
   const t=text.toLowerCase().trim();
+
   if(['купить','купи','куплю','добавь в список','нужно купить'].some(v=>t.includes(v))){
     const items=_parseShoppingItems(t);
     if(items.length)return{intent:'add_shopping',items};
@@ -204,10 +142,7 @@ function _amount(text){
   }
   const words={'ноль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,'пять':5,'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90,'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900,'тысяча':1000,'тысячи':1000,'тысяч':1000,'тыщ':1000,'миллион':1000000};
   let total=0,cur=0;
-  for(const w of text.split(/\s+/)){
-    const v=words[w];
-    if(v!==undefined){if(v>=1000){total=(total+cur)*v;cur=0;}else cur+=v;}
-  }
+  for(const w of text.split(/\s+/)){const v=words[w];if(v!==undefined){if(v>=1000){total=(total+cur)*v;cur=0;}else cur+=v;}}
   return total+cur;
 }
 
@@ -229,10 +164,7 @@ function _cat(text,type){
     [/развлечен|кино|игр/,'Развлечения'],
   ];
   for(const[re,cat]of map){
-    if(re.test(t)){
-      const found=cats.find(c=>c.toLowerCase()===cat.toLowerCase());
-      if(found)return found;
-    }
+    if(re.test(t)){const found=cats.find(c=>c.toLowerCase()===cat.toLowerCase());if(found)return found;}
   }
   return'Прочее';
 }
@@ -247,13 +179,12 @@ function _findWallet(text){
 }
 
 function _transferWallets(text){
-  let from='',to='';
   const t=text.toLowerCase();
+  let from='',to='';
   for(const w of(state.D?.wallets||[])){
     const n=w.name.toLowerCase();
-    const after=t.indexOf(n);
-    if(after<0)continue;
-    const before=t.slice(0,after);
+    const idx=t.indexOf(n);if(idx<0)continue;
+    const before=t.slice(0,idx);
     if(/(?:с|из)\s*$/.test(before))from=w.name;
     else if(/(?:на|в|во)\s*$/.test(before))to=w.name;
   }
@@ -271,7 +202,7 @@ function _parseShoppingItems(text){
   }).filter(Boolean);
 }
 
-// ── Модал подтверждения ───────────────────────────────────────────────────
+// ── Модал подтверждения ───────────────────────────────────────────
 export function handleVoiceIntent(intent,onConfirm){
   const modal=document.getElementById('modal-voice-intent');
   if(!modal)return;
@@ -301,7 +232,7 @@ export function handleVoiceIntent(intent,onConfirm){
   const labels={add_expense:'Добавить расход',add_income:'Добавить доход',add_shopping:'Добавить в список',add_transfer:'Выполнить перевод',check_balance:'Понятно',unknown:'Ввести вручную'};
   confirmBtn.textContent=labels[intent.intent]||'Подтвердить';
   confirmBtn.onclick=()=>{modal.classList.remove('open');onConfirm&&onConfirm(intent);};
-  if(editBtn)editBtn.onclick=()=>{modal.classList.remove('open');_openEdit(intent);};
+  editBtn.onclick=()=>{modal.classList.remove('open');_openEdit(intent);};
   modal.classList.add('open');
 }
 
@@ -323,7 +254,7 @@ function _openEdit(intent){
   }
 }
 
-// ── Выполнить команду ─────────────────────────────────────────────────────
+// ── Выполнить команду ─────────────────────────────────────────────
 export function executeIntent(intent){
   if(!state.D)return;
   switch(intent.intent){
@@ -339,7 +270,7 @@ export function executeIntent(intent){
     }
     case'add_shopping':{
       if(!state.D.shoppingLists)state.D.shoppingLists={};
-      const date=(state.calDay)||today();
+      const date=state.calDay||today();
       if(!state.D.shoppingLists[date])state.D.shoppingLists[date]=[];
       (intent.items||[]).forEach(i=>{state.D.shoppingLists[date].push({id:'sh'+Date.now()+Math.random(),name:i.name,qty:i.qty||1,price:i.price||0,done:false});});
       sched();_showToast(`✓ ${(intent.items||[]).length} позиций добавлено`);
@@ -349,7 +280,6 @@ export function executeIntent(intent){
       if(!intent.amount){_openEdit(intent);return;}
       const wf=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.from_wallet||'').toLowerCase()))||state.D.wallets[0];
       const wt=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.to_wallet||'').toLowerCase()))||state.D.wallets[1]||state.D.wallets[0];
-      if(wf===wt){_showToast('⚠ Укажите разные кошельки для перевода');_openEdit(intent);return;}
       const op={id:'op'+Date.now(),type:'transfer',amount:intent.amount,date:today(),wallet:wf?.id,walletTo:wt?.id};
       if(wf)wf.balance-=intent.amount;if(wt&&wt!==wf)wt.balance+=intent.amount;
       state.D.operations.push(op);sched();
@@ -361,12 +291,8 @@ export function executeIntent(intent){
   }
 }
 
-// ── Плавающая кнопка (защита от дублирования) ────────────────────────────
+// ── Плавающая кнопка ─────────────────────────────────────────────
 export function createSmartVoiceButton(){
-  // Если кнопка уже существует — вернуть её, не создавать новую
-  const existing=document.getElementById('smart-voice-btn');
-  if(existing)return existing;
-
   const btn=document.createElement('button');
   btn.id='smart-voice-btn';
   btn.title='Голосовая команда';
@@ -378,30 +304,19 @@ export function createSmartVoiceButton(){
     return btn;
   }
 
-  const setIdle=()=>{btn.textContent='🎤';btn.style.background='var(--amber)';btn.style.transform='scale(1)';};
+  const setIdle =()=>{btn.textContent='🎤';btn.style.background='var(--amber)';btn.style.transform='scale(1)';};
   const setActive=()=>{btn.textContent='⏹';btn.style.background='#c0392b';btn.style.transform='scale(1.12)';};
 
   btn.onclick=async()=>{
-    if(_isRecording){
-      _forceReset();
-      setIdle();
-      return;
-    }
+    if(_isRecording){_reset();setIdle();return;}
     await startRecording(
       async text=>{
         setIdle();
-        _showToast('🔍 «'+text+'»');
+        _showToast('🔍 «'+text+'» — разбираю...');
         try{
           const intent=await parseIntent(text);
-          // Пробуем сразу открыть форму через хук из index.html
-          const handled=window._voiceOpenDirect&&window._voiceOpenDirect(intent);
-          if(!handled){
-            // Fallback: модал подтверждения для неизвестных команд
-            handleVoiceIntent(intent,executeIntent);
-          }
-        }catch(e){
-          _showToast('⚠ Не удалось разобрать команду');
-        }
+          handleVoiceIntent(intent,executeIntent);
+        }catch(e){_showToast('⚠ Не удалось разобрать команду');}
       },
       msg=>{setIdle();_showToast('⚠ '+msg);},
       isRec=>{if(isRec)setActive();else setIdle();}
@@ -410,7 +325,7 @@ export function createSmartVoiceButton(){
   return btn;
 }
 
-// ── Встроенная кнопка в поле ввода ───────────────────────────────────────
+// ── Встроенная кнопка в поле ввода ───────────────────────────────
 export function createVoiceButton(targetInputId,extraStyle=''){
   const btn=document.createElement('button');
   btn.type='button';
@@ -418,20 +333,13 @@ export function createVoiceButton(targetInputId,extraStyle=''){
   btn.style.cssText='background:var(--amber-light);border:1.5px solid var(--amber);border-radius:7px;padding:7px 9px;cursor:pointer;font-size:15px;flex-shrink:0;line-height:1;'+extraStyle;
   btn.textContent='🎤';
 
-  if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){
-    btn.style.display='none';
-    return btn;
-  }
+  if(!(window.SpeechRecognition||window.webkitSpeechRecognition)){btn.style.display='none';return btn;}
 
-  const setIdle=()=>{btn.textContent='🎤';btn.style.background='var(--amber-light)';};
+  const setIdle =()=>{btn.textContent='🎤';btn.style.background='var(--amber-light)';};
   const setActive=()=>{btn.textContent='⏹';btn.style.background='#fdd';};
 
   btn.onclick=async()=>{
-    if(_isRecording){
-      _forceReset();
-      setIdle();
-      return;
-    }
+    if(_isRecording){_reset();setIdle();return;}
     await startRecording(
       text=>{
         setIdle();
