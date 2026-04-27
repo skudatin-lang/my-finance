@@ -1,8 +1,9 @@
-import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched,calcHealthScore,detectAnomalies}from'./core.js';
+import{$,fmt,state,MONTHS,getMOps,isPlanned,planSpent,planById,today,sched,calcHealthScore,detectAnomalies,appConfig}from'./core.js';
 
 let chartInstance=null;
 
 const WIDGETS=[
+  {id:'ai',label:'AI Советник',right:true},
   {id:'plan',label:'Финансовый план',right:true},
   {id:'limits',label:'Лимиты по категориям',right:true},
   {id:'forecast',label:'Прогноз на конец года',right:true},
@@ -18,9 +19,9 @@ const WIDGETS=[
 ];
 
 function getWidgetVis(){
-  if(!state.D.dashWidgets)state.D.dashWidgets={plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
+  if(!state.D.dashWidgets)state.D.dashWidgets={ai:true,plan:true,limits:true,forecast:true,anomalies:true,today:true,catdetail:true,debts:true,health:true,goals:true,chart:true};
   const dw=state.D.dashWidgets;
-  ['plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
+  ['ai','plan','limits','forecast','anomalies','today','catdetail','debts','health','goals','chart','portfolio','physassets'].forEach(k=>{if(dw[k]===undefined)dw[k]=true;});
   return dw;
 }
 
@@ -70,7 +71,91 @@ export function renderDashboard(){
   renderAnomaliesDash(factOps);
   renderTodayDash();
   renderCatDetailDash(factOps);
+  renderAiDash();
 }
+
+// ── AI Советник ──────────────────────────────────────────────────────────
+function buildAiContext(){
+  if(!state.D)return'';
+  const h=calcHealthScore();
+  const ops=getMOps(0).filter(o=>!isPlanned(o.type));
+  const income=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const expense=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const byCategory={};
+  ops.filter(o=>o.type==='expense').forEach(o=>{byCategory[o.category]=(byCategory[o.category]||0)+o.amount;});
+  const topCats=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([cat,amt])=>cat+': '+Math.round(amt)+' ₽').join(', ');
+  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
+  const debtDetails=debtWallets.map(w=>w.name+': '+Math.round(Math.abs(w.balance))+' ₽'+(w.rate?' ('+w.rate+'%)':'')).join('; ');
+  return[
+    'Текущий месяц: доход '+Math.round(income)+' ₽, расход '+Math.round(expense)+' ₽',
+    topCats?'Топ расходов: '+topCats:'',
+    h?'Индекс здоровья: '+h.score+'/100 (подушка '+h.s1+'%, сбережения '+h.s2+'%, долги '+h.s3+'%)':'',
+    totalDebt?'Общий долг: '+Math.round(totalDebt)+' ₽ ('+debtDetails+')':'Долгов нет',
+    'Кошельки: '+state.D.wallets.filter(w=>w.balance>0).map(w=>w.name+' '+Math.round(w.balance)+' ₽').join(', '),
+  ].filter(Boolean).join('\n');
+}
+
+async function fetchAiAdvice(){
+  const key=appConfig.deepseekKey;
+  if(!key)throw new Error('Добавьте DeepSeek API ключ в Панели администратора');
+  const resp=await fetch('https://api.proxyapi.ru/deepseek/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'deepseek-chat',
+      max_tokens:300,
+      temperature:0.4,
+      messages:[
+        {role:'system',content:'Ты личный финансовый советник. Отвечай только на русском. Давай 1-2 конкретных совета на основе реальных данных. Без воды. Максимум 80 слов.'},
+        {role:'user',content:'Мои финансы:\n'+buildAiContext()+'\n\nДай краткий анализ и главный совет на сейчас.'},
+      ],
+    }),
+  });
+  if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Ошибка API '+resp.status);}
+  const data=await resp.json();
+  return data.choices?.[0]?.message?.content?.trim()||'';
+}
+
+function renderAiDash(){
+  const el=document.getElementById('dash-ai');if(!el)return;
+  // Не обновляем если уже есть текст (обновляется только по кнопке или при первом рендере)
+  if(el.dataset.loaded==='1')return;
+  if(!appConfig.deepseekKey){
+    el.innerHTML='<div style="font-size:11px;color:var(--text2)">Добавьте DeepSeek API ключ в Панели администратора для получения AI советов.</div>';
+    return;
+  }
+  _loadAiAdvice(el);
+}
+
+function _loadAiAdvice(el){
+  el.dataset.loaded='0';
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+    <div style="width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
+    Анализирую данные...
+  </div>
+  <style>@keyframes _aispin{to{transform:rotate(360deg)}}</style>`;
+  fetchAiAdvice().then(text=>{
+    el.dataset.loaded='1';
+    el.innerHTML=`
+      <div style="font-size:11px;line-height:1.7;color:var(--topbar)">${text.replace(/\n/g,'<br>')}</div>
+      <div style="margin-top:8px;text-align:right">
+        <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">↻ Обновить</button>
+      </div>`;
+  }).catch(err=>{
+    el.dataset.loaded='1';
+    el.innerHTML=`<div style="font-size:11px;color:var(--red)">⚠ ${err.message}</div>
+      <div style="margin-top:6px;text-align:right">
+        <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">↻ Повторить</button>
+      </div>`;
+  });
+}
+
+window._refreshAiAdvice=function(){
+  const el=document.getElementById('dash-ai');if(!el)return;
+  el.dataset.loaded='0';
+  _loadAiAdvice(el);
+};
 
 function renderCashflowChart(){
   const canvas=$('dash-chart');if(!canvas)return;
@@ -156,7 +241,6 @@ function renderAlerts(factOps,mInc){
     else if(pct>=80)alerts.push({level:'warn',msg:`«${lim.cat}» — ${pct}% лимита (${fmt(spent)} из ${fmt(lim.limit)})`});
   });
 
-  // FIX: window._checkPortfolioAlert and _checkAssetsAlert are registered in index.html after login
   const portAlert=window._checkPortfolioAlert&&window._checkPortfolioAlert();
   if(portAlert)alerts.push({level:'info',msg:`📈 ${portAlert} — <a href="#" onclick="window.showScreen('portfolio');return false" style="color:var(--blue);font-weight:700">Обновить →</a>`});
   const assetsAlert=window._checkAssetsAlert&&window._checkAssetsAlert();
@@ -205,7 +289,6 @@ function renderQuickOps(){
   const freq={};
   recentOps.forEach(o=>{
     if(!o.category)return;
-    // FIX: use actual amount rounded to nearest 50 for better grouping accuracy
     const roundAmt=Math.round(o.amount/50)*50;
     const key=o.type+'|'+o.category+'|'+roundAmt;
     freq[key]=(freq[key]||0)+1;
@@ -282,10 +365,8 @@ function renderDebtsDash(){
     return;
   }
   const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
-  // Платежи берём из кошельков (w.payment), а не из устаревшего loans[]
   const monthlyPayments=debtWallets.reduce((s,w)=>s+(w.payment||0),0);
   const now=new Date();
-  // Ближайшие платежи из кошельков (w.payDay), а не из устаревшего loans[]
   const upcoming=debtWallets.filter(w=>w.payment&&w.payDay).map(w=>{
     const payDay=w.payDay;
     let d=new Date(now.getFullYear(),now.getMonth(),payDay);
@@ -315,7 +396,6 @@ function renderDebtsDash(){
   `;
 }
 
-// FIX: use shared calcHealthScore from core.js instead of duplicating logic
 function renderHealthScore(){
   const el=$('dash-health-score');if(!el||!state.D)return;
   const h=calcHealthScore();
@@ -387,7 +467,6 @@ function renderPortfolioDash(){
   `;
 }
 
-// FIX: ownership cost calc now uses same logic as assets.js (divide by filled months, not always 3)
 function renderAssetsDash(){
   const el=document.getElementById('dash-physassets');if(!el||!state.D)return;
   const assets=state.D.physAssets||[];
@@ -519,7 +598,6 @@ function renderForecastDash(){
   <div style="font-size:10px;color:var(--text2);margin-top:5px">Ср. баланс/мес: ${avg>=0?'+':''}${fmt(Math.round(avg))} · осталось ${monthsLeft} мес.</div>`;
 }
 
-// FIX: use shared detectAnomalies from core.js (2*std, 6 months — matches analytics.js)
 function renderAnomaliesDash(factOps){
   const el=document.getElementById('dash-anomalies');if(!el||!state.D)return;
   const anomalies=detectAnomalies(factOps);

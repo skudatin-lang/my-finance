@@ -1,4 +1,36 @@
-import{$,fmt,state,getMOps,isPlanned,sched,planSpent,calcHealthScore}from'./core.js';
+import{$,fmt,state,getMOps,isPlanned,sched,planSpent,calcHealthScore,appConfig}from'./core.js';
+
+async function fetchHealthAi(){
+  const key=appConfig.deepseekKey;
+  if(!key)throw new Error('Добавьте DeepSeek API ключ в Панели администратора');
+  const h=calcHealthScore();
+  if(!h)throw new Error('Нет данных для анализа');
+  const context=[
+    'Индекс здоровья: '+h.score+'/100',
+    'Подушка безопасности: '+h.s1+'% ('+h.emergencyMonths+' мес.)',
+    'Норма сбережений: '+h.s2+'% (факт '+h.savingsRate+'%)',
+    'Долговая нагрузка: '+h.s3+'% ('+h.dtiPct+'% дохода на кредиты)',
+    'Обязательные расходы: '+h.s4+'% ('+h.obligRatio+'% от всех трат)',
+    'Потенциал инвестиций: '+h.s5+'%',
+    h.totalDebt>0?'Общий долг: '+Math.round(h.totalDebt)+' ₽':'Долгов нет',
+  ].join('\n');
+  const resp=await fetch('https://api.proxyapi.ru/deepseek/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'deepseek-chat',
+      max_tokens:350,
+      temperature:0.4,
+      messages:[
+        {role:'system',content:'Ты финансовый советник. Отвечай только на русском. Анализируй индекс финансового здоровья и дай 2-3 конкретных приоритета что улучшить. Используй реальные цифры. Максимум 100 слов.'},
+        {role:'user',content:'Мои показатели финансового здоровья:\n'+context+'\n\nЧто улучшить в первую очередь?'},
+      ],
+    }),
+  });
+  if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Ошибка API '+resp.status);}
+  const data=await resp.json();
+  return data.choices?.[0]?.message?.content?.trim()||'';
+}
 
 export function renderHealth(){
   if(!state.D)return;
@@ -100,6 +132,19 @@ export function renderHealth(){
       ${w.name} — ${fmt(w.balance)}
     </label>`).join('');
 
+  // AI блок — показываем только если есть ключ
+  const aiBlock=appConfig.deepseekKey
+    ?`<div id="health-ai-block" style="background:var(--amber-light);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;padding:12px 14px;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px">✦ AI ПРИОРИТЕТЫ</div>
+          <button onclick="window._loadHealthAi()" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--text2);cursor:pointer">↻</button>
+        </div>
+        <div id="health-ai-text" style="font-size:12px;color:var(--text2)">
+          <button onclick="window._loadHealthAi()" style="background:var(--amber);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить AI рекомендации</button>
+        </div>
+      </div>`
+    :'';
+
   let html=`
     <div style="text-align:center;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:.7px;margin-bottom:6px">ИНДЕКС ФИНАНСОВОГО ЗДОРОВЬЯ</div>
@@ -108,6 +153,8 @@ export function renderHealth(){
       <div style="background:var(--g50);border-radius:5px;height:8px;margin:10px 0 0"><div style="height:8px;border-radius:5px;background:${scoreColor};width:${score}%;transition:width .5s"></div></div>
       ${filledMonths>0?`<div style="font-size:10px;color:var(--text2);margin-top:6px">На основе данных за ${filledMonths} мес.</div>`:'<div style="font-size:10px;color:var(--orange-dark);margin-top:6px">⚠ Добавьте операции для точного расчёта</div>'}
     </div>
+
+    ${aiBlock}
 
     <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px">
       <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px;letter-spacing:.5px">КОШЕЛЬКИ ДЛЯ ПОДУШКИ БЕЗОПАСНОСТИ</div>
@@ -141,6 +188,21 @@ export function renderHealth(){
 
   el.innerHTML=html;
 }
+
+window._loadHealthAi=function(){
+  const textEl=document.getElementById('health-ai-text');if(!textEl)return;
+  textEl.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+    <div style="width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
+    Анализирую...
+  </div>
+  <style>@keyframes _aispin{to{transform:rotate(360deg)}}</style>`;
+  fetchHealthAi().then(text=>{
+    textEl.innerHTML=`<div style="font-size:12px;line-height:1.7;color:var(--topbar)">${text.replace(/\n/g,'<br>')}</div>`;
+  }).catch(err=>{
+    textEl.innerHTML=`<div style="font-size:11px;color:var(--red)">⚠ ${err.message}</div>
+      <button onclick="window._loadHealthAi()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">↻ Повторить</button>`;
+  });
+};
 
 window.toggleEmergencyWallet=function(id,checked){
   if(!state.D.healthSettings)state.D.healthSettings={emergencyWalletIds:[]};
