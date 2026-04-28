@@ -312,7 +312,7 @@
 
   <!-- ── HEALTH ── -->
   <div id="screen-health" class="screen">
-    <div style="max-width:900px;margin:0 auto;width:100%;min-height:100%;display:flex;flex-direction:column;">
+    <div style="max-width:900px;margin:0 auto;width:100%">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)">
         <div style="font-size:18px;font-weight:700;color:var(--text)">Финансовое здоровье</div>
       </div>
@@ -638,6 +638,10 @@
           <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" class="dash-card clickable">
             <div class="dash-card-head">РАСХОДЫ ПО КАТЕГОРИЯМ <span class="dash-card-link">→ ОТЧЁТЫ</span></div>
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
+          </div>
+          <div id="dash-widget-ai" class="dash-card" style="grid-column:1/-1">
+            <div class="dash-card-head">&#10022; AI СОВЕТНИК</div>
+            <div class="dash-card-body"><div id="dash-ai"></div></div>
           </div>
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
@@ -1624,9 +1628,9 @@ ${loansDesc||'Нет данных о кредитах'}
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({
         model:'deepseek/deepseek-chat',
-        messages:[{role:'system',content:'Ты финансовый советник. Отвечай только на русском. Давай конкретные рекомендации по кредитам и долгам. Максимум 150 слов.'},{role:'user',content:prompt}],
+        messages:[{role:'system',content:'Ты финансовый советник. Отвечай только на русском. Давай конкретные рекомендации. Максимум 150 слов.'},{role:'user',content:prompt}],
         max_tokens:600,
-        temperature:0.4
+        temperature:0.7
       })
     });
     if(!resp.ok){
