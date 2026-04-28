@@ -338,15 +338,7 @@
       <div class="loans-right">
         <div style="font-size:14px;font-weight:700;color:var(--text);flex-shrink:0">Сводка и план погашения</div>
         <div id="loans-summary"></div>
-        <div style="margin-top:16px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-size:14px;font-weight:700;color:var(--text)">ИИ-рекомендации</div>
-            <button onclick="window.getLoansAI()" id="loans-ai-btn" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
-          </div>
-          <div id="loans-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:60px">
-            Нажмите «Спросить ИИ» для получения персональных рекомендаций по вашим кредитам
-          </div>
-        </div>
+
       </div>
     </div>
   </div>
@@ -627,6 +619,10 @@
           <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" class="dash-card clickable">
             <div class="dash-card-head">РАСХОДЫ ПО КАТЕГОРИЯМ <span class="dash-card-link">→ ОТЧЁТЫ</span></div>
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
+          </div>
+          <div id="dash-widget-ai" class="dash-card" style="grid-column:1/-1">
+            <div class="dash-card-head">✦ AI СОВЕТНИК</div>
+            <div class="dash-card-body"><div id="dash-ai"></div></div>
           </div>
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
