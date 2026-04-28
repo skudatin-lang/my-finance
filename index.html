@@ -338,7 +338,15 @@
       <div class="loans-right">
         <div style="font-size:14px;font-weight:700;color:var(--text);flex-shrink:0">Сводка и план погашения</div>
         <div id="loans-summary"></div>
-
+        <div style="margin-top:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:14px;font-weight:700;color:var(--text)">ИИ-рекомендации</div>
+            <button onclick="window.getLoansAI()" id="loans-ai-btn" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
+          </div>
+          <div id="loans-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:60px">
+            Нажмите «Спросить ИИ» для получения персональных рекомендаций по вашим кредитам
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -554,6 +562,17 @@
           <div id="simple-recent-ops"></div>
           <div class="simple-see-all" onclick="window.showScreen('reports')">Все операции →</div>
         </div>
+
+        <!-- AI Советник -->
+        <div id="simple-ai-block" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:14px 16px;margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:.7px">✦ AI СОВЕТНИК</div>
+            <button onclick="window._refreshSimpleAi()" style="background:none;border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:2px 8px;font-size:10px;color:rgba(255,255,255,0.5);cursor:pointer">↻</button>
+          </div>
+          <div id="simple-ai-text" style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.7">
+            <button onclick="window._loadSimpleAi()" style="background:rgba(186,117,23,0.8);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -619,10 +638,6 @@
           <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" class="dash-card clickable">
             <div class="dash-card-head">РАСХОДЫ ПО КАТЕГОРИЯМ <span class="dash-card-link">→ ОТЧЁТЫ</span></div>
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
-          </div>
-          <div id="dash-widget-ai" class="dash-card" style="grid-column:1/-1">
-            <div class="dash-card-head">✦ AI СОВЕТНИК</div>
-            <div class="dash-card-body"><div id="dash-ai"></div></div>
           </div>
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
@@ -1866,6 +1881,63 @@ function renderSimpleDashboard(){
     }
   }
 }
+
+// ── AI для простого дашборда ─────────────────────────────────────────────
+async function _fetchSimpleAi(){
+  const key=appConfig.deepseekKey;
+  if(!key)throw new Error('Добавьте DeepSeek API ключ в Панели администратора');
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
+  const byCategory={};
+  mOps.filter(o=>o.type==='expense').forEach(o=>{byCategory[o.category]=(byCategory[o.category]||0)+o.amount;});
+  const topCats=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,a])=>c+': '+Math.round(a)+' ₽').join(', ');
+  const context=[
+    'Доход: '+Math.round(mInc)+' ₽, расход: '+Math.round(mExp)+' ₽',
+    topCats?'Топ трат: '+topCats:'',
+    totalDebt?'Долг: '+Math.round(totalDebt)+' ₽':'Долгов нет',
+  ].filter(Boolean).join('\n');
+  const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'deepseek/deepseek-chat',
+      max_tokens:200,
+      temperature:0.4,
+      messages:[
+        {role:'system',content:'Ты финансовый советник. Отвечай только на русском. Дай 1 главный конкретный совет. Без воды. Максимум 50 слов.'},
+        {role:'user',content:'Мои финансы за месяц:\n'+context+'\n\nГлавный совет?'},
+      ],
+    }),
+  });
+  if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Ошибка API '+resp.status);}
+  const data=await resp.json();
+  return data.choices?.[0]?.message?.content?.trim()||'';
+}
+
+window._loadSimpleAi=function(){
+  const el=document.getElementById('simple-ai-text');if(!el)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.6)">
+    <div style="width:10px;height:10px;border:2px solid rgba(255,255,255,0.2);border-top-color:#BA7517;border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
+    Анализирую...
+  </div>
+  <style>@keyframes _aispin{to{transform:rotate(360deg)}}</style>`;
+  _fetchSimpleAi().then(text=>{
+    el.innerHTML=`<div style="font-size:12px;line-height:1.7;color:rgba(255,255,255,0.9)">${text.replace(/\n/g,'<br>')}</div>`;
+  }).catch(err=>{
+    el.innerHTML=`<div style="font-size:11px;color:#ff9999">⚠ ${err.message}</div>
+      <button onclick="window._loadSimpleAi()" style="margin-top:6px;background:none;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,0.5);cursor:pointer">↻ Повторить</button>`;
+  });
+};
+
+window._refreshSimpleAi=function(){
+  const el=document.getElementById('simple-ai-text');if(!el)return;
+  el.innerHTML='<button onclick="window._loadSimpleAi()" style="background:rgba(186,117,23,0.8);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>';
+  window._loadSimpleAi();
+};
 
 // ── FAQ (часто задаваемые вопросы) ───────────────────────────────────────
 const FAQ_ITEMS = [
