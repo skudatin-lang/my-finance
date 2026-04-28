@@ -224,7 +224,9 @@ ${h?`Подушка безопасности: ${h.emergencyMonths} мес. (це
   }finally{
     if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
   }
-};=function(id,checked){
+};
+
+window.toggleEmergencyWallet=function(id,checked){
   if(!state.D.healthSettings)state.D.healthSettings={emergencyWalletIds:[]};
   const ids=state.D.healthSettings.emergencyWalletIds;
   if(checked){if(!ids.includes(id))ids.push(id);}
