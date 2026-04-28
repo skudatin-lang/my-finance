@@ -493,7 +493,7 @@
         <div class="simple-header">
           <div>
             <div class="simple-greeting" id="simple-greeting">Привет! 👋</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.3)" id="simple-month-lbl"></div>
+            <div class="simple-month-lbl" id="simple-month-lbl"></div>
           </div>
           <div class="simple-header-right">
             <div class="simple-streak" id="simple-streak" onclick="window._showStreakInfo()" style="display:none">
@@ -522,7 +522,6 @@
           <div class="simple-status-msg good" id="simple-status">Загрузка...</div>
         </div>
 
-        <!-- FAB убран — используем кнопку + в нижнем меню -->
         <!-- На десктопе — отдельная кнопка в левой колонке -->
         <button class="simple-desktop-add-btn" onclick="window.openNewOp()">
           ＋ Добавить операцию
@@ -564,13 +563,13 @@
         </div>
 
         <!-- AI Советник -->
-        <div id="simple-ai-block" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:14px 16px;margin-top:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:.7px">✦ AI СОВЕТНИК</div>
-            <button onclick="window._refreshSimpleAi()" style="background:none;border:1px solid rgba(255,255,255,0.2);border-radius:4px;padding:2px 8px;font-size:10px;color:rgba(255,255,255,0.5);cursor:pointer">↻</button>
+        <div id="simple-ai-block">
+          <div class="simple-ai-header">
+            <div class="simple-ai-label">✦ AI СОВЕТНИК</div>
+            <button class="simple-ai-refresh" onclick="window._refreshSimpleAi()">↻</button>
           </div>
-          <div id="simple-ai-text" style="font-size:12px;color:rgba(255,255,255,0.85);line-height:1.7">
-            <button onclick="window._loadSimpleAi()" style="background:rgba(186,117,23,0.8);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>
+          <div id="simple-ai-text" class="simple-ai-text">
+            <button class="simple-ai-btn" onclick="window._loadSimpleAi()">Получить совет</button>
           </div>
         </div>
       </div>
@@ -638,10 +637,6 @@
           <div id="dash-widget-catdetail" onclick="window.showScreen('reports')" class="dash-card clickable">
             <div class="dash-card-head">РАСХОДЫ ПО КАТЕГОРИЯМ <span class="dash-card-link">→ ОТЧЁТЫ</span></div>
             <div class="dash-card-body"><div id="dash-catdetail"></div></div>
-          </div>
-          <div id="dash-widget-ai" class="dash-card" style="grid-column:1/-1">
-            <div class="dash-card-head">&#10022; AI СОВЕТНИК</div>
-            <div class="dash-card-body"><div id="dash-ai"></div></div>
           </div>
           <div id="dash-widget-chart" onclick="window.showScreen('dds')" class="dash-card clickable" style="grid-column:1/-1;min-height:220px">
             <div class="dash-card-head">CASHFLOW — ПОСЛЕДНИЕ 6 МЕСЯЦЕВ <span class="dash-card-link">→ ДДС</span></div>
@@ -1623,12 +1618,12 @@ ${loansDesc||'Нет данных о кредитах'}
 Дай рекомендации по: оптимизации погашения, рефинансированию если выгодно, высвобождению денег.`;
 
   try{
-    const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
+    const resp=await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST',
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({
-        model:'deepseek/deepseek-chat',
-        messages:[{role:'system',content:'Ты финансовый советник. Отвечай только на русском. Давай конкретные рекомендации. Максимум 150 слов.'},{role:'user',content:prompt}],
+        model:'deepseek-chat',
+        messages:[{role:'user',content:prompt}],
         max_tokens:600,
         temperature:0.7
       })
