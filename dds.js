@@ -3,7 +3,7 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  // --- Обёртка для таблицы с прокруткой ---
+  // --- Обёртка для таблицы с прокруткой (уже было) ---
   const tableEl = $('dds-table');
   let tableWrapper = document.getElementById('dds-table-wrapper');
   if (!tableWrapper && tableEl) {
@@ -14,7 +14,7 @@ export function renderDDS() {
     tableEl.parentNode.insertBefore(tableWrapper, tableEl);
     tableWrapper.appendChild(tableEl);
   }
-  // -----------------------------------------
+  // -------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -88,28 +88,41 @@ export function renderDDS() {
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  renderDDSChart();
-
-  // --- Увеличение расстояния между таблицей и графиком ---
-  const chartCanvas = document.getElementById('dds-chart');
-  if (chartCanvas && chartCanvas.parentNode) {
+  // --- ПОДГОТОВКА КОНТЕЙНЕРА ДЛЯ ГРАФИКА (ДЕНЕЖНЫЙ ПОТОК) ---
+  // 1. Находим левый блок (родитель планируемых доходов/расходов)
+  const leftBlock = document.getElementById('dds-plan-inc')?.parentElement;
+  // 2. Получаем холст
+  const canvas = document.getElementById('dds-chart');
+  if (canvas) {
     let chartWrapper = document.getElementById('dds-chart-wrapper');
     if (!chartWrapper) {
       chartWrapper = document.createElement('div');
       chartWrapper.id = 'dds-chart-wrapper';
-      chartWrapper.style.marginTop = '24px';     // увеличенный отступ
+      // Стили: прокрутка по вертикали, увеличенный отступ сверху
       chartWrapper.style.overflowY = 'auto';
-      chartWrapper.style.maxHeight = '50vh';     // чтобы график не обрезался
-      chartCanvas.parentNode.insertBefore(chartWrapper, chartCanvas);
-      chartWrapper.appendChild(chartCanvas);
+      chartWrapper.style.marginTop = '24px';
+      // Вставляем обёртку перед холстом и перемещаем холст внутрь
+      canvas.parentNode.insertBefore(chartWrapper, canvas);
+      chartWrapper.appendChild(canvas);
     }
-
-    // Выравнивание высоты графика с левым блоком плановых расходов
-    const leftPlans = document.querySelector('#dds-plan-inc, #dds-plan-exp')?.parentElement;
-    if (leftPlans && chartWrapper) {
-      chartWrapper.style.minHeight = leftPlans.offsetHeight + 'px';
+    // Устанавливаем высоту обёртки равной высоте левого блока (чтобы нижние края совпадали)
+    if (leftBlock) {
+      const leftHeight = leftBlock.offsetHeight;
+      if (leftHeight > 0) {
+        chartWrapper.style.height = leftHeight + 'px';
+      } else {
+        chartWrapper.style.height = '300px'; // запасная высота
+      }
+    } else {
+      chartWrapper.style.height = '300px';
     }
+    // Дополнительно: холст внутри обёртки растягивается на 100% ширины и высоты
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
   }
+  // --- КОНЕЦ ПОДГОТОВКИ КОНТЕЙНЕРА ---
+
+  renderDDSChart();
 }
 
 function renderDDSChart() {
@@ -135,7 +148,8 @@ function renderDDSChart() {
       ]
     },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: true,
+      maintainAspectRatio: false,
       plugins: {
         legend: { position: 'top', labels: { font: { size: 11 }, color: '#7A5C30' } },
         tooltip: { callbacks: { label: ctx => '₽ ' + Math.round(ctx.raw).toLocaleString('ru-RU') } }
