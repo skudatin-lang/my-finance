@@ -3,11 +3,19 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  const tableContainer = $('dds-table');
-  // Обеспечиваем прокрутку, чтобы таблица помещалась на экран
-  tableContainer.style.overflowY = 'auto';
-  tableContainer.style.overflowX = 'auto';
-  tableContainer.style.maxHeight = '60vh';
+  // --- Добавляем обёртку с прокруткой для таблицы, если её ещё нет ---
+  const tableEl = $('dds-table');
+  let wrapper = document.getElementById('dds-table-wrapper');
+  if (!wrapper && tableEl) {
+    wrapper = document.createElement('div');
+    wrapper.id = 'dds-table-wrapper';
+    wrapper.style.overflowY = 'auto';
+    wrapper.style.maxHeight = '60vh';  // регулируемая высота
+    // Вставляем обёртку перед таблицей и перемещаем таблицу внутрь
+    tableEl.parentNode.insertBefore(wrapper, tableEl);
+    wrapper.appendChild(tableEl);
+  }
+  // ----------------------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -55,13 +63,13 @@ export function renderDDS() {
     eEl.innerHTML = eh || '<div style="text-align:center;padding:16px;color:var(--text2)">Нет статей</div>';
   }
 
+  const table = $('dds-table');
   if (!ops.length) {
-    tableContainer.innerHTML = `<table><tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr></table>`;
+    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
-
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
-  let html = '<thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th></tr></thead><tbody>';
+  let html = '<thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th></table></thead><tbody>';
   sorted.forEach(o => {
     const isIn = o.type === 'income', isOut = o.type === 'expense';
     const cls = isIn ? 'pos' : (isOut ? 'neg' : '');
@@ -78,8 +86,8 @@ export function renderDDS() {
   });
   html += `<tr class="total"><td colspan="2">ИТОГО ДОХОДОВ</td><td colspan="2" class="pos" style="text-align:right">+ ${fmt(totalInc)}</td></tr>`;
   html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
-  html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr></tbody>`;
-  tableContainer.innerHTML = `<table>${html}</table>`;
+  html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
+  table.innerHTML = html;
   renderDDSChart();
 }
 
