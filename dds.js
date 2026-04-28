@@ -3,18 +3,14 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  // --- Обёртка для таблицы с прокруткой (уже работало) ---
-  const tableEl = $('dds-table');
-  let tableWrapper = document.getElementById('dds-table-wrapper');
-  if (!tableWrapper && tableEl) {
-    tableWrapper = document.createElement('div');
-    tableWrapper.id = 'dds-table-wrapper';
-    tableWrapper.style.overflowY = 'auto';
-    tableWrapper.style.maxHeight = '60vh';
-    tableEl.parentNode.insertBefore(tableWrapper, tableEl);
-    tableWrapper.appendChild(tableEl);
+  // --- Обеспечиваем вертикальную прокрутку таблицы операций ---
+  const tableContainer = document.querySelector('#screen-dds .dds-right .panel-body');
+  if (tableContainer && !tableContainer.classList.contains('dds-scroll-set')) {
+    tableContainer.style.overflowY = 'auto';
+    tableContainer.style.maxHeight = '60vh';   // регулируемая высота
+    tableContainer.classList.add('dds-scroll-set');
   }
-  // -------------------------------------------------------
+  // -----------------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -64,7 +60,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
+    table.innerHTML = `<td><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -88,48 +84,28 @@ export function renderDDS() {
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // ---------- ИСПРАВЛЕНИЕ ДЛЯ ГРАФИКА (ДЕНЕЖНЫЙ ПОТОК) ----------
-  // 1. Находим левый блок плановых расходов (его высота будет ориентиром)
-  const leftBlock = document.getElementById('dds-plan-exp');
-  // 2. Получаем холст
-  const canvas = document.getElementById('dds-chart');
-  if (canvas && leftBlock) {
-    let chartWrapper = document.getElementById('dds-chart-wrapper');
-    if (!chartWrapper) {
-      chartWrapper = document.createElement('div');
-      chartWrapper.id = 'dds-chart-wrapper';
-      chartWrapper.style.overflowY = 'auto';      // вертикальная прокрутка
-      chartWrapper.style.marginTop = '24px';       // увеличенный отступ от таблицы
-      // Вставляем обёртку перед холстом и перемещаем холст внутрь
-      canvas.parentNode.insertBefore(chartWrapper, canvas);
-      chartWrapper.appendChild(canvas);
-    }
-    // Устанавливаем высоту обёртки равной высоте левого блока (чтобы нижние края совпадали)
+  // --- Работа с графиком (денежный поток) ---
+  // 1. Увеличиваем расстояние между таблицей и графиком
+  const chartWrap = document.querySelector('#screen-dds .chart-wrap');
+  if (chartWrap && !chartWrap.classList.contains('dds-chart-fixed')) {
+    chartWrap.style.marginTop = '24px';
+    chartWrap.classList.add('dds-chart-fixed');
+  }
+
+  // 2. Обеспечиваем вертикальную прокрутку внутри chart-wrap при необходимости
+  if (chartWrap && chartWrap.style.overflowY !== 'auto') {
+    chartWrap.style.overflowY = 'auto';
+    chartWrap.style.maxHeight = '50vh';
+  }
+
+  // 3. Выравниваем высоту графика по левому блоку (плановые расходы)
+  const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
+  if (leftBlock && chartWrap) {
     const leftHeight = leftBlock.offsetHeight;
     if (leftHeight > 0) {
-      chartWrapper.style.height = leftHeight + 'px';
-    } else {
-      chartWrapper.style.height = '300px'; // запасная высота
+      chartWrap.style.minHeight = leftHeight + 'px';
     }
-    // Холст внутри обёртки растягивается на 100% (чтобы график заполнил контейнер)
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-  } else if (canvas && !leftBlock) {
-    // Если левый блок не найден, просто даём прокрутку и отступ
-    let chartWrapper = document.getElementById('dds-chart-wrapper');
-    if (!chartWrapper) {
-      chartWrapper = document.createElement('div');
-      chartWrapper.id = 'dds-chart-wrapper';
-      chartWrapper.style.overflowY = 'auto';
-      chartWrapper.style.marginTop = '24px';
-      canvas.parentNode.insertBefore(chartWrapper, canvas);
-      chartWrapper.appendChild(canvas);
-    }
-    chartWrapper.style.height = '300px';
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
   }
-  // ----------------------------------------------------------------
 
   renderDDSChart();
 }
