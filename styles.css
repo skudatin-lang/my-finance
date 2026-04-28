@@ -8,57 +8,7 @@
   --blue-bg:#D6EAF8;--blue:#2471A3;
   --scroll-thumb:#BA7517;--scroll-track:#EDD9A3;
   --gap:14px;
-  /* r200 для ошибок AI */
-  --r200:#fca5a5;
 }
-
-/* ── ТЁМНАЯ ТЕМА ── */
-[data-theme="dark"]{
-  --bg:#1A1410;
-  --topbar:#E8D5B0;
-  --card:#2A2018;
-  --border:#5A4030;
-  --border2:#6A5040;
-  --amber:#D4922A;
-  --amber-dark:#E8B060;
-  --amber-light:#3A2C18;
-  --text:#E8D5B0;
-  --text2:#B09070;
-  --text3:#8A7060;
-  --green:#5A9C4F;
-  --green-bg:#1C2E1A;
-  --green-dark:#7ACC6F;
-  --orange:#D4782A;
-  --orange-bg:#2E1E10;
-  --orange-dark:#E8A060;
-  --red:#E05545;
-  --red-bg:#2E1010;
-  --blue-bg:#102030;
-  --blue:#5090C8;
-  --scroll-thumb:#6A5040;
-  --scroll-track:#2A2018;
-  --r200:#7A3030;
-}
-
-/* В тёмной теме: поля ввода */
-[data-theme="dark"] .fi{background:#1A1410;color:var(--text);}
-[data-theme="dark"] .pct-row input[type=number]{background:#1A1410;color:var(--text);border-color:var(--border2);}
-[data-theme="dark"] .modal-overlay{background:rgba(0,0,0,.7);}
-/* Исправляем жёстко прописанные белые/чёрные цвета в JS-рендере */
-[data-theme="dark"] #health-content,
-[data-theme="dark"] #loans-list,
-[data-theme="dark"] #loans-summary,
-[data-theme="dark"] #loans-ai-result,
-[data-theme="dark"] #health-ai-result,
-[data-theme="dark"] .dash-card-body,
-[data-theme="dark"] .panel-body{color:var(--text);}
-/* Жёстко прописанные белые фоны в карточках */
-[data-theme="dark"] .bal-item,
-[data-theme="dark"] .met-item,
-[data-theme="dark"] .cs-item{background:var(--amber-light);}
-/* theme-toggle button */
-.theme-toggle{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;width:32px;height:28px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
-[data-theme="dark"] .theme-toggle{background:rgba(255,255,255,.15);}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column;}
 
@@ -346,9 +296,6 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .rep-right-top .panel{height:auto!important;}
   .panel{height:auto!important;min-height:0!important;}
   .panel-body{max-height:280px;}
-  /* Health tab: снимаем ограничение высоты, контент должен раскрываться полностью */
-  #screen-health .panel{height:auto!important;}
-  #screen-health .panel-body{max-height:none!important;overflow-y:visible!important;}
 
   /* DDS */
   #screen-dds{flex-direction:column!important;overflow:visible!important;height:auto!important;}
@@ -499,3 +446,65 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 }
 
 /* ── TOPBAR: no voice btn in row1 since smart btn is floating ── */
+
+/* ── DARK THEME ── */
+[data-theme="dark"]{
+  --bg:#1A1410;
+  --topbar:#2A1F14;
+  --card:#221A10;
+  --border:#4A3520;
+  --border2:#5A4530;
+  --amber:#D4901A;
+  --amber-dark:#E8A830;
+  --amber-light:#2A2010;
+  --text:#E8D5B0;
+  --text2:#A08860;
+  --text3:#7A6540;
+  --green:#5A9C4F;
+  --green-bg:#1A2A18;
+  --green-dark:#7ACC6A;
+  --orange:#D87030;
+  --orange-bg:#2A1A0A;
+  --orange-dark:#E89050;
+  --red:#E04040;
+  --red-bg:#2A1010;
+  --r200:#8A3030;
+  --blue-bg:#0A1828;
+  --blue:#4A90D0;
+  --g50:#2A2010;
+  --scroll-thumb:#5A4530;
+  --scroll-track:#2A1F14;
+}
+
+/* Dark theme: fix inputs so they don't stay white */
+[data-theme="dark"] .fi{
+  background:var(--bg);
+  color:var(--text);
+  border-color:var(--border2);
+}
+[data-theme="dark"] .fi:focus{border-color:var(--amber);}
+[data-theme="dark"] select.fi{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='%23D4901A' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+}
+[data-theme="dark"] .pct-row input[type=number]{
+  background:var(--bg);
+  color:var(--text);
+  border-color:var(--border2);
+}
+
+/* ── MOBILE: Health tab full height fix ── */
+@media(max-width:700px){
+  #screen-health{
+    overflow-y:auto!important;
+    height:auto!important;
+    min-height:0!important;
+  }
+  #screen-health .panel-body{
+    max-height:none!important;
+    overflow-y:visible!important;
+  }
+  #screen-health .panel{
+    height:auto!important;
+    overflow:visible!important;
+  }
+}

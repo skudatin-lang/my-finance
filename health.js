@@ -121,7 +121,7 @@ export function renderHealth(){
       return`<div style="padding:12px 0;border-bottom:1px solid var(--border)">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
           <div>
-            <div style="font-size:13px;font-weight:700;color:var(--topbar)">${ind.label}</div>
+            <div style="font-size:13px;font-weight:700;color:var(--text)">${ind.label}</div>
             <div style="font-size:10px;color:var(--text2);margin-top:1px">${ind.hint}</div>
             <div style="font-size:11px;color:var(--text2);margin-top:2px">${ind.desc}</div>
           </div>
@@ -133,36 +133,26 @@ export function renderHealth(){
         <div style="font-size:11px;color:var(--text2);margin-bottom:6px">${ind.detail}</div>
         <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
           <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:5px">ЧТО СДЕЛАТЬ:</div>
-          ${ind.steps.map((s,i)=>`<div style="font-size:11px;color:var(--topbar);padding:2px 0;display:flex;gap:6px"><span style="color:${col};font-weight:700;flex-shrink:0">${i+1}.</span>${s}</div>`).join('')}
+          ${ind.steps.map((s,i)=>`<div style="font-size:11px;color:var(--text);padding:2px 0;display:flex;gap:6px"><span style="color:${col};font-weight:700;flex-shrink:0">${i+1}.</span>${s}</div>`).join('')}
         </div>
       </div>`;
     }).join('')}
   `;
 
-  el.innerHTML=html;
-
-  // AI блок — добавляем в конец health-content после рендера
-  const aiWrap=document.createElement('div');
-  aiWrap.style.cssText='margin-top:14px;padding-top:14px;border-top:1px solid var(--border)';
-  aiWrap.innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--text)">ИИ-анализ здоровья</div>
-      <button id="health-ai-btn" onclick="window.getHealthAI()" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
-    </div>
-    <div id="health-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:48px">
-      Нажмите «Спросить ИИ» для персонального анализа вашего финансового здоровья
+  html+=`
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">ИИ-рекомендации</div>
+        <button onclick="window.getHealthAI()" id="health-ai-btn" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
+      </div>
+      <div id="health-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:60px">
+        Нажмите «Спросить ИИ» для получения рекомендаций по вашему финансовому здоровью
+      </div>
     </div>
   `;
-  el.appendChild(aiWrap);
-}
 
-window.toggleEmergencyWallet=function(id,checked){
-  if(!state.D.healthSettings)state.D.healthSettings={emergencyWalletIds:[]};
-  const ids=state.D.healthSettings.emergencyWalletIds;
-  if(checked){if(!ids.includes(id))ids.push(id);}
-  else{const i=ids.indexOf(id);if(i>=0)ids.splice(i,1);}
-  sched();renderHealth();
-};
+  el.innerHTML=html;
+}
 
 window.getHealthAI=async function(){
   if(!state.D)return;
@@ -174,31 +164,28 @@ window.getHealthAI=async function(){
   }
   const btn=document.getElementById('health-ai-btn');
   const result=document.getElementById('health-ai-result');
-  if(!result)return;
   if(btn){btn.disabled=true;btn.textContent='⏳ Анализирую...';}
-  result.innerHTML='<span style="color:var(--text2)">Анализирую ваши данные...</span>';
+  if(result)result.innerHTML='<span style="color:var(--text2)">Анализирую ваши данные...</span>';
 
   const h=calcHealthScore();
-  const ops=getMOps(0).filter(o=>!isPlanned(o.type));
-  const income=ops.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-  const expense=ops.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
 
-  const context=[
-    h?`Индекс здоровья: ${h.score}/100 (${h.score>=80?'Отлично':h.score>=60?'Хорошо':'Требует внимания'})`:'',
-    h?`Подушка безопасности: ${h.s1}% — ${h.emergencyMonths} мес. расходов`:'',
-    h?`Норма сбережений: ${h.s2}% — ${h.savingsRate}% дохода`:'',
-    h?`Долговая нагрузка: ${h.s3}% — DTI ${h.dtiPct}%`:'',
-    h?`Обязательные расходы: ${h.s4}% — ${h.obligRatio}% трат`:'',
-    h?`Потенциал инвестиций: ${h.s5}% — свободно ${h.investable>0?fmt(h.investable)+'/мес':'нет'}`:'',
-    `Доход: ${Math.round(income)} ₽, Расходы: ${Math.round(expense)} ₽`,
-  ].filter(Boolean).join('\n');
+  const prompt=`Ты финансовый советник. Проанализируй финансовое здоровье и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
 
-  const prompt=`Ты финансовый советник. Проанализируй финансовое здоровье пользователя и дай 3-4 конкретных совета на русском языке. Будь конкретен и ссылайся на цифры.
+Индекс здоровья: ${h?h.score:0}/100
+Доход за месяц: ${mInc.toLocaleString('ru-RU')} ₽
+Расходы за месяц: ${mExp.toLocaleString('ru-RU')} ₽
+${h?`Подушка безопасности: ${h.emergencyMonths} мес. (цель 3-6)
+Норма сбережений: ${h.savingsRate}% (цель 20%+)
+Долговая нагрузка: ${h.dtiPct}% от дохода (цель <30%)
+Обязательные расходы: ${h.obligRatio}% (цель <50%)
+Потенциал инвестиций: ${h.investable>0?h.investable.toLocaleString('ru-RU')+' ₽/мес':'нет свободных средств'}`:''}
 
-Данные финансового здоровья:
-${context}
-
-Дай рекомендации: что улучшить в первую очередь, конкретные шаги.`;
+Дай приоритетные рекомендации по улучшению каждого показателя.`;
 
   try{
     const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
@@ -206,33 +193,41 @@ ${context}
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({
         model:'deepseek/deepseek-chat',
-        messages:[{role:'user',content:prompt}],
-        max_tokens:500,
-        temperature:0.5,
-      }),
+        max_tokens:600,
+        temperature:0.7,
+        messages:[{role:'user',content:prompt}]
+      })
     });
     if(!resp.ok){
       const err=await resp.json().catch(()=>({}));
       const msg=err.error?.message||'HTTP '+resp.status;
       if(msg.includes('Insufficient Balance')||msg.includes('insufficient_quota')){
-        throw new Error('На счёте недостаточно средств. Пополните баланс.');
+        throw new Error('На счёте недостаточно средств. Пополните баланс на platform.deepseek.com');
       }
       if(resp.status===401||msg.includes('Invalid API')){
-        throw new Error('Неверный API-ключ. Проверьте ключ в панели Админ.');
+        throw new Error('Неверный API-ключ. Проверьте ключ в панели Админ');
       }
       if(resp.status===429){
-        throw new Error('Превышен лимит запросов. Попробуйте через минуту.');
+        throw new Error('Превышен лимит запросов. Попробуйте через минуту');
       }
       throw new Error(msg);
     }
     const data=await resp.json();
     const text=data.choices?.[0]?.message?.content||'Нет ответа';
     const html=text.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
-    result.innerHTML=`<div style="color:var(--text)">${html}</div>
+    if(result)result.innerHTML=`<div style="color:var(--text)">${html}</div>
       <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
   }catch(e){
-    result.innerHTML=`<div style="color:var(--red)">⚠ ${e.message}</div>`;
+    const isBalance=e.message.includes('недостаточно средств');
+    if(result)result.innerHTML=`<div style="color:var(--red)">⚠ ${e.message}${isBalance?
+      ' <a href="https://platform.deepseek.com/usage" target="_blank" style="color:var(--amber);font-weight:700">Пополнить →</a>':''}</div>`;
   }finally{
     if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
   }
+};=function(id,checked){
+  if(!state.D.healthSettings)state.D.healthSettings={emergencyWalletIds:[]};
+  const ids=state.D.healthSettings.emergencyWalletIds;
+  if(checked){if(!ids.includes(id))ids.push(id);}
+  else{const i=ids.indexOf(id);if(i>=0)ids.splice(i,1);}
+  sched();renderHealth();
 };
