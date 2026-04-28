@@ -1,5 +1,72 @@
 import{$,fmt,state,getMOps,isPlanned,sched,planSpent,calcHealthScore,appConfig}from'./core.js';
 
+// ── AI: запрос к советнику здоровья ───────────────────────────────────────
+async function fetchHealthAi(score,indicators){
+  const key=appConfig.deepseekKey;
+  if(!key)throw new Error('Добавьте DeepSeek API ключ в Панели администратора');
+
+  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const indText=indicators.map(ind=>ind.label+': '+ind.score+'%').join(', ');
+
+  const prompt=[
+    'Индекс финансового здоровья: '+score+'/100',
+    'Показатели: '+indText,
+    'Доход месяца: '+Math.round(mInc)+' ₽, расход: '+Math.round(mExp)+' ₽',
+    totalDebt?'Общий долг: '+Math.round(totalDebt)+' ₽':'Долгов нет',
+  ].join('\n');
+
+  const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'deepseek/deepseek-chat',
+      max_tokens:300,
+      temperature:0.4,
+      messages:[
+        {role:'system',content:'Ты личный финансовый советник. Отвечай только на русском. Анализируй индекс финансового здоровья. Дай 2-3 конкретных совета что улучшить. Без воды. Максимум 100 слов.'},
+        {role:'user',content:'Мои показатели финансового здоровья:\n'+prompt+'\n\nЧто самое важное нужно улучшить прямо сейчас?'},
+      ],
+    }),
+  });
+  if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Ошибка API '+resp.status);}
+  const data=await resp.json();
+  return data.choices?.[0]?.message?.content?.trim()||'';
+}
+
+let _lastHealthScore=0;
+let _lastHealthIndicators=[];
+
+function _loadHealthAi(){
+  const el=document.getElementById('health-ai-content');if(!el)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+    <div style="width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:_haispin .7s linear infinite;flex-shrink:0"></div>
+    Анализирую показатели...
+  </div>
+  <style>@keyframes _haispin{to{transform:rotate(360deg)}}</style>`;
+  fetchHealthAi(_lastHealthScore,_lastHealthIndicators).then(text=>{
+    el.innerHTML=`
+      <div style="font-size:11px;line-height:1.7;color:var(--text)">${text.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}</div>
+      <div style="margin-top:8px;text-align:right">
+        <button onclick="window._refreshHealthAi()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">&#8635; Обновить</button>
+      </div>`;
+  }).catch(err=>{
+    el.innerHTML=`<div style="font-size:11px;color:var(--red)">&#9888; ${err.message}</div>
+      <div style="margin-top:6px;text-align:right">
+        <button onclick="window._refreshHealthAi()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">&#8635; Повторить</button>
+      </div>`;
+  });
+}
+
+window._refreshHealthAi=function(){
+  _loadHealthAi();
+};
+
 export function renderHealth(){
   if(!state.D)return;
   const el=$('health-content');if(!el)return;
@@ -35,70 +102,75 @@ export function renderHealth(){
     {
       id:'emergency',label:'Подушка безопасности',
       hint:'Сумма на выбранных кошельках / средний расход в месяц',
-      desc:`${emergencyMonths} мес. расходов · Цель: 3–6 месяцев`,
+      desc:emergencyMonths+' мес. расходов · Цель: 3–6 месяцев',
       score:s1,
-      detail:`Накоплено: ${fmt(totalSavings)} · Ср. расход: ${avgExp>0?fmt(Math.round(avgExp)):'-'}/мес`,
+      detail:'Накоплено: '+fmt(totalSavings)+' · Ср. расход: '+(avgExp>0?fmt(Math.round(avgExp)):'-')+'/мес',
       steps:[
-        `Автоматически откладывай ${fmt(Math.round(avgExp*0.1))}/мес — 10% расходов`,
-        `Цель накопить: ${fmt(Math.round(avgExp*3))} (3 мес) → ${fmt(Math.round(avgExp*6))} (6 мес)`,
-        `Используй кошелёк "${emergencyWallets[0]?.name||'Сбережения'}" — он уже выбран`
+        'Автоматически откладывай '+fmt(Math.round(avgExp*0.1))+'/мес — 10% расходов',
+        'Цель накопить: '+fmt(Math.round(avgExp*3))+' (3 мес) → '+fmt(Math.round(avgExp*6))+' (6 мес)',
+        'Используй кошелёк "'+(emergencyWallets[0]?.name||'Сбережения')+'" — он уже выбран'
       ]
     },
     {
       id:'savings',label:'Норма сбережений',
       hint:'Переводы на накопительные кошельки / доход текущего месяца',
-      desc:`${savingsRate}% дохода отложено · Цель: 20%+`,
+      desc:savingsRate+'% дохода отложено · Цель: 20%+',
       score:s2,
-      detail:`Норма сбережений: ${savingsRate}% · Доход: ${curInc>0?fmt(curInc):'-'}`,
+      detail:'Норма сбережений: '+savingsRate+'% · Доход: '+(curInc>0?fmt(curInc):'-'),
       steps:[
-        `По финплану на накопления: ${state.D.plan.filter(p=>p.type==='income').map(p=>p.label+' '+p.pct+'%').join(', ')}`,
-        `Каждый месяц переводи на накопительный счёт сразу после получения дохода`,
-        `Привяжи кошелёк к статье финплана в Настройках — переводы считаются автоматически`
+        'По финплану на накопления: '+state.D.plan.filter(p=>p.type==='income').map(p=>p.label+' '+p.pct+'%').join(', '),
+        'Каждый месяц переводи на накопительный счёт сразу после получения дохода',
+        'Привяжи кошелёк к статье финплана в Настройках — переводы считаются автоматически'
       ]
     },
     {
       id:'debt',label:'Долговая нагрузка',
       hint:'Ежемесячные платежи по кредитам / доход',
-      desc:totalDebt===0?'Долгов нет':`${fmt(totalDebt)} долга · платежи ~${dtiPct}% дохода`,
+      desc:totalDebt===0?'Долгов нет':fmt(totalDebt)+' долга · платежи ~'+dtiPct+'% дохода',
       score:s3,
-      detail:totalDebt===0?'Отлично':`По финплану на кредиты: ${creditAllocPct}% (${fmt(creditAllocAmt)}) · потрачено: ${fmt(creditSpent)}`,
+      detail:totalDebt===0?'Отлично':'По финплану на кредиты: '+creditAllocPct+'% ('+fmt(creditAllocAmt)+') · потрачено: '+fmt(creditSpent),
       steps:[
-        `По финплану выделено ${creditAllocPct}% на кредиты — ${fmt(creditAllocAmt)}/мес`,
-        totalDebt>h.avgInc*3?`Долг > 3 мес. дохода. Рассмотри рефинансирование`:`Долговая нагрузка в норме — продолжай плановые платежи`,
-        `Стратегия "снежного кома": сначала закрывай кредит с наибольшей ставкой`
+        'По финплану выделено '+creditAllocPct+'% на кредиты — '+fmt(creditAllocAmt)+'/мес',
+        totalDebt>h.avgInc*3?'Долг > 3 мес. дохода. Рассмотри рефинансирование':'Долговая нагрузка в норме — продолжай плановые платежи',
+        'Стратегия "снежного кома": сначала закрывай кредит с наибольшей ставкой'
       ]
     },
     {
       id:'oblig',label:'Обязательные расходы',
       hint:'Постоянные расходы + кредиты / все расходы',
-      desc:`${obligRatio}% трат — обязательные · Цель: <50%`,
+      desc:obligRatio+'% трат — обязательные · Цель: <50%',
       score:s4,
-      detail:`Обязательные: ${fmt(obligExp)} · Всего расходов: ${fmt(curExp)}`,
+      detail:'Обязательные: '+fmt(obligExp)+' · Всего расходов: '+fmt(curExp),
       steps:[
-        `Проанализируй постоянные расходы — есть ли подписки которые можно отменить?`,
-        `Оптимизируй связь, коммуналку, страховки`,
-        `Цель: обязательные расходы не более 50% от всех трат`
+        'Проанализируй постоянные расходы — есть ли подписки которые можно отменить?',
+        'Оптимизируй связь, коммуналку, страховки',
+        'Цель: обязательные расходы не более 50% от всех трат'
       ]
     },
     {
       id:'invest',label:'Потенциал инвестиций',
       hint:'Свободные средства после расходов и 10% резерва',
-      desc:investable>0?`${fmt(investable)}/мес · Цель: 10–15% дохода`:'Нет свободных средств',
+      desc:investable>0?fmt(investable)+'/мес · Цель: 10–15% дохода':'Нет свободных средств',
       score:s5,
-      detail:`После расходов и 10% резерва · Ср. доход: ${h.avgInc>0?fmt(Math.round(h.avgInc)):'-'}/мес`,
+      detail:'После расходов и 10% резерва · Ср. доход: '+(h.avgInc>0?fmt(Math.round(h.avgInc)):'-')+'/мес',
       steps:[
-        investable>0?`Можно инвестировать ${fmt(investable)}/мес`:`Сначала сократи расходы или увеличь доход`,
-        `При 10% годовых ${fmt(investable)}/мес за 10 лет = ~${fmt(Math.round(investable*12*17.5))}`,
-        `Начни с ИИС или накопительного счёта с высокой ставкой`
+        investable>0?'Можно инвестировать '+fmt(investable)+'/мес':'Сначала сократи расходы или увеличь доход',
+        'При 10% годовых '+fmt(investable)+'/мес за 10 лет = ~'+fmt(Math.round(investable*12*17.5)),
+        'Начни с ИИС или накопительного счёта с высокой ставкой'
       ]
     }
   ];
 
+  _lastHealthScore=score;
+  _lastHealthIndicators=indicators;
+
   const walletCheckboxes=state.D.wallets.filter(w=>w.balance>=0).map(w=>`
-    <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer">
+    <label style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:13px;cursor:pointer;color:var(--text)">
       <input type="checkbox" ${hs.emergencyWalletIds.includes(w.id)?'checked':''} onchange="window.toggleEmergencyWallet('${w.id}',this.checked)" style="accent-color:var(--amber)">
       ${w.name} — ${fmt(w.balance)}
     </label>`).join('');
+
+  const hasKey=!!(appConfig&&appConfig.deepseekKey);
 
   let html=`
     <div style="text-align:center;padding:14px 0 18px;border-bottom:1px solid var(--border);margin-bottom:14px">
@@ -106,7 +178,20 @@ export function renderHealth(){
       <div style="font-size:48px;font-weight:700;color:${scoreColor};line-height:1">${score}</div>
       <div style="font-size:13px;font-weight:700;color:${scoreColor};margin-top:4px">${scoreLabel}</div>
       <div style="background:var(--g50);border-radius:5px;height:8px;margin:10px 0 0"><div style="height:8px;border-radius:5px;background:${scoreColor};width:${score}%;transition:width .5s"></div></div>
-      ${filledMonths>0?`<div style="font-size:10px;color:var(--text2);margin-top:6px">На основе данных за ${filledMonths} мес.</div>`:'<div style="font-size:10px;color:var(--orange-dark);margin-top:6px">⚠ Добавьте операции для точного расчёта</div>'}
+      ${filledMonths>0?'<div style="font-size:10px;color:var(--text2);margin-top:6px">На основе данных за '+filledMonths+' мес.</div>':'<div style="font-size:10px;color:var(--orange-dark);margin-top:6px">&#9888; Добавьте операции для точного расчёта</div>'}
+    </div>
+
+    <div style="background:var(--amber-light);border:1px solid var(--border);border-left:3px solid var(--amber);border-radius:8px;padding:12px 14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px">&#10022; AI СОВЕТНИК</div>
+        <button onclick="window._refreshHealthAi()" style="background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:10px;color:var(--text2);cursor:pointer">&#8635;</button>
+      </div>
+      <div id="health-ai-content">
+        ${hasKey
+          ?'<button onclick="window._refreshHealthAi()" style="background:var(--amber);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>'
+          :'<div style="font-size:11px;color:var(--text2)">Добавьте DeepSeek API ключ в Панели администратора для получения AI советов.</div>'
+        }
+      </div>
     </div>
 
     <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px">
@@ -117,114 +202,30 @@ export function renderHealth(){
 
     ${indicators.map(ind=>{
       const col=ind.score>=80?'var(--green)':ind.score>=60?'var(--amber)':'var(--red)';
-      const icon=ind.score>=80?'✓':ind.score>=60?'!':'⚠';
-      return`<div style="padding:12px 0;border-bottom:1px solid var(--border)">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:var(--text)">${ind.label}</div>
-            <div style="font-size:10px;color:var(--text2);margin-top:1px">${ind.hint}</div>
-            <div style="font-size:11px;color:var(--text2);margin-top:2px">${ind.desc}</div>
-          </div>
-          <span style="font-size:14px;font-weight:700;color:${col};margin-left:10px">${icon} ${ind.score}%</span>
-        </div>
-        <div style="background:var(--g50);border-radius:3px;height:5px;margin-bottom:6px">
-          <div style="height:5px;border-radius:3px;background:${col};width:${ind.score}%"></div>
-        </div>
-        <div style="font-size:11px;color:var(--text2);margin-bottom:6px">${ind.detail}</div>
-        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px">
-          <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:5px">ЧТО СДЕЛАТЬ:</div>
-          ${ind.steps.map((s,i)=>`<div style="font-size:11px;color:var(--text);padding:2px 0;display:flex;gap:6px"><span style="color:${col};font-weight:700;flex-shrink:0">${i+1}.</span>${s}</div>`).join('')}
-        </div>
-      </div>`;
+      const icon=ind.score>=80?'&#10003;':ind.score>=60?'!':'&#9888;';
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px">'
+        +'<div>'
+        +'<div style="font-size:13px;font-weight:700;color:var(--text)">'+ind.label+'</div>'
+        +'<div style="font-size:10px;color:var(--text2);margin-top:1px">'+ind.hint+'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-top:2px">'+ind.desc+'</div>'
+        +'</div>'
+        +'<span style="font-size:14px;font-weight:700;color:'+col+';margin-left:10px">'+icon+' '+ind.score+'%</span>'
+        +'</div>'
+        +'<div style="background:var(--g50);border-radius:3px;height:5px;margin-bottom:6px">'
+        +'<div style="height:5px;border-radius:3px;background:'+col+';width:'+ind.score+'%"></div>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--text2);margin-bottom:6px">'+ind.detail+'</div>'
+        +'<div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px 10px">'
+        +'<div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.5px;margin-bottom:5px">ЧТО СДЕЛАТЬ:</div>'
+        +ind.steps.map((s,i)=>'<div style="font-size:11px;color:var(--text);padding:2px 0;display:flex;gap:6px"><span style="color:'+col+';font-weight:700;flex-shrink:0">'+(i+1)+'.</span>'+s+'</div>').join('')
+        +'</div>'
+        +'</div>';
     }).join('')}
-  `;
-
-  html+=`
-    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:700;color:var(--text)">ИИ-рекомендации</div>
-        <button onclick="window.getHealthAI()" id="health-ai-btn" style="background:var(--amber);border:none;border-radius:7px;padding:7px 14px;font-size:11px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.4px">✨ Спросить ИИ</button>
-      </div>
-      <div id="health-ai-result" style="font-size:12px;color:var(--text2);line-height:1.7;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px;min-height:60px">
-        Нажмите «Спросить ИИ» для получения рекомендаций по вашему финансовому здоровью
-      </div>
-    </div>
   `;
 
   el.innerHTML=html;
 }
-
-window.getHealthAI=async function(){
-  if(!state.D)return;
-  const key=appConfig.deepseekKey;
-  if(!key){
-    const r=document.getElementById('health-ai-result');
-    if(r)r.innerHTML='<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
-    return;
-  }
-  const btn=document.getElementById('health-ai-btn');
-  const result=document.getElementById('health-ai-result');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Анализирую...';}
-  if(result)result.innerHTML='<span style="color:var(--text2)">Анализирую ваши данные...</span>';
-
-  const h=calcHealthScore();
-  const now=new Date();
-  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
-  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
-
-  const prompt=`Ты финансовый советник. Проанализируй финансовое здоровье и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
-
-Индекс здоровья: ${h?h.score:0}/100
-Доход за месяц: ${mInc.toLocaleString('ru-RU')} ₽
-Расходы за месяц: ${mExp.toLocaleString('ru-RU')} ₽
-${h?`Подушка безопасности: ${h.emergencyMonths} мес. (цель 3-6)
-Норма сбережений: ${h.savingsRate}% (цель 20%+)
-Долговая нагрузка: ${h.dtiPct}% от дохода (цель <30%)
-Обязательные расходы: ${h.obligRatio}% (цель <50%)
-Потенциал инвестиций: ${h.investable>0?h.investable.toLocaleString('ru-RU')+' ₽/мес':'нет свободных средств'}`:''}
-
-Дай приоритетные рекомендации по улучшению каждого показателя.`;
-
-  try{
-    const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({
-        model:'deepseek/deepseek-chat',
-        max_tokens:600,
-        temperature:0.7,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    if(!resp.ok){
-      const err=await resp.json().catch(()=>({}));
-      const msg=err.error?.message||'HTTP '+resp.status;
-      if(msg.includes('Insufficient Balance')||msg.includes('insufficient_quota')){
-        throw new Error('На счёте недостаточно средств. Пополните баланс на platform.deepseek.com');
-      }
-      if(resp.status===401||msg.includes('Invalid API')){
-        throw new Error('Неверный API-ключ. Проверьте ключ в панели Админ');
-      }
-      if(resp.status===429){
-        throw new Error('Превышен лимит запросов. Попробуйте через минуту');
-      }
-      throw new Error(msg);
-    }
-    const data=await resp.json();
-    const text=data.choices?.[0]?.message?.content||'Нет ответа';
-    const html=text.replace(/\*\*(.*?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
-    if(result)result.innerHTML=`<div style="color:var(--text)">${html}</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
-  }catch(e){
-    const isBalance=e.message.includes('недостаточно средств');
-    if(result)result.innerHTML=`<div style="color:var(--red)">⚠ ${e.message}${isBalance?
-      ' <a href="https://platform.deepseek.com/usage" target="_blank" style="color:var(--amber);font-weight:700">Пополнить →</a>':''}</div>`;
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
-  }
-};
 
 window.toggleEmergencyWallet=function(id,checked){
   if(!state.D.healthSettings)state.D.healthSettings={emergencyWalletIds:[]};

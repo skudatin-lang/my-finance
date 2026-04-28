@@ -312,7 +312,7 @@
 
   <!-- ── HEALTH ── -->
   <div id="screen-health" class="screen">
-    <div style="max-width:900px;margin:0 auto;width:100%">
+    <div style="max-width:900px;margin:0 auto;width:100%;min-height:100%;display:flex;flex-direction:column;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gap)">
         <div style="font-size:18px;font-weight:700;color:var(--text)">Финансовое здоровье</div>
       </div>
@@ -1624,9 +1624,9 @@ ${loansDesc||'Нет данных о кредитах'}
       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
       body:JSON.stringify({
         model:'deepseek/deepseek-chat',
-        messages:[{role:'user',content:prompt}],
+        messages:[{role:'system',content:'Ты финансовый советник. Отвечай только на русском. Давай конкретные рекомендации по кредитам и долгам. Максимум 150 слов.'},{role:'user',content:prompt}],
         max_tokens:600,
-        temperature:0.7
+        temperature:0.4
       })
     });
     if(!resp.ok){

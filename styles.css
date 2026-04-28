@@ -4,9 +4,10 @@
   --text:#3D2B1A;--text2:#7A5C30;--text3:#A07840;
   --green:#4A7C3F;--green-bg:#C8DFC4;--green-dark:#2D5228;
   --orange:#C25B1A;--orange-bg:#F0C8A0;--orange-dark:#7A3210;
-  --red:#C0392B;--red-bg:#FADBD8;
+  --red:#C0392B;--red-bg:#FADBD8;--r200:#fca5a5;
   --blue-bg:#D6EAF8;--blue:#2471A3;
   --scroll-thumb:#BA7517;--scroll-track:#EDD9A3;
+  --g50:#ECD9A0;
   --gap:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0;}
@@ -360,6 +361,8 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 /* ── HEALTH ── */
 #screen-health{flex-direction:column;overflow-y:auto;padding:var(--gap);}
+#screen-health>.health-inner{max-width:900px;margin:0 auto;width:100%;display:flex;flex-direction:column;flex:1;}
+#screen-health .panel{flex:1;min-height:0;}
 .health-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);max-width:900px;margin:0 auto;width:100%;}
 
 /* ── LOANS ── */
@@ -382,7 +385,9 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 @media(max-width:700px){
   .health-wrap,.loans-wrap,.templates-wrap{grid-template-columns:1fr;}
-  #screen-health,#screen-loans,#screen-templates{overflow:visible;height:auto;}
+  #screen-health{overflow-y:auto!important;height:100%!important;}
+  #screen-loans,#screen-templates{overflow:visible;height:auto;}
+  #screen-health .panel{min-height:calc(100vh - 160px);}
   /* P6: wallets full width */
   .rep-right-top{flex-direction:column!important;}
   .rep-right-top .panel:first-child{width:100%!important;}
@@ -447,14 +452,73 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 
 /* ── TOPBAR: no voice btn in row1 since smart btn is floating ── */
 
-/* ── MOBILE: Health tab full height fix ── */
-@media(max-width:700px){
-  #screen-health .panel-body{
-    max-height:none!important;
-    overflow-y:visible!important;
-  }
-  #screen-health .panel{
-    height:auto!important;
-    overflow:visible!important;
-  }
+/* ══════════════════════════════════════════════════════════════
+   ТЁМНАЯ ТЕМА — переменные перекрывают светлые
+   ══════════════════════════════════════════════════════════════ */
+html[data-theme="dark"] {
+  --bg:#1A1208;
+  --topbar:#F0D9A8;
+  --card:#241A0C;
+  --border:#4A3520;
+  --border2:#5C4328;
+  --amber:#D4901A;
+  --amber-dark:#F5C060;
+  --amber-light:#2E2010;
+  --text:#E8D5A8;
+  --text2:#9A7E50;
+  --text3:#7A6040;
+  --green:#5A9C50;
+  --green-bg:#1A2E18;
+  --green-dark:#8ACC78;
+  --orange:#D47030;
+  --orange-bg:#2A1A08;
+  --orange-dark:#F0A060;
+  --red:#E05050;
+  --red-bg:#2A1010;
+  --r200:#8B3030;
+  --blue-bg:#0E1E2E;
+  --blue:#5B9FD0;
+  --scroll-thumb:#5C4328;
+  --scroll-track:#241A0C;
+  --g50:#2A1E10;
+}
+
+html[data-theme="dark"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+html[data-theme="dark"] .topbar {
+  background: #0E0A04;
+}
+
+html[data-theme="dark"] .panel-head,
+html[data-theme="dark"] .s-panel-head,
+html[data-theme="dark"] .dash-card-head {
+  background: #0E0A04;
+}
+
+html[data-theme="dark"] .modal-overlay {
+  background: rgba(0,0,0,.75);
+}
+
+html[data-theme="dark"] .modal {
+  background: var(--card);
+  border-color: var(--border2);
+}
+
+html[data-theme="dark"] .fi,
+html[data-theme="dark"] select {
+  background: #1A1208;
+  color: var(--text);
+  border-color: var(--border2);
+}
+
+html[data-theme="dark"] .fi::placeholder {
+  color: var(--text2);
+}
+
+/* AI советник — текст ответа одинаково читаем в обеих темах */
+html[data-theme="dark"] .ai-answer-text {
+  color: var(--text) !important;
 }
