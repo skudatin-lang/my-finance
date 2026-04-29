@@ -81,7 +81,7 @@ export function renderDDS() {
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
-  let html = '<thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th></table></thead><tbody>';
+  let html = '<thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th></tr></thead><tbody>';
   sorted.forEach(o => {
     const isIn = o.type === 'income', isOut = o.type === 'expense';
     const cls = isIn ? 'pos' : (isOut ? 'neg' : '');
@@ -97,20 +97,19 @@ export function renderDDS() {
     </tr>`;
   });
   html += `<tr class="total"><td colspan="2">ИТОГО ДОХОДОВ</td><td colspan="2" class="pos" style="text-align:right">+ ${fmt(totalInc)}</td></tr>`;
-  html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
+  html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</tr><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Настройка блока графика: убираем обрезку и даём достаточно места для подписей ---
+  // --- Настройка блока графика: увеличиваем высоту, чтобы подписи месяцев не обрезались ---
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
   if (chartWrap) {
     chartWrap.style.marginTop = '16px';
-    // Убираем скрытие переполнения, чтобы подписи осей не обрезались
     chartWrap.style.overflow = 'visible';
-    // Задаём минимальную высоту, чтобы график точно поместился со всеми надписями
-    chartWrap.style.minHeight = '300px';
-    // Убираем ранее установленную maxHeight, если была
+    chartWrap.style.height = 'auto';
+    chartWrap.style.minHeight = '360px'; // увеличенная минимальная высота для подписей
     chartWrap.style.maxHeight = '';
+    chartWrap.style.flexShrink = '0'; // чтобы не сжимался
   }
 
   renderDDSChart();
