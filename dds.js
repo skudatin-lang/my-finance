@@ -3,14 +3,31 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  // --- Обеспечиваем вертикальную прокрутку таблицы операций ---
-  const tableContainer = document.querySelector('#screen-dds .dds-right .panel-body');
-  if (tableContainer && !tableContainer.classList.contains('dds-scroll-set')) {
-    tableContainer.style.overflowY = 'auto';
-    tableContainer.style.maxHeight = '60vh';
-    tableContainer.classList.add('dds-scroll-set');
+  // --- Настройка правой колонки: таблица растягивается, график фиксирован внизу ---
+  const rightPanel = document.querySelector('#screen-dds .dds-right');
+  if (rightPanel && !rightPanel.classList.contains('dds-flex-set')) {
+    rightPanel.style.display = 'flex';
+    rightPanel.style.flexDirection = 'column';
+    rightPanel.style.height = '100%';
+    rightPanel.classList.add('dds-flex-set');
   }
-  // -----------------------------------------------------------
+
+  const tablePanel = document.querySelector('#screen-dds .dds-right .panel:first-child');
+  if (tablePanel && !tablePanel.classList.contains('dds-table-flex')) {
+    tablePanel.style.flex = '1';
+    tablePanel.style.minHeight = '0';
+    tablePanel.style.display = 'flex';
+    tablePanel.style.flexDirection = 'column';
+    tablePanel.classList.add('dds-table-flex');
+  }
+
+  const tableBody = document.querySelector('#screen-dds .dds-right .panel-body');
+  if (tableBody && !tableBody.classList.contains('dds-scroll-set')) {
+    tableBody.style.overflowY = 'auto';
+    tableBody.style.flex = '1';
+    tableBody.classList.add('dds-scroll-set');
+  }
+  // ---------------------------------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -60,7 +77,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
+    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></table>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -84,12 +101,13 @@ export function renderDDS() {
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Стили для блока графика: чуть меньше отступ и высота, чтобы нижний край был виден ---
+  // --- Стили для блока графика: только отступ, без ограничения высоты и прокрутки ---
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
   if (chartWrap) {
-    chartWrap.style.marginTop = '16px';       // уменьшенное расстояние от таблицы (было 24px)
-    chartWrap.style.maxHeight = '240px';      // немного уменьшено, чтобы полностью помещалось на экране
-    chartWrap.style.overflow = 'hidden';      // без прокрутки (скругление уже в CSS)
+    chartWrap.style.marginTop = '16px';
+    // Убираем maxHeight и overflow, чтобы график отображался полностью
+    chartWrap.style.maxHeight = '';
+    chartWrap.style.overflow = '';
   }
 
   renderDDSChart();
