@@ -77,11 +77,11 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
+    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td><tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
-  let html = '<thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th></tr></thead><tbody>';
+  let html = '<thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th><tr></thead><tbody>';
   sorted.forEach(o => {
     const isIn = o.type === 'income', isOut = o.type === 'expense';
     const cls = isIn ? 'pos' : (isOut ? 'neg' : '');
@@ -97,19 +97,19 @@ export function renderDDS() {
     </tr>`;
   });
   html += `<tr class="total"><td colspan="2">ИТОГО ДОХОДОВ</td><td colspan="2" class="pos" style="text-align:right">+ ${fmt(totalInc)}</td></tr>`;
-  html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</tr><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
+  html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Настройка блока графика: увеличиваем высоту, чтобы подписи месяцев не обрезались ---
+  // --- Настройка блока графика: поднимаем содержимое, чтобы подписи месяцев полностью помещались ---
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
   if (chartWrap) {
     chartWrap.style.marginTop = '16px';
     chartWrap.style.overflow = 'visible';
-    chartWrap.style.height = 'auto';
-    chartWrap.style.minHeight = '360px'; // увеличенная минимальная высота для подписей
+    chartWrap.style.minHeight = '320px';
     chartWrap.style.maxHeight = '';
-    chartWrap.style.flexShrink = '0'; // чтобы не сжимался
+    // Даём дополнительное пространство снизу, чтобы подписи не обрезались
+    chartWrap.style.paddingBottom = '20px';
   }
 
   renderDDSChart();
@@ -140,12 +140,21 @@ function renderDDSChart() {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      // Добавляем отступы внутри canvas, чтобы подписи оси X не обрезались
+      layout: {
+        padding: {
+          bottom: 15
+        }
+      },
       plugins: {
         legend: { position: 'top', labels: { font: { size: 11 }, color: '#7A5C30' } },
         tooltip: { callbacks: { label: ctx => '₽ ' + Math.round(ctx.raw).toLocaleString('ru-RU') } }
       },
       scales: {
-        x: { ticks: { color: '#7A5C30', font: { size: 10 } }, grid: { display: false } },
+        x: { 
+          ticks: { color: '#7A5C30', font: { size: 10 } }, 
+          grid: { display: false }
+        },
         y: {
           ticks: { color: '#7A5C30', font: { size: 10 }, callback: v => '₽' + Math.round(v / 1000) + 'k' },
           grid: { color: 'rgba(212,180,131,0.3)' },
