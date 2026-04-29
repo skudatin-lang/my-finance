@@ -1,5 +1,8 @@
 import { $, state, sched, fmt, today, appConfig } from './core.js';
 
+// Кредиты и долги — данные берутся из кошельков с отрицательным балансом
+// плюс ручной массив state.D.loans (name, payment, payDay, rate)
+
 export function renderLoans(){
   if(!state.D)return;
   const el=$('loans-list');if(!el)return;
@@ -68,6 +71,7 @@ export function renderLoansSummary(){
   const totalPayment=debtWallets.reduce((s,w)=>s+(w.payment||0),0);
   const totalInterest=debtWallets.reduce((s,w)=>s+(w.rate?Math.round(Math.abs(w.balance)*w.rate/100/12):0),0);
 
+  // Fastest payoff: highest rate first (avalanche)
   const sorted=[...debtWallets].filter(w=>w.rate).sort((a,b)=>(b.rate||0)-(a.rate||0));
 
   el.innerHTML=`
@@ -95,12 +99,13 @@ export function renderLoansSummary(){
   `;
 }
 
-// ========== РАБОЧАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "СПРОСИТЬ ИИ" (полностью копируем успешный код из health.js) ==========
+// ───────────── ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "СПРОСИТЬ ИИ" ─────────────
+// Используем точно такой же запрос, как в health.js (работающий через proxyapi)
 async function askDeepSeek(systemPrompt, userMessage) {
   const key = appConfig.deepseekKey;
   if (!key) throw new Error('DeepSeek API ключ не задан. Добавьте его в Панели администратора.');
 
-  const response = await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions', {
+  const resp = await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -117,80 +122,75 @@ async function askDeepSeek(systemPrompt, userMessage) {
     }),
   });
 
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || `Ошибка API: ${response.status}`);
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Ошибка API: ' + resp.status);
   }
-  const data = await response.json();
+  const data = await resp.json();
   return data.choices?.[0]?.message?.content?.trim() || '';
 }
 
-window.getLoansAI = async function() {
-  if (!state.D) return;
+// Переопределяем глобальную функцию после загрузки страницы (чтобы перебить старую из index.html)
+window.addEventListener('load', function() {
+  window.getLoansAI = async function() {
+    if (!state.D) return;
+    const key = appConfig.deepseekKey;
+    const resultDiv = document.getElementById('loans-ai-result');
+    const btn = document.getElementById('loans-ai-btn');
+    if (!resultDiv) return;
 
-  const resultDiv = document.getElementById('loans-ai-result');
-  const btn = document.getElementById('loans-ai-btn');
-  if (!resultDiv) return;
+    if (!key) {
+      resultDiv.innerHTML = '<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
+      return;
+    }
 
-  const key = appConfig.deepseekKey;
-  if (!key) {
-    resultDiv.innerHTML = '<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
-    return;
-  }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Анализирую...'; }
+    resultDiv.innerHTML = '<span style="color:var(--text2)">Анализирую ваши данные...</span>';
 
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '⏳ Анализирую...';
-  }
-  resultDiv.innerHTML = '<span style="color:var(--text2)">Анализирую ваши данные...</span>';
+    const debtWallets = state.D.wallets.filter(w => w.balance < 0);
+    const totalDebt = debtWallets.reduce((s, w) => s + Math.abs(w.balance), 0);
+    const totalPayment = debtWallets.reduce((s, w) => s + (w.payment || 0), 0);
+    
+    const now = new Date();
+    const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const mOps = state.D.operations.filter(o => !['planned_income', 'planned_expense'].includes(o.type) && o.date && o.date.startsWith(ym));
+    const mInc = mOps.filter(o => o.type === 'income').reduce((s, o) => s + o.amount, 0);
+    const mExp = mOps.filter(o => o.type === 'expense').reduce((s, o) => s + o.amount, 0);
 
-  // Сбор данных о долгах
-  const debtWallets = state.D.wallets.filter(w => w.balance < 0);
-  const totalDebt = debtWallets.reduce((s, w) => s + Math.abs(w.balance), 0);
-  const totalPayment = debtWallets.reduce((s, w) => s + (w.payment || 0), 0);
+    const loansDesc = debtWallets.map(w =>
+      `- ${w.name}: долг ${Math.abs(w.balance).toLocaleString('ru-RU')} ₽` +
+      (w.rate ? `, ставка ${w.rate}%` : '') +
+      (w.payment ? `, платёж ${w.payment.toLocaleString('ru-RU')} ₽/мес` : '')
+    ).join('\n');
 
-  const now = new Date();
-  const ym = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
-  const monthOps = state.D.operations.filter(o => !['planned_income', 'planned_expense'].includes(o.type) && o.date && o.date.startsWith(ym));
-  const monthIncome = monthOps.filter(o => o.type === 'income').reduce((s, o) => s + o.amount, 0);
-  const monthExpense = monthOps.filter(o => o.type === 'expense').reduce((s, o) => s + o.amount, 0);
-
-  const loansDescription = debtWallets.map(w =>
-    `- ${w.name}: долг ${Math.abs(w.balance).toLocaleString('ru-RU')} ₽` +
-    (w.rate ? `, ставка ${w.rate}%` : '') +
-    (w.payment ? `, платёж ${w.payment.toLocaleString('ru-RU')} ₽/мес` : '')
-  ).join('\n');
-
-  const prompt = `Ты финансовый советник. Проанализируй кредитную нагрузку и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
+    const prompt = `Ты финансовый советник. Проанализируй кредитную нагрузку и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
 
 Финансовые данные:
-Доход за текущий месяц: ${monthIncome.toLocaleString('ru-RU')} ₽
-Расходы за текущий месяц: ${monthExpense.toLocaleString('ru-RU')} ₽
+Доход за текущий месяц: ${mInc.toLocaleString('ru-RU')} ₽
+Расходы за текущий месяц: ${mExp.toLocaleString('ru-RU')} ₽
 Общий долг: ${totalDebt.toLocaleString('ru-RU')} ₽
 Ежемесячные платежи: ${totalPayment.toLocaleString('ru-RU')} ₽
-Долговая нагрузка: ${monthIncome > 0 ? Math.round(totalPayment / monthIncome * 100) : 0}% от дохода
+Долговая нагрузка: ${mInc > 0 ? Math.round(totalPayment / mInc * 100) : 0}% от дохода
 
 Кредиты:
-${loansDescription || 'Нет данных о кредитах'}
+${loansDesc || 'Нет данных о кредитах'}
 
 Дай рекомендации по: оптимизации погашения, рефинансированию если выгодно, высвобождению денег.`;
 
-  try {
-    const advice = await askDeepSeek(
-      'Ты эксперт по личным финансам и управлению долгами. Отвечай только на русском.',
-      prompt
-    );
-    const formatted = advice
-      .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-      .replace(/\n/g, '<br>');
-    resultDiv.innerHTML = `<div style="color:var(--text)">${formatted}</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</div>`;
-  } catch (err) {
-    resultDiv.innerHTML = `<div style="color:var(--red)">⚠ ${err.message}</div>`;
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '✨ Спросить ИИ';
+    try {
+      const text = await askDeepSeek(
+        'Ты эксперт по личным финансам и управлению долгами. Отвечай только на русском.',
+        prompt
+      );
+      const html = text
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\n/g, '<br>');
+      resultDiv.innerHTML = `<div style="color:var(--text)">${html}</div>
+        <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'})}</div>`;
+    } catch (err) {
+      resultDiv.innerHTML = `<div style="color:var(--red)">⚠ ${err.message}</div>`;
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '✨ Спросить ИИ'; }
     }
-  }
-};
+  };
+});
