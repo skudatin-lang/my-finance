@@ -99,7 +99,37 @@ export function renderLoansSummary(){
   `;
 }
 
-// ───────────── ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "СПРОСИТЬ ИИ" (аналогично health.js) ─────────────
+// ───────────── ИСПРАВЛЕННАЯ ФУНКЦИЯ ДЛЯ КНОПКИ "СПРОСИТЬ ИИ" ─────────────
+// Используем точно такой же запрос, как в health.js (работающий через proxyapi)
+async function __askDeepSeek(systemPrompt, userMessage) {
+  const key = appConfig.deepseekKey;
+  if (!key) throw new Error('DeepSeek API ключ не задан. Добавьте его в Панели администратора.');
+
+  const resp = await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + key,
+    },
+    body: JSON.stringify({
+      model: 'deepseek/deepseek-chat',
+      max_tokens: 600,
+      temperature: 0.7,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
+    }),
+  });
+
+  if (!resp.ok) {
+    const err = await resp.json().catch(() => ({}));
+    throw new Error(err.error?.message || 'Ошибка API: ' + resp.status);
+  }
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
 window.getLoansAI = async function() {
   if (!state.D) return;
   const key = appConfig.deepseekKey;
@@ -115,7 +145,6 @@ window.getLoansAI = async function() {
   if (btn) { btn.disabled = true; btn.textContent = '⏳ Анализирую...'; }
   resultDiv.innerHTML = '<span style="color:var(--text2)">Анализирую ваши данные...</span>';
 
-  // Собираем данные по кредитам
   const debtWallets = state.D.wallets.filter(w => w.balance < 0);
   const totalDebt = debtWallets.reduce((s, w) => s + Math.abs(w.balance), 0);
   const totalPayment = debtWallets.reduce((s, w) => s + (w.payment || 0), 0);
@@ -146,34 +175,11 @@ ${loansDesc || 'Нет данных о кредитах'}
 
 Дай рекомендации по: оптимизации погашения, рефинансированию если выгодно, высвобождению денег.`;
 
-  // Используем ТОТ ЖЕ САМЫЙ эндпоинт, что и в health.js (работает)
-  const PROXY_URL = 'https://api.proxyapi.ru/openrouter/v1/chat/completions';
-  const MODEL = 'deepseek/deepseek-chat';
-
   try {
-    const resp = await fetch(PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + key,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 600,
-        temperature: 0.7,
-        messages: [
-          { role: 'system', content: 'Ты эксперт по личным финансам и управлению долгами. Отвечай только на русском.' },
-          { role: 'user', content: prompt },
-        ],
-      }),
-    });
-
-    if (!resp.ok) {
-      const err = await resp.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'Ошибка API: ' + resp.status);
-    }
-    const data = await resp.json();
-    const text = data.choices?.[0]?.message?.content?.trim() || '';
+    const text = await __askDeepSeek(
+      'Ты эксперт по личным финансам и управлению долгами. Отвечай только на русском.',
+      prompt
+    );
     const html = text
       .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
       .replace(/\n/g, '<br>');
