@@ -77,7 +77,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></table>`;
+    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -101,13 +101,21 @@ export function renderDDS() {
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Стили для блока графика: только отступ, без ограничения высоты и прокрутки ---
+  // --- Стили для блока графика: отступ, отмена ограничений высоты и обрезки ---
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
   if (chartWrap) {
     chartWrap.style.marginTop = '16px';
-    // Убираем maxHeight и overflow, чтобы график отображался полностью
-    chartWrap.style.maxHeight = '';
-    chartWrap.style.overflow = '';
+    // Убираем все ограничения, которые могут обрезать подписи осей
+    chartWrap.style.maxHeight = 'none';
+    chartWrap.style.overflow = 'visible';
+    chartWrap.style.paddingBottom = '12px'; // чтобы надписи месяцев не прилипали к нижнему краю
+    // Также убедимся, что canvas внутри не обрезается
+    const canvas = chartWrap.querySelector('canvas');
+    if (canvas) {
+      canvas.style.display = 'block';
+      canvas.style.width = '100%';
+      canvas.style.height = 'auto';
+    }
   }
 
   renderDDSChart();
