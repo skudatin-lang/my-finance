@@ -9,7 +9,6 @@ export function renderCalendar() {
   const todayStr = today(), ym = y + '-' + String(m + 1).padStart(2, '0');
   const allM = state.D.operations.filter(o => o.date && o.date.startsWith(ym));
 
-  // Месячные суммы (будут показаны при загрузке)
   const monthIncFact = allM.filter(o => o.type === 'income').reduce((s, o) => s + o.amount, 0);
   const monthExpFact = allM.filter(o => o.type === 'expense').reduce((s, o) => s + o.amount, 0);
   const monthIncPlan = allM.filter(o => o.type === 'planned_income').reduce((s, o) => s + o.amount, 0);
@@ -60,23 +59,19 @@ export function showCalDay(ds) {
   const fact = ops.filter(o => !isPlanned(o.type));
   const plan = ops.filter(o => isPlanned(o.type));
 
-  // Факт за день
   const factInc = fact.filter(o => o.type === 'income').reduce((s, o) => s + o.amount, 0);
   const factExp = fact.filter(o => o.type === 'expense').reduce((s, o) => s + o.amount, 0);
   const factBal = factInc - factExp;
 
-  // План за день
   const planInc = plan.filter(o => o.type === 'planned_income').reduce((s, o) => s + o.amount, 0);
   const planExp = plan.filter(o => o.type === 'planned_expense').reduce((s, o) => s + o.amount, 0);
   const planBal = planInc - planExp;
 
-  // Обновляем верхние окошки сводки (доходы, расходы, план доходов, план расходов) для выбранного дня
   $('cs-fi').textContent = fmt(factInc);
   $('cs-fo').textContent = fmt(factExp);
   $('cs-pi').textContent = fmt(planInc);
   $('cs-po').textContent = fmt(planExp);
 
-  // Обновляем блоки дневного баланса (ФАКТ ЗА ДЕНЬ и ОЖИДАЕМЫЙ)
   const dbr = $('day-bal-row');
   if (ops.length) {
     dbr.style.display = 'grid';
@@ -90,27 +85,29 @@ export function showCalDay(ds) {
     dbr.style.display = 'none';
   }
 
-  // Список операций за день
   const el = $('cal-day-ops');
   if (!ops.length) {
     el.innerHTML = '<div style="padding:12px 0;font-size:13px;color:var(--text2)">Нет операций</div>';
     return;
   }
-  let html = '';
+  let htmlStr = '';
   if (fact.length) {
-    html += '<div class="sec-div">ФАКТ</div>' + fact.map(o => opHtml(o, true)).join('');
+    htmlStr += '<div class="sec-div">ФАКТ</div>' + fact.map(o => opHtml(o, true)).join('');
   }
   if (plan.length) {
-    html += '<div class="sec-div">ПЛАНОВЫЕ</div>';
-    html += plan.map(o => {
+    htmlStr += '<div class="sec-div">ПЛАНОВЫЕ</div>';
+    htmlStr += plan.map(o => {
       const isPI = o.type === 'planned_income';
       return `<div class="op-item"><div class="op-top">
         <div style="flex:1"><div class="op-title">${o.category || o.note || '—'} <span class="op-badge">${isPI ? 'план +' : 'план \u2212'}</span></div><div class="op-meta">${fmtD(o.date)}${o.note ? ' &nbsp;' + o.note : ''}</div></div>
-        <div class="op-actions"><div class="op-amt" style="color:var(--blue)">${isPI ? '+ ' : '\u2212 '}${fmt(o.amount)}</div><button class="op-btn del" onclick="window.deleteOp('${o.id}')">&#10005;</button></div>
+        <div class="op-actions">
+          <button class="op-btn edit" onclick="window.openEditOp('${o.id}')">✎</button>
+          <button class="op-btn del" onclick="window.deleteOp('${o.id}')">&#10005;</button>
+        </div>
       </div></div>`;
     }).join('');
   }
-  el.innerHTML = html;
+  el.innerHTML = htmlStr;
 }
 
 window.showCalSummary = function(type) {
