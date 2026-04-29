@@ -1,4 +1,3 @@
-```javascript
 import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, planSpent, wName } from './core.js';
 
 export function renderDDS() {
@@ -8,7 +7,7 @@ export function renderDDS() {
   const tableContainer = document.querySelector('#screen-dds .dds-right .panel-body');
   if (tableContainer && !tableContainer.classList.contains('dds-scroll-set')) {
     tableContainer.style.overflowY = 'auto';
-    tableContainer.style.maxHeight = '60vh';   // регулируемая высота
+    tableContainer.style.maxHeight = '60vh';
     tableContainer.classList.add('dds-scroll-set');
   }
   // -----------------------------------------------------------
@@ -74,7 +73,7 @@ export function renderDDS() {
     const pid = o.type === 'transfer' ? o.planId : catPlanId(o.category);
     const plbl = pid ? ` <span class="op-badge">${planById(pid)?.label || ''}</span>` : '';
     html += `<tr>
-      <td>${o.date ? o.date.split('-').reverse().join('.') : '—'}</td>
+      <tr>${o.date ? o.date.split('-').reverse().join('.') : '—'}</td>
       <td>${cat}${plbl}${o.note ? '<br><span style="font-size:10px;color:var(--text2)">' + o.note + '</span>' : ''}</td>
       <td>${wName(o.wallet || '')}</td>
       <td class="${cls}" style="text-align:right">${pfx} ${fmt(o.amount)}</td>
@@ -88,16 +87,12 @@ export function renderDDS() {
   // --- Работа с графиком (денежный поток) ---
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
   if (chartWrap) {
-    // Увеличенное расстояние между таблицей и графиком
     chartWrap.style.marginTop = '24px';
-    // Вертикальная прокрутка при необходимости
     chartWrap.style.overflowY = 'auto';
     chartWrap.style.maxHeight = '50vh';
-    // Скругление нижних углов, чтобы было как сверху (стили панелей дают 8px)
     chartWrap.style.borderBottomLeftRadius = '8px';
     chartWrap.style.borderBottomRightRadius = '8px';
 
-    // Выравниваем высоту графика по левому блоку (плановые расходы)
     const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
     if (leftBlock) {
       const leftHeight = leftBlock.offsetHeight;
@@ -146,4 +141,3 @@ function renderDDSChart() {
     }
   });
 }
-```
