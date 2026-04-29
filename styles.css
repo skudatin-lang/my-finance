@@ -34,7 +34,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-s
 #app-screen{display:none;flex-direction:column;height:100vh;}
 
 /* ── TOPBAR ── */
-/* ── TOPBAR: two-row layout (desktop & mobile) ── */
 .topbar{background:var(--topbar);display:flex;flex-direction:column;flex-shrink:0;}
 .topbar-row1{display:flex;align-items:stretch;height:44px;flex-shrink:0;}
 .topbar-row2{display:flex;align-items:stretch;height:38px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.1);}
@@ -321,6 +320,53 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .metrics-grid{grid-template-columns:1fr 1fr;}
   .bal-grid{grid-template-columns:1fr 1fr;}
   .cal-summary{grid-template-columns:1fr 1fr;}
+
+  /* Mobile more menu — фиксированное внизу, над bottom-nav */
+  #mobile-more-menu {
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1.5px solid var(--border2);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -4px 12px rgba(0,0,0,.08);
+    z-index: 250;
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 8px 16px;
+  }
+  #mobile-more-menu button {
+    background: none;
+    border: none;
+    padding: 10px 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--topbar);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  #mobile-more-menu button:last-child {
+    border-bottom: none;
+  }
+
+  /* Health на весь экран */
+  #screen-health {
+    height: 100% !important;
+    overflow-y: auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-bottom: 60px;
+  }
+  #screen-health .panel {
+    height: auto !important;
+    flex: 1;
+  }
+  #screen-health .panel-body {
+    max-height: none;
+  }
 }
 
 /* ── DASHBOARD ── */
@@ -358,7 +404,7 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
   .chart-wrap canvas{height:220px!important;max-height:220px!important;}
 }
 
-/* ── HEALTH ── */
+/* ── HEALTH (desktop) ── */
 #screen-health{flex-direction:column;overflow-y:auto;padding:var(--gap);}
 .health-wrap{display:grid;grid-template-columns:1fr 1fr;gap:var(--gap);max-width:900px;margin:0 auto;width:100%;}
 
@@ -615,13 +661,17 @@ html[data-theme="dark"] .theme-toggle::before{content:'☀️';}
   .simple-ring-svg{width:120px;height:120px;}
   .simple-amount{font-size:26px;}
   .simple-desktop-add-btn{display:none;}
+  /* AI текст в мобильной версии тоже должен быть читаемым */
+  .simple-ai-text {
+    color: var(--text) !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
    МОБИЛЬНЫЙ HEALTH — полная высота
    ══════════════════════════════════════════════════════════ */
 @media(max-width:700px){
-  #screen-health{overflow-y:auto!important;}
+  #screen-health{overflow-y:auto!important;height:auto!important;}
   #screen-health .panel{min-height:calc(100vh - 164px);}
   #screen-loans,#screen-templates{overflow:visible;height:auto;}
 }
@@ -737,12 +787,4 @@ html[data-theme="dark"] .simple-status-msg.bad{color:#FF4757;background:rgba(255
 #screen-dds .chart-wrap {
   overflow: hidden; /* чтобы скругление обрезало содержимое */
   border-radius: 10px 10px 8px 8px; /* верхние углы 10px, нижние 8px */
-}
-
-/* ── ИСПРАВЛЕНИЕ ЦВЕТА ТЕКСТА AI-СОВЕТНИКА НА ПРОСТОМ ДАШБОРДЕ ── */
-#simple-ai-text {
-  color: var(--text);
-}
-#simple-ai-text div {
-  color: var(--text) !important;
 }

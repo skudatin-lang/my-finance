@@ -117,17 +117,7 @@
   </nav>
 
   <!-- ── MOBILE MORE MENU ── -->
-  <div id="mobile-more-menu" style="display:none">
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;padding:8px 0">
-      <button onclick="window.showScreen('dds');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💵</span>ДДС</button>
-      <button onclick="window.showScreen('loans');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💳</span>КРЕДИТЫ</button>
-      <button onclick="window.showScreen('health');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">💚</span>ЗДОРОВЬЕ</button>
-      <button onclick="window.showScreen('settings');window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">⚙️</span>НАСТРОЙКИ</button>
-      <button onclick="window.toggleTheme();window.hideMobileMenu()" style="background:none;border:none;color:#C9A96E;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px" id="theme-mobile-btn"><span style="font-size:20px">🌙</span>ТЕМА</button>
-      <button id="bnav-admin" onclick="window.showScreen('admin');window.hideMobileMenu()" style="display:none;background:none;border:none;color:#ff9900;padding:12px 8px;font-size:10px;font-weight:700;letter-spacing:.5px;cursor:pointer;flex-direction:column;align-items:center;gap:4px"><span style="font-size:20px">⚙</span>АДМИН</button>
-    </div>
-  </div>
-
+  <div id="mobile-more-menu" style="display:none"></div>
 
   <!-- ── REPORTS ── -->
   <div id="screen-reports" class="screen active">
@@ -1573,93 +1563,7 @@ window.saveDeepSeekKey=function(){
   });
 };
 
-window.getLoansAI=async function(){
-  if(!state.D)return;
-  // Ключ теперь в appConfig (/config/app), не в данных пользователя
-  const key=appConfig.deepseekKey;
-  if(!key){
-    document.getElementById('loans-ai-result').innerHTML=
-      '<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
-    return;
-  }
-  const btn=document.getElementById('loans-ai-btn');
-  const result=document.getElementById('loans-ai-result');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Анализирую...';}
-  result.innerHTML='<span style="color:var(--text2)">Анализирую ваши данные...</span>';
-
-  // Собираем контекст
-  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
-  const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
-  const totalPayment=debtWallets.reduce((s,w)=>s+(w.payment||0),0);
-  const now=new Date();
-  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
-  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
-  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
-  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
-
-  const loansDesc=debtWallets.map(w=>
-    `- ${w.name}: долг ${Math.abs(w.balance).toLocaleString('ru-RU')} ₽`+
-    (w.rate?`, ставка ${w.rate}%`:``) +
-    (w.payment?`, платёж ${w.payment.toLocaleString('ru-RU')} ₽/мес`:``)
-  ).join('\n');
-
-  const prompt=`Ты финансовый советник. Проанализируй кредитную нагрузку и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
-
-Финансовые данные:
-Доход за текущий месяц: ${mInc.toLocaleString('ru-RU')} ₽
-Расходы за текущий месяц: ${mExp.toLocaleString('ru-RU')} ₽
-Общий долг: ${totalDebt.toLocaleString('ru-RU')} ₽
-Ежемесячные платежи: ${totalPayment.toLocaleString('ru-RU')} ₽
-Долговая нагрузка: ${mInc>0?Math.round(totalPayment/mInc*100):0}% от дохода
-
-Кредиты:
-${loansDesc||'Нет данных о кредитах'}
-
-Дай рекомендации по: оптимизации погашения, рефинансированию если выгодно, высвобождению денег.`;
-
-  try{
-    const resp=await fetch('https://api.deepseek.com/v1/chat/completions',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-      body:JSON.stringify({
-        model:'deepseek-chat',
-        messages:[{role:'user',content:prompt}],
-        max_tokens:600,
-        temperature:0.7
-      })
-    });
-    if(!resp.ok){
-      const err=await resp.json().catch(()=>({}));
-      const msg=err.error?.message||'HTTP '+resp.status;
-      // Понятные сообщения для типичных ошибок DeepSeek
-      if(msg.includes('Insufficient Balance')||msg.includes('insufficient_quota')){
-        throw new Error('На счёте DeepSeek недостаточно средств. Пополните баланс на platform.deepseek.com → Billing');
-      }
-      if(resp.status===401||msg.includes('Invalid API')){
-        throw new Error('Неверный API-ключ. Проверьте ключ в панели Админ');
-      }
-      if(resp.status===429){
-        throw new Error('Превышен лимит запросов. Попробуйте через минуту');
-      }
-      throw new Error(msg);
-    }
-    const data=await resp.json();
-    const text=data.choices?.[0]?.message?.content||'Нет ответа';
-    // Форматируем: заменяем **жирный** и переносы строк
-    const html=text
-      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-      .replace(/\n/g,'<br>');
-    result.innerHTML=`<div style="color:var(--text)">${html}</div>
-      <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
-  }catch(e){
-    const isBalance=e.message.includes('недостаточно средств');
-    result.innerHTML=`<div style="color:var(--red)">⚠ ${e.message}${isBalance?
-      ' <a href="https://platform.deepseek.com/usage" target="_blank" style="color:var(--amber);font-weight:700">Пополнить →</a>':
-      ''}</div>`;
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
-  }
-};
+// Функция getLoansAI теперь полностью находится в loans.js, здесь удалена
 
 // ── Режимы: простой / про ─────────────────────────────────────────────────
 function _getMode(){
@@ -1919,22 +1823,22 @@ async function _fetchSimpleAi(){
 
 window._loadSimpleAi=function(){
   const el=document.getElementById('simple-ai-text');if(!el)return;
-  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:rgba(255,255,255,0.6)">
-    <div style="width:10px;height:10px;border:2px solid rgba(255,255,255,0.2);border-top-color:#BA7517;border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+    <div style="width:10px;height:10px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
     Анализирую...
   </div>
   <style>@keyframes _aispin{to{transform:rotate(360deg)}}</style>`;
   _fetchSimpleAi().then(text=>{
-    el.innerHTML=`<div style="font-size:12px;line-height:1.7;color:rgba(255,255,255,0.9)">${text.replace(/\n/g,'<br>')}</div>`;
+    el.innerHTML=`<div class="simple-ai-response" style="font-size:12px;line-height:1.7;color:var(--text)">${text.replace(/\n/g,'<br>')}</div>`;
   }).catch(err=>{
-    el.innerHTML=`<div style="font-size:11px;color:#ff9999">⚠ ${err.message}</div>
-      <button onclick="window._loadSimpleAi()" style="margin-top:6px;background:none;border:1px solid rgba(255,255,255,0.2);border-radius:5px;padding:3px 10px;font-size:10px;color:rgba(255,255,255,0.5);cursor:pointer">↻ Повторить</button>`;
+    el.innerHTML=`<div style="font-size:11px;color:var(--red)">⚠ ${err.message}</div>
+      <button onclick="window._loadSimpleAi()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">↻ Повторить</button>`;
   });
 };
 
 window._refreshSimpleAi=function(){
   const el=document.getElementById('simple-ai-text');if(!el)return;
-  el.innerHTML='<button onclick="window._loadSimpleAi()" style="background:rgba(186,117,23,0.8);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>';
+  el.innerHTML='<button onclick="window._loadSimpleAi()" style="background:var(--amber);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>';
   window._loadSimpleAi();
 };
 
