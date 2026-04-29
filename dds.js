@@ -60,7 +60,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<table><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
+    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -81,14 +81,14 @@ export function renderDDS() {
   });
   html += `<tr class="total"><td colspan="2">ИТОГО ДОХОДОВ</td><td colspan="2" class="pos" style="text-align:right">+ ${fmt(totalInc)}</td></tr>`;
   html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
-  html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td><tr>`;
+  html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Стили для блока графика: отступ сверху и ограничение высоты, чтобы помещался на экран ---
+  // --- Стили для блока графика: чуть меньше отступ и высота, чтобы нижний край был виден ---
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
   if (chartWrap) {
-    chartWrap.style.marginTop = '24px';       // возвращаем расстояние от таблицы
-    chartWrap.style.maxHeight = '260px';      // ограничиваем высоту, чтобы не вылезал за экран
+    chartWrap.style.marginTop = '16px';       // уменьшенное расстояние от таблицы (было 24px)
+    chartWrap.style.maxHeight = '240px';      // немного уменьшено, чтобы полностью помещалось на экране
     chartWrap.style.overflow = 'hidden';      // без прокрутки (скругление уже в CSS)
   }
 
