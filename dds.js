@@ -3,14 +3,14 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  // --- Вертикальная прокрутка для таблицы операций (без изменения верстки) ---
-  const tablePanelBody = document.querySelector('#screen-dds .dds-right .panel-body');
-  if (tablePanelBody && !tablePanelBody.classList.contains('dds-scroll-set')) {
-    tablePanelBody.style.overflowY = 'auto';
-    tablePanelBody.style.maxHeight = '60vh';
-    tablePanelBody.classList.add('dds-scroll-set');
+  // --- Обеспечиваем вертикальную прокрутку таблицы операций ---
+  const tableContainer = document.querySelector('#screen-dds .dds-right .panel-body');
+  if (tableContainer && !tableContainer.classList.contains('dds-scroll-set')) {
+    tableContainer.style.overflowY = 'auto';
+    tableContainer.style.maxHeight = '60vh';   // регулируемая высота
+    tableContainer.classList.add('dds-scroll-set');
   }
-  // ------------------------------------------------------------------------
+  // -----------------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -60,7 +60,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<table class="dds-tbl"><thead><tr><th>ДАТА</th><th>КАТЕГОРИЯ</th><th>КОШЕЛЁК</th><th style="text-align:right">СУММА</th></tr></thead><tbody><tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr></tbody></table>`;
+    table.innerHTML = `<td><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -84,25 +84,26 @@ export function renderDDS() {
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Улучшения для блока денежного потока (графика) ---
+  // --- Работа с графиком (денежный поток) ---
+  // 1. Увеличиваем расстояние между таблицей и графиком
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
-  if (chartWrap) {
-    // Увеличенный отступ сверху (расстояние от таблицы)
+  if (chartWrap && !chartWrap.classList.contains('dds-chart-fixed')) {
     chartWrap.style.marginTop = '24px';
-    // Возможность вертикальной прокрутки, если содержимое велико
+    chartWrap.classList.add('dds-chart-fixed');
+  }
+
+  // 2. Обеспечиваем вертикальную прокрутку внутри chart-wrap при необходимости
+  if (chartWrap && chartWrap.style.overflowY !== 'auto') {
     chartWrap.style.overflowY = 'auto';
     chartWrap.style.maxHeight = '50vh';
-    // Скругление нижних углов, как у панелей (сверху уже есть скругление от стилей)
-    chartWrap.style.borderBottomLeftRadius = '8px';
-    chartWrap.style.borderBottomRightRadius = '8px';
+  }
 
-    // Выравнивание высоты по левому блоку (плановые расходы)
-    const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
-    if (leftBlock) {
-      const leftHeight = leftBlock.offsetHeight;
-      if (leftHeight > 0) {
-        chartWrap.style.minHeight = leftHeight + 'px';
-      }
+  // 3. Выравниваем высоту графика по левому блоку (плановые расходы)
+  const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
+  if (leftBlock && chartWrap) {
+    const leftHeight = leftBlock.offsetHeight;
+    if (leftHeight > 0) {
+      chartWrap.style.minHeight = leftHeight + 'px';
     }
   }
 
