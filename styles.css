@@ -735,6 +735,13 @@ html[data-theme="dark"] .simple-status-msg.bad{color:#FF4757;background:rgba(255
 
 /* ── ИСПРАВЛЕНИЕ: скругление нижних углов для блока Денежный поток в ДДС ── */
 #screen-dds .chart-wrap {
-  overflow: hidden; /* чтобы скругление обрезало содержимое */
-  border-radius: 10px 10px 8px 8px; /* верхние углы 10px, нижние 8px */
+  overflow: hidden;
+  border-radius: 10px 10px 8px 8px;
+}
+
+/* ── ИСПРАВЛЕНИЕ: цвет текста AI советника на дашборде (светлая тема) ── */
+#dash-ai,
+#dash-ai .dash-card-body,
+#dash-ai div {
+  color: var(--text) !important;
 }
