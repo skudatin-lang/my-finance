@@ -3,14 +3,14 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  // --- Обеспечиваем вертикальную прокрутку таблицы операций ---
+  // --- Обеспечиваем вертикальную прокрутку таблицы операций (без изменений) ---
   const tableContainer = document.querySelector('#screen-dds .dds-right .panel-body');
   if (tableContainer && !tableContainer.classList.contains('dds-scroll-set')) {
     tableContainer.style.overflowY = 'auto';
-    tableContainer.style.maxHeight = '60vh';   // регулируемая высота
+    tableContainer.style.maxHeight = '60vh';
     tableContainer.classList.add('dds-scroll-set');
   }
-  // -----------------------------------------------------------
+  // ---------------------------------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -84,29 +84,7 @@ export function renderDDS() {
   html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
   table.innerHTML = html;
 
-  // --- Работа с графиком (денежный поток) ---
-  // 1. Увеличиваем расстояние между таблицей и графиком
-  const chartWrap = document.querySelector('#screen-dds .chart-wrap');
-  if (chartWrap && !chartWrap.classList.contains('dds-chart-fixed')) {
-    chartWrap.style.marginTop = '24px';
-    chartWrap.classList.add('dds-chart-fixed');
-  }
-
-  // 2. Обеспечиваем вертикальную прокрутку внутри chart-wrap при необходимости
-  if (chartWrap && chartWrap.style.overflowY !== 'auto') {
-    chartWrap.style.overflowY = 'auto';
-    chartWrap.style.maxHeight = '50vh';
-  }
-
-  // 3. Выравниваем высоту графика по левому блоку (плановые расходы)
-  const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
-  if (leftBlock && chartWrap) {
-    const leftHeight = leftBlock.offsetHeight;
-    if (leftHeight > 0) {
-      chartWrap.style.minHeight = leftHeight + 'px';
-    }
-  }
-
+  // Вызов рендера графика (без дополнительных стилей — всё управляется через CSS)
   renderDDSChart();
 }
 
@@ -141,7 +119,12 @@ function renderDDSChart() {
       },
       scales: {
         x: { ticks: { color: '#7A5C30', font: { size: 10 } }, grid: { display: false } },
-        y: { ticks: { color: '#7A5C30', font: { size: 10 }, callback: v => '₽' + Math.round(v / 1000) + 'k' }, grid: { color: 'rgba(212,180,131,0.3)' } }
+        y: { 
+          ticks: { color: '#7A5C30', font: { size: 10 }, callback: v => '₽' + Math.round(v / 1000) + 'k' }, 
+          grid: { color: 'rgba(212,180,131,0.3)' },
+          // Автоматическое масштабирование — по умолчанию true
+          beginAtZero: true
+        }
       }
     }
   });
