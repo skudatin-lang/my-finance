@@ -3,14 +3,14 @@ import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, p
 export function renderDDS() {
   if (!state.D) return;
 
-  // --- Обеспечиваем вертикальную прокрутку таблицы операций (без изменений) ---
+  // --- Обеспечиваем вертикальную прокрутку таблицы операций ---
   const tableContainer = document.querySelector('#screen-dds .dds-right .panel-body');
   if (tableContainer && !tableContainer.classList.contains('dds-scroll-set')) {
     tableContainer.style.overflowY = 'auto';
     tableContainer.style.maxHeight = '60vh';
     tableContainer.classList.add('dds-scroll-set');
   }
-  // ---------------------------------------------------------------------------
+  // -----------------------------------------------------------
 
   const dt = new Date(new Date().getFullYear(), new Date().getMonth() + state.ddsOff, 1);
   $('dds-month-lbl').textContent = MONTHS[dt.getMonth()] + ' ' + dt.getFullYear();
@@ -60,7 +60,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<td><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
+    table.innerHTML = `<table><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -81,10 +81,17 @@ export function renderDDS() {
   });
   html += `<tr class="total"><td colspan="2">ИТОГО ДОХОДОВ</td><td colspan="2" class="pos" style="text-align:right">+ ${fmt(totalInc)}</td></tr>`;
   html += `<tr class="total"><td colspan="2">ИТОГО РАСХОДОВ</td><td colspan="2" class="neg" style="text-align:right">\u2212 ${fmt(totalExp)}</td></tr>`;
-  html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td></tr>`;
+  html += `<tr class="total"><td colspan="2">ЧИСТЫЙ ПОТОК</td><td colspan="2" class="${totalInc - totalExp >= 0 ? 'pos' : 'neg'}" style="text-align:right">${fmtS(totalInc - totalExp)}</td><tr>`;
   table.innerHTML = html;
 
-  // Вызов рендера графика (без дополнительных стилей — всё управляется через CSS)
+  // --- Стили для блока графика: отступ сверху и ограничение высоты, чтобы помещался на экран ---
+  const chartWrap = document.querySelector('#screen-dds .chart-wrap');
+  if (chartWrap) {
+    chartWrap.style.marginTop = '24px';       // возвращаем расстояние от таблицы
+    chartWrap.style.maxHeight = '260px';      // ограничиваем высоту, чтобы не вылезал за экран
+    chartWrap.style.overflow = 'hidden';      // без прокрутки (скругление уже в CSS)
+  }
+
   renderDDSChart();
 }
 
@@ -119,10 +126,9 @@ function renderDDSChart() {
       },
       scales: {
         x: { ticks: { color: '#7A5C30', font: { size: 10 } }, grid: { display: false } },
-        y: { 
-          ticks: { color: '#7A5C30', font: { size: 10 }, callback: v => '₽' + Math.round(v / 1000) + 'k' }, 
+        y: {
+          ticks: { color: '#7A5C30', font: { size: 10 }, callback: v => '₽' + Math.round(v / 1000) + 'k' },
           grid: { color: 'rgba(212,180,131,0.3)' },
-          // Автоматическое масштабирование — по умолчанию true
           beginAtZero: true
         }
       }
