@@ -138,7 +138,9 @@ function _loadAiAdvice(el){
   fetchAiAdvice().then(text=>{
     el.dataset.loaded='1';
     el.innerHTML=`
-      <div style="font-size:11px;line-height:1.7;color:var(--text)">${text.replace(/\n/g,'<br>')}</div>
+      <div style="font-size:11px;line-height:1.7;color:var(--text)">
+        ${text.replace(/\n/g,'<br>')}
+      </div>
       <div style="margin-top:8px;text-align:right">
         <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">↻ Обновить</button>
       </div>`;
