@@ -338,7 +338,6 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
 .dash-progress-bar{background:var(--g50);border-radius:4px;height:6px;margin-top:6px;}
 .dash-progress-fill{height:6px;border-radius:4px;background:var(--amber);}
 .chart-wrap{flex:1;min-height:0;max-height:280px;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:14px;display:flex;flex-direction:column;}
-.chart-wrap canvas{flex:1;min-height:0;}
 
 /* ── ANALYTICS ── */
 #screen-analytics{flex-direction:row;flex-wrap:wrap;gap:var(--gap);padding:var(--gap);overflow-y:auto;align-content:flex-start;}
@@ -733,3 +732,9 @@ html[data-theme="dark"] .simple-status-msg{
 html[data-theme="dark"] .simple-status-msg.good{color:#2ED573;background:rgba(46,213,115,.1);border-color:rgba(46,213,115,.3);}
 html[data-theme="dark"] .simple-status-msg.warn{color:#FFB800;background:rgba(255,184,0,.1);border-color:rgba(255,184,0,.3);}
 html[data-theme="dark"] .simple-status-msg.bad{color:#FF4757;background:rgba(255,71,87,.12);border-color:rgba(255,71,87,.3);}
+
+/* ── ИСПРАВЛЕНИЕ: скругление нижних углов для блока Денежный поток в ДДС ── */
+#screen-dds .chart-wrap {
+  overflow: hidden; /* чтобы скругление обрезало содержимое */
+  border-radius: 10px 10px 8px 8px; /* верхние углы 10px, нижние 8px */
+}
