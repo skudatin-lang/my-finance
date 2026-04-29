@@ -1,3 +1,4 @@
+```javascript
 import { $, fmt, fmtS, state, MONTHS, getMOps, planById, catPlanId, isPlanned, planSpent, wName } from './core.js';
 
 export function renderDDS() {
@@ -60,7 +61,7 @@ export function renderDDS() {
 
   const table = $('dds-table');
   if (!ops.length) {
-    table.innerHTML = `<td><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
+    table.innerHTML = `<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--text2)">Нет операций</td></tr>`;
     return;
   }
   const sorted = [...ops].sort((a, b) => a.date < b.date ? 1 : -1);
@@ -85,25 +86,24 @@ export function renderDDS() {
   table.innerHTML = html;
 
   // --- Работа с графиком (денежный поток) ---
-  // 1. Увеличиваем расстояние между таблицей и графиком
   const chartWrap = document.querySelector('#screen-dds .chart-wrap');
-  if (chartWrap && !chartWrap.classList.contains('dds-chart-fixed')) {
+  if (chartWrap) {
+    // Увеличенное расстояние между таблицей и графиком
     chartWrap.style.marginTop = '24px';
-    chartWrap.classList.add('dds-chart-fixed');
-  }
-
-  // 2. Обеспечиваем вертикальную прокрутку внутри chart-wrap при необходимости
-  if (chartWrap && chartWrap.style.overflowY !== 'auto') {
+    // Вертикальная прокрутка при необходимости
     chartWrap.style.overflowY = 'auto';
     chartWrap.style.maxHeight = '50vh';
-  }
+    // Скругление нижних углов, чтобы было как сверху (стили панелей дают 8px)
+    chartWrap.style.borderBottomLeftRadius = '8px';
+    chartWrap.style.borderBottomRightRadius = '8px';
 
-  // 3. Выравниваем высоту графика по левому блоку (плановые расходы)
-  const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
-  if (leftBlock && chartWrap) {
-    const leftHeight = leftBlock.offsetHeight;
-    if (leftHeight > 0) {
-      chartWrap.style.minHeight = leftHeight + 'px';
+    // Выравниваем высоту графика по левому блоку (плановые расходы)
+    const leftBlock = document.querySelector('#screen-dds .dds-left .panel:last-child .panel-body');
+    if (leftBlock) {
+      const leftHeight = leftBlock.offsetHeight;
+      if (leftHeight > 0) {
+        chartWrap.style.minHeight = leftHeight + 'px';
+      }
     }
   }
 
@@ -146,3 +146,4 @@ function renderDDSChart() {
     }
   });
 }
+```
