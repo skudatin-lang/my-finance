@@ -738,3 +738,11 @@ html[data-theme="dark"] .simple-status-msg.bad{color:#FF4757;background:rgba(255
   overflow: hidden; /* чтобы скругление обрезало содержимое */
   border-radius: 10px 10px 8px 8px; /* верхние углы 10px, нижние 8px */
 }
+
+/* ── ИСПРАВЛЕНИЕ ЦВЕТА ТЕКСТА AI-СОВЕТНИКА НА ПРОСТОМ ДАШБОРДЕ ── */
+#simple-ai-text {
+  color: var(--text);
+}
+#simple-ai-text div {
+  color: var(--text) !important;
+}
