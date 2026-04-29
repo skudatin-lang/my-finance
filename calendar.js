@@ -176,17 +176,29 @@ window.showCalSummary = function(type) {
 
   Object.entries(groups).sort((a, b) => b[1].total - a[1].total).forEach(([cat, g]) => {
     html += `<div style="padding:5px 0;border-bottom:.5px solid var(--border)">
-      <div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
         <span style="font-size:12px;font-weight:700;color:var(--topbar)">${cat}</span>
         <span style="font-size:12px;font-weight:700;color:${colorVar}">
           ₽ ${Math.round(g.total).toLocaleString('ru-RU')}
         </span>
-      </div>
-      ${g.items.map(o => `<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;justify-content:space-between">
-        <span>${wName(o.wallet || '')}${o.note ? ' · ' + o.note : ''} · ${fmtD(o.date)}</span>
-        <span>₽ ${Math.round(o.amount).toLocaleString('ru-RU')}</span>
-      </div>`).join('')}
-    </div>`;
+      </div>`;
+    g.items.forEach(o => {
+      const isPlan = o.type === 'planned_income' || o.type === 'planned_expense';
+      const isPI = o.type === 'planned_income';
+      const badge = isPlan ? (isPI ? 'план +' : 'план −') : '';
+      html += `<div style="font-size:11px;color:var(--text2);margin-top:2px;display:flex;justify-content:space-between;align-items:center;gap:6px">
+        <div style="flex:1">
+          <span>${wName(o.wallet || '')}${o.note ? ' · ' + o.note : ''} · ${fmtD(o.date)}</span>
+          ${badge ? `<span class="op-badge" style="margin-left:6px">${badge}</span>` : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span style="font-weight:600">₽ ${Math.round(o.amount).toLocaleString('ru-RU')}</span>
+          <button class="op-btn edit" onclick="window.openEditOp('${o.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--blue)">✎</button>
+          <button class="op-btn del" onclick="window.deleteOp('${o.id}')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--red)">✖</button>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
   });
 
   el.innerHTML = html;
