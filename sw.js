@@ -1,6 +1,5 @@
-// Service Worker — my-finance PWA
-// ВАЖНО: меняй CACHE при каждом деплое новых файлов → v5 → v6 ...
-const CACHE = 'my-finance-v6';
+// sw.js — Service Worker (исправлен: не перехватывает terms.html и privacy.html)
+const CACHE = 'my-finance-v5';
 
 const ASSETS = [
   './index.html',
@@ -26,7 +25,6 @@ const ASSETS = [
   'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
 ];
 
-// Эти домены никогда не кэшируем
 const NETWORK_ONLY = [
   'firebase',
   'googleapis.com',
@@ -41,87 +39,56 @@ self.addEventListener('install', e => {
   console.log('[SW] Installing version:', CACHE);
   e.waitUntil(
     caches.open(CACHE)
-      .then(c => {
-        // Кэшируем каждый файл отдельно — если один не загрузится, остальные сохранятся
-        return Promise.allSettled(
-          ASSETS.map(url =>
-            c.add(new Request(url, { cache: 'reload' }))
-              .catch(err => console.warn('[SW] Failed to cache:', url, err))
-          )
-        );
-      })
+      .then(c => Promise.allSettled(
+        ASSETS.map(url => c.add(new Request(url, { cache: 'reload' })).catch(err => console.warn('[SW] Failed to cache:', url, err)))
+      ))
   );
-  // Активируем новый SW немедленно
   self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
   console.log('[SW] Activating version:', CACHE);
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(k => k !== CACHE).map(k => {
-          console.log('[SW] Deleting old cache:', k);
-          return caches.delete(k);
-        })
-      )
-    ).then(() => self.clients.claim())
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())
   );
 });
 
 self.addEventListener('fetch', e => {
   const url = e.request.url;
-
-  // Только GET
   if (e.request.method !== 'GET') return;
-
-  // API — только сеть, не кэшируем
   if (NETWORK_ONLY.some(domain => url.includes(domain))) return;
 
-  // Навигационные запросы (открытие из иконки, переход по URL)
-  // ВСЕГДА отдаём index.html — это ключевое для работы PWA на iOS
+  // Не перехватываем запросы к terms.html и privacy.html (открываются в новой вкладке)
+  if (url.endsWith('terms.html') || url.endsWith('privacy.html')) {
+    return;
+  }
+
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch('./index.html', { cache: 'no-cache' })
         .then(response => {
-          // Обновляем кэш
           const clone = response.clone();
           caches.open(CACHE).then(c => c.put('./index.html', clone));
           return response;
         })
-        .catch(() =>
-          // Нет сети — берём из кэша
-          caches.match('./index.html')
-        )
+        .catch(() => caches.match('./index.html'))
     );
     return;
   }
 
-  // Остальные ресурсы: сначала кэш, при промахе — сеть
-  // Для статики (JS, CSS, картинки) это быстрее
   e.respondWith(
-    caches.match(e.request)
-      .then(cached => {
-        if (cached) {
-          // Фоновое обновление кэша (stale-while-revalidate)
-          fetch(e.request)
-            .then(fresh => {
-              if (fresh && fresh.status === 200) {
-                caches.open(CACHE).then(c => c.put(e.request, fresh));
-              }
-            })
-            .catch(() => {});
-          return cached;
+    caches.match(e.request).then(cached => {
+      if (cached) {
+        fetch(e.request).then(fresh => { if (fresh && fresh.status === 200) caches.open(CACHE).then(c => c.put(e.request, fresh)); }).catch(() => {});
+        return cached;
+      }
+      return fetch(e.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE).then(c => c.put(e.request, clone));
         }
-        // Не в кэше — идём в сеть
-        return fetch(e.request)
-          .then(response => {
-            if (response && response.status === 200) {
-              const clone = response.clone();
-              caches.open(CACHE).then(c => c.put(e.request, clone));
-            }
-            return response;
-          });
-      })
+        return response;
+      });
+    })
   );
 });
