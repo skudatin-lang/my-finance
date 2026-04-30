@@ -459,8 +459,15 @@ select.fi{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns=
     padding:0;transition:background .15s;}
   .bnav-btn.active{color:#fff;background:rgba(255,255,255,.1);}
   .bnav-btn .bnav-icon{font-size:18px;line-height:1;}
-  .bnav-more{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    background:none;border:none;color:#C9A96E;cursor:pointer;font-size:9px;font-weight:700;letter-spacing:.5px;}
+  .bnav-spacer{flex:1;display:flex;align-items:center;justify-content:center;}
+  .bnav-fab{
+    width:52px;height:52px;border-radius:50%;
+    background:var(--amber);border:none;color:#fff;
+    font-size:22px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:28px;
+    box-shadow:0 2px 8px rgba(0,0,0,.2);
+  }
   /* Offset content to avoid bottom nav overlap */
   #app-screen{padding-bottom:60px;}
   /* Smart voice button higher on mobile */
