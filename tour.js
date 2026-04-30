@@ -1,4 +1,4 @@
-// tour.js — исправленное позиционирование для мобильных устройств
+// tour.js — исправленное позиционирование для мобильных (для последних шагов)
 import { $ } from './core.js';
 
 const TOUR_STEPS = [
@@ -82,8 +82,24 @@ function _positionCard(el, position) {
   const card = document.getElementById('tour-card');
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
+
+  // Для позиции 'center' или если нет целевого элемента
+  if (position === 'center' || !el) {
+    // На мобильных устройствах центрируем по вертикали и горизонтали
+    card.style.position = 'fixed';
+    card.style.top = '50%';
+    card.style.left = '50%';
+    card.style.transform = 'translate(-50%, -50%)';
+    card.style.bottom = 'auto';
+    card.style.right = 'auto';
+    card.style.width = 'auto';
+    card.style.maxWidth = '320px';
+    return;
+  }
+
+  // Для элементов с позицией 'bottom' (целевые кнопки)
   if (isMobile) {
-    // На мобильных устройствах карточка всегда внизу (над клавиатурой/панелью)
+    // На мобильных карточка снизу
     card.style.transform = '';
     card.style.left = '10px';
     card.style.right = '10px';
@@ -93,14 +109,8 @@ function _positionCard(el, position) {
     card.style.bottom = '10px';
     return;
   }
-  if (position === 'center' || !el) {
-    card.style.top = '50%';
-    card.style.left = '50%';
-    card.style.transform = 'translate(-50%,-50%)';
-    card.style.bottom = 'auto';
-    card.style.right = 'auto';
-    return;
-  }
+
+  // Десктопная логика
   card.style.transform = '';
   const r = el.getBoundingClientRect();
   const cw = card.offsetWidth || 320;
