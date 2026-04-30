@@ -851,6 +851,9 @@
   </div>
 </div>
 
+<!-- MODAL: loan -->
+<!-- modal-loan removed: кредиты теперь автоматически из кошельков -->
+
 <!-- MODAL: recurring -->
 <div class="modal-overlay" id="modal-recurring">
   <div class="modal">
@@ -1228,6 +1231,9 @@ window.clearOps=()=>clearAllOps(refreshCurrent);
 window.exportCSVCurrent=()=>exportCSV(state.repOff||0);
 window.exportAllCSV=exportAllCSV;
 
+// ── CSV Export (from analytics.js, used in settings) ──
+// already imported above
+
 // ── Search ──────────────────────────────────────────────────────────
 window.openSearch=function(){
   $('search-query').value='';
@@ -1566,7 +1572,93 @@ window.saveDeepSeekKey=function(){
   });
 };
 
-// Функция getLoansAI полностью находится в loans.js, здесь удалена
+window.getLoansAI=async function(){
+  if(!state.D)return;
+  // Ключ теперь в appConfig (/config/app), не в данных пользователя
+  const key=appConfig.deepseekKey;
+  if(!key){
+    document.getElementById('loans-ai-result').innerHTML=
+      '<span style="color:var(--orange-dark)">⚠ Укажите DeepSeek API Key в панели Админ → сохраните</span>';
+    return;
+  }
+  const btn=document.getElementById('loans-ai-btn');
+  const result=document.getElementById('loans-ai-result');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Анализирую...';}
+  result.innerHTML='<span style="color:var(--text2)">Анализирую ваши данные...</span>';
+
+  // Собираем контекст
+  const debtWallets=state.D.wallets.filter(w=>w.balance<0);
+  const totalDebt=debtWallets.reduce((s,w)=>s+Math.abs(w.balance),0);
+  const totalPayment=debtWallets.reduce((s,w)=>s+(w.payment||0),0);
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+
+  const loansDesc=debtWallets.map(w=>
+    `- ${w.name}: долг ${Math.abs(w.balance).toLocaleString('ru-RU')} ₽`+
+    (w.rate?`, ставка ${w.rate}%`:``) +
+    (w.payment?`, платёж ${w.payment.toLocaleString('ru-RU')} ₽/мес`:``)
+  ).join('\n');
+
+  const prompt=`Ты финансовый советник. Проанализируй кредитную нагрузку и дай 3-5 конкретных рекомендаций на русском языке. Будь краток и конкретен.
+
+Финансовые данные:
+Доход за текущий месяц: ${mInc.toLocaleString('ru-RU')} ₽
+Расходы за текущий месяц: ${mExp.toLocaleString('ru-RU')} ₽
+Общий долг: ${totalDebt.toLocaleString('ru-RU')} ₽
+Ежемесячные платежи: ${totalPayment.toLocaleString('ru-RU')} ₽
+Долговая нагрузка: ${mInc>0?Math.round(totalPayment/mInc*100):0}% от дохода
+
+Кредиты:
+${loansDesc||'Нет данных о кредитах'}
+
+Дай рекомендации по: оптимизации погашения, рефинансированию если выгодно, высвобождению денег.`;
+
+  try{
+    const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+      body:JSON.stringify({
+        model:'deepseek/deepseek-chat',
+        messages:[{role:'user',content:prompt}],
+        max_tokens:600,
+        temperature:0.7
+      })
+    });
+    if(!resp.ok){
+      const err=await resp.json().catch(()=>({}));
+      const msg=err.error?.message||'HTTP '+resp.status;
+      // Понятные сообщения для типичных ошибок DeepSeek
+      if(msg.includes('Insufficient Balance')||msg.includes('insufficient_quota')){
+        throw new Error('На счёте DeepSeek недостаточно средств. Пополните баланс на platform.deepseek.com → Billing');
+      }
+      if(resp.status===401||msg.includes('Invalid API')){
+        throw new Error('Неверный API-ключ. Проверьте ключ в панели Админ');
+      }
+      if(resp.status===429){
+        throw new Error('Превышен лимит запросов. Попробуйте через минуту');
+      }
+      throw new Error(msg);
+    }
+    const data=await resp.json();
+    const text=data.choices?.[0]?.message?.content||'Нет ответа';
+    // Форматируем: заменяем **жирный** и переносы строк
+    const html=text
+      .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
+      .replace(/\n/g,'<br>');
+    result.innerHTML=`<div style="color:var(--text)">${html}</div>
+      <div style="font-size:10px;color:var(--text2);margin-top:8px;text-align:right">DeepSeek AI · ${new Date().toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}</div>`;
+  }catch(e){
+    const isBalance=e.message.includes('недостаточно средств');
+    result.innerHTML=`<div style="color:var(--red)">⚠ ${e.message}${isBalance?
+      ' <a href="https://platform.deepseek.com/usage" target="_blank" style="color:var(--amber);font-weight:700">Пополнить →</a>':
+      ''}</div>`;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='✨ Спросить ИИ';}
+  }
+};
 
 // ── Режимы: простой / про ─────────────────────────────────────────────────
 function _getMode(){
@@ -1846,7 +1938,48 @@ window._refreshSimpleAi=function(){
 };
 
 // ── FAQ (часто задаваемые вопросы) ───────────────────────────────────────
-const FAQ_ITEMS = [ ... ]; // полный список не меняется, оставляем как в оригинале
+const FAQ_ITEMS = [
+  {
+    q: 'С чего начать работу с приложением?',
+    a: 'Сначала добавьте кошельки с реальными балансами в Настройках → Кошельки. Затем настройте финансовый план (сколько % дохода на что тратите). После этого просто вносите операции каждый день — и приложение начнёт строить аналитику.'
+  },
+  {
+    q: 'Как добавить операцию быстро?',
+    a: 'Три способа: 1) Кнопка «+ ОПЕРАЦИЯ» в верхней панели. 2) Нажмите кнопку микрофона 🎤 справа внизу и скажите голосом — например: «потратил восемьсот рублей на продукты». 3) Кнопка ⚡ для быстрого ввода без лишних полей.'
+  },
+  {
+    q: 'Что такое финансовый план и зачем он нужен?',
+    a: 'Финансовый план — это конверты для вашего бюджета. Вы заранее решаете, сколько процентов дохода пойдёт на продукты, кредиты, накопления и т.д. Приложение следит за тем, как вы придерживаетесь плана, и показывает алерты при превышении.'
+  },
+  {
+    q: 'Что такое ДДС?',
+    a: 'ДДС — Движение Денежных Средств. Это таблица где видно сколько денег планировалось и сколько фактически потрачено по каждой статье финансового плана за месяц. Помогает понять где перерасход, а где экономия.'
+  },
+  {
+    q: 'Как работает голосовой ввод?',
+    a: 'Нажмите кнопку 🎤 в правом нижнем углу и скажите что сделали: «потратил пятьсот на кафе», «получил зарплату 50 тысяч», «перевёл тысячу на карту». Приложение само определит тип операции, сумму и категорию — вам останется только подтвердить.'
+  },
+  {
+    q: 'Как добавить перевод между кошельками?',
+    a: 'Нажмите «+ ОПЕРАЦИЯ» → выберите тип «Перевод» → укажите «Откуда» и «Куда» → введите сумму. Перевод не считается доходом или расходом — он просто перемещает деньги между вашими счетами.'
+  },
+  {
+    q: 'Безопасны ли мои данные?',
+    a: 'Да. Данные хранятся в зашифрованном виде в Google Firebase. Каждый пользователь видит только свои данные — это защищено на уровне базы данных (Firestore Security Rules). Мы не продаём данные и не используем их для рекламы.'
+  },
+  {
+    q: 'Как работает финансовое здоровье?',
+    a: 'Индекс от 0 до 100 рассчитывается по четырём показателям: подушка безопасности (есть ли накопления на 3–6 месяцев), норма сбережений (откладываете ли вы 10–20% дохода), долговая нагрузка (не превышает ли 30% дохода) и регулярность дохода. Советы по улучшению — на экране Здоровье.'
+  },
+  {
+    q: 'Как отменить подписку?',
+    a: 'Зайдите в Настройки → Управление подпиской. Подписку можно отменить в любой момент — доступ сохраняется до конца оплаченного периода. При отмене за 24 часа до следующего списания повторного платежа не будет.'
+  },
+  {
+    q: 'Что делать если что-то работает неправильно?',
+    a: 'Попробуйте обновить страницу (Ctrl+R). Если не помогает — напишите нам в Telegram @skudatin или на почту skudatin@gmail.com с описанием проблемы. Отвечаем в течение 24 часов.'
+  },
+];
 
 function renderFAQ() {
   const el = document.getElementById('faq-body');
@@ -1984,25 +2117,30 @@ $('loading-screen').style.display='none';
 $('app-screen').style.display='none';
 $('auth-screen').style.display='flex';
 if('serviceWorker' in navigator){
+  // Регистрируем SW без явного scope — берётся автоматически из расположения файла
+  // Важно: scope SW должен совпадать со scope в manifest.json
   navigator.serviceWorker.register('./sw.js')
     .then(reg => {
-      reg.update();
+      reg.update(); // проверяем обновление при каждом запуске
       console.log('SW registered, scope:', reg.scope);
     })
     .catch(e => console.warn('SW registration failed:', e));
 }
 
 // Обработка shortcuts из manifest.json
+// Например: ?action=new-op открывает форму добавления операции
 (function handleShortcuts(){
   const params = new URLSearchParams(window.location.search);
   const action = params.get('action');
   if(action === 'new-op'){
+    // Ждём когда приложение загрузится, потом открываем форму
     const interval = setInterval(() => {
       if(window.openNewOp && window.state?.CU){
         clearInterval(interval);
         window.openNewOp();
       }
     }, 300);
+    // Timeout через 10 сек
     setTimeout(() => clearInterval(interval), 10000);
   }
 })();
