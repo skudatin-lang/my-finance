@@ -1,4 +1,4 @@
-// tour.js — исправленное позиционирование для мобильных (для последних шагов)
+// tour.js — исправленное позиционирование для мобильных (все шаги)
 import { $ } from './core.js';
 
 const TOUR_STEPS = [
@@ -83,9 +83,8 @@ function _positionCard(el, position) {
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
 
-  // Для позиции 'center' или если нет целевого элемента
-  if (position === 'center' || !el) {
-    // На мобильных устройствах центрируем по вертикали и горизонтали
+  // Если шаг с центрированием (первый или последний)
+  if (position === 'center') {
     card.style.position = 'fixed';
     card.style.top = '50%';
     card.style.left = '50%';
@@ -97,9 +96,8 @@ function _positionCard(el, position) {
     return;
   }
 
-  // Для элементов с позицией 'bottom' (целевые кнопки)
+  // Для всех остальных шагов на мобильных устройствах карточка всегда внизу
   if (isMobile) {
-    // На мобильных карточка снизу
     card.style.transform = '';
     card.style.left = '10px';
     card.style.right = '10px';
@@ -110,7 +108,7 @@ function _positionCard(el, position) {
     return;
   }
 
-  // Десктопная логика
+  // Десктопная логика (если нужно)
   card.style.transform = '';
   const r = el.getBoundingClientRect();
   const cw = card.offsetWidth || 320;
@@ -137,16 +135,22 @@ function _positionCard(el, position) {
 function _renderStep(idx) {
   const step = TOUR_STEPS[idx];
   if (!step) return;
-  document.getElementById('tour-title').textContent = step.title;
-  document.getElementById('tour-text').textContent = step.text;
-  document.getElementById('tour-next').textContent = step.isLast ? '✓ Начать' : 'Далее →';
-  document.getElementById('tour-prev').style.display = idx === 0 ? 'none' : '';
+  const titleEl = document.getElementById('tour-title');
+  const textEl = document.getElementById('tour-text');
+  const nextBtn = document.getElementById('tour-next');
+  const prevBtn = document.getElementById('tour-prev');
   const dots = document.getElementById('tour-dots');
+  if (titleEl) titleEl.textContent = step.title;
+  if (textEl) textEl.textContent = step.text;
+  if (nextBtn) nextBtn.textContent = step.isLast ? '✓ Начать' : 'Далее →';
+  if (prevBtn) prevBtn.style.display = idx === 0 ? 'none' : '';
   if (dots) {
     dots.innerHTML = TOUR_STEPS.map((_, i) => `<div style="width:${i===idx?14:6}px;height:6px;border-radius:3px;background:${i===idx?'var(--amber)':i<idx?'var(--green)':'var(--border)'};transition:all .2s"></div>`).join('');
   }
+  // Выполняем action (переключение экрана)
   if (step.action) step.action();
   const targetEl = step.targetId ? document.getElementById(step.targetId) : null;
+  // Даём время на смену экрана и отрисовку
   setTimeout(() => {
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
@@ -155,7 +159,7 @@ function _renderStep(idx) {
       _clearSpotlight();
     }
     _positionCard(targetEl, step.position);
-  }, 120);
+  }, 150);
 }
 
 export function tourStart() {
