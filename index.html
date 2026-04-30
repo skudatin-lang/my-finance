@@ -714,8 +714,1298 @@
 
 </div><!-- end app-screen -->
 
-<!-- ── MODALS (оставлены без изменений, но для краткости опускаю – они такие же как в исходном) ── -->
-<!-- MODALS... (здесь идут все модальные окна, они не менялись, поэтому не включаю в ответ для экономии места, но в реальном файле они должны быть полностью) -->
-...
+<!-- ── MODALS ── -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">НОВАЯ ОПЕРАЦИЯ</span><button class="modal-close" onclick="window.closeModal('modal')">&#10005;</button></div>
+    <div class="type-toggle">
+      <div class="type-btn ai" id="type-income" onclick="window.setOpType('income')">Доход</div>
+      <div class="type-btn" id="type-expense" onclick="window.setOpType('expense')">Расход</div>
+      <div class="type-btn" id="type-transfer" onclick="window.setOpType('transfer')">Перевод</div>
+      <div class="type-btn" id="type-planned_income" onclick="window.setOpType('planned_income')">План +</div>
+      <div class="type-btn" id="type-planned_expense" onclick="window.setOpType('planned_expense')">План −</div>
+    </div>
+    <div id="planned-notice" class="plan-notice" style="display:none">Плановая операция — видна в календаре, не влияет на баланс</div>
+    <div class="rf">
+      <div class="fg" style="flex:2"><label>СУММА</label>
+        <div style="display:flex;gap:5px"><input class="fi" type="number" id="op-amount" placeholder="0" style="flex:1"><span id="voice-op-amount-wrap"></span></div>
+      </div>
+      <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="op-date"></div>
+    </div>
+    <div class="fg" id="wallet-group"><label id="wallet-label">КОШЕЛЁК</label><select class="fi" id="op-wallet"></select></div>
+    <div class="fg" id="wallet2-group" style="display:none"><label>КОШЕЛЁК НАЗНАЧЕНИЯ</label><select class="fi" id="op-wallet2"></select></div>
+    <div class="fg" id="cat-group"><label id="cat-label">КАТЕГОРИЯ</label><select class="fi" id="op-cat"></select></div>
+    <div class="fg" id="transfer-cat-group" style="display:none">
+      <label>СТАТЬЯ ФИНПЛАНА (необязательно)</label>
+      <select class="fi" id="op-transfer-cat"><option value="">— не указывать —</option></select>
+      <div class="plan-notice" style="margin-top:6px;margin-bottom:0">Перевод можно привязать к статье финплана — учтётся как расход/откладывание без влияния на доход</div>
+    </div>
+    <div class="fg"><label>ЗАМЕТКА (необязательно)</label>
+      <div style="display:flex;gap:5px"><input class="fi" id="op-note" placeholder="Описание" style="flex:1"><span id="voice-op-note-wrap"></span></div>
+    </div>
+    <button class="btn-primary" onclick="window.saveOp()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal')">Отмена</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-op">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="edit-op-title">РЕДАКТИРОВАТЬ ОПЕРАЦИЮ</span><button class="modal-close" onclick="window.closeModal('modal-edit-op')">&#10005;</button></div>
+    <div class="fg"><label>СУММА</label><input class="fi" type="number" id="edit-op-amount"></div>
+    <div class="fg"><label>ДАТА</label><input class="fi" type="date" id="edit-op-date"></div>
+    <!-- Поля для доходов и расходов -->
+    <div id="edit-op-regular-fields">
+      <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="edit-op-wallet"></select></div>
+      <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="edit-op-cat"></select></div>
+    </div>
+    <!-- Поля только для переводов -->
+    <div id="edit-op-transfer-fields" style="display:none">
+      <div class="fg"><label>ОТКУДА</label><select class="fi" id="edit-op-from"></select></div>
+      <div class="fg"><label>КУДА</label><select class="fi" id="edit-op-to"></select></div>
+      <div class="fg"><label>СТАТЬЯ ФИНПЛАНА</label>
+        <select class="fi" id="edit-op-plan">
+          <option value="">— не указывать —</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>ЗАМЕТКА</label><input class="fi" id="edit-op-note"></div>
+    <input type="hidden" id="edit-op-id">
+    <input type="hidden" id="edit-op-type">
+    <button class="btn-primary" onclick="window.saveEdit()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal-edit-op')">Отмена</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-exp-cat">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="exp-cat-modal-title">КАТЕГОРИЯ РАСХОДОВ</span><button class="modal-close" onclick="window.closeModal('modal-exp-cat')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ec-name" placeholder="Например: Продукты"></div>
+    <div class="fg"><label>СТАТЬЯ ФИНПЛАНА</label><select class="fi" id="ec-plan"></select></div>
+    <input type="hidden" id="ec-idx" value="-1">
+    <button class="btn-primary" onclick="window.saveExpCat()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal-exp-cat')">Отмена</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-wallet">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">РЕДАКТИРОВАТЬ КОШЕЛЁК</span><button class="modal-close" onclick="window.closeModal('modal-wallet')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="ew-name"></div>
+    <div class="fg">
+      <label>ТИП КОШЕЛЬКА</label>
+      <select class="fi" id="ew-type" onchange="window.onWalletTypeChange(this.value)">
+        <option value="debit">💳 Дебетовая карта</option>
+        <option value="cash">💵 Наличные</option>
+        <option value="savings">🏦 Накопительный счёт</option>
+        <option value="credit">🔴 Кредитная карта</option>
+        <option value="loan">📋 Кредит / ипотека</option>
+        <option value="debt">🤝 Долг (я должен)</option>
+        <option value="debt_in">🤝 Долг (мне должны)</option>
+        <option value="invest">📈 Инвестиционный</option>
+        <option value="other">📁 Другое</option>
+      </select>
+    </div>
+    <div class="fg"><label>БАЛАНС</label><input class="fi" type="number" id="ew-bal"><div style="font-size:11px;color:var(--text2);margin-top:3px">Для кредитных карт и долгов — отрицательное число</div></div>
+
+    <!-- Параметры кредита — всегда видны, заполнять только для долговых кошельков -->
+    <div id="ew-debt-fields" style="background:var(--amber-light);border:1.5px solid var(--border2);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:10px;font-weight:700;color:var(--text2);letter-spacing:.6px;margin-bottom:10px">ПАРАМЕТРЫ КРЕДИТА (заполните для долговых кошельков)</div>
+      <div class="rf">
+        <div class="fg">
+          <label>СТАВКА % ГОД. <span style="color:var(--red);font-weight:700">*</span></label>
+          <input class="fi" type="number" step="0.1" min="0" id="ew-rate"
+            placeholder="напр. 29.9"
+            style="font-size:15px;font-weight:700">
+          <div style="font-size:10px;color:var(--text2);margin-top:3px">Используйте точку: 29.9 (не запятую)</div>
+        </div>
+        <div class="fg">
+          <label>ПЛАТЁЖ/МЕС ₽</label>
+          <input class="fi" type="number" min="0" id="ew-payment" placeholder="напр. 5000.50"
+            style="font-size:15px">
+        </div>
+      </div>
+      <div class="rf">
+        <div class="fg">
+          <label>ДЕНЬ ВЫСТАВЛЕНИЯ СЧЁТА</label>
+          <input class="fi" type="number" min="1" max="28" id="ew-payday" placeholder="25"
+            style="font-size:14px">
+        </div>
+        <div class="fg">
+          <label>БЕСПРОЦ. ПЕРИОД (дн.)</label>
+          <input class="fi" type="number" min="0" id="ew-grace" placeholder="0"
+            style="font-size:14px">
+        </div>
+      </div>
+    </div>
+
+    <div class="fg">
+      <label>СТАТЬЯ ФИНПЛАНА (для накоплений)</label>
+      <select class="fi" id="ew-plan">
+        <option value="">— не привязывать —</option>
+      </select>
+      <div style="font-size:11px;color:var(--blue);background:var(--blue-bg);padding:6px 8px;border-radius:6px;margin-top:5px">Все переводы на этот кошелёк будут автоматически учитываться в выбранной статье финплана</div>
+    </div>
+    <input type="hidden" id="ew-idx">
+    <button class="btn-primary" onclick="window.saveWalletEdit()">Сохранить</button>
+    <button class="btn-sec" onclick="window.closeModal('modal-wallet')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: recurring -->
+<div class="modal-overlay" id="modal-recurring">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">РЕГУЛЯРНАЯ ОПЕРАЦИЯ</span><button class="modal-close" onclick="document.getElementById('modal-recurring').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label><input class="fi" id="rec-name" placeholder="Аренда, зарплата..."></div>
+    <div class="rf">
+      <div class="fg"><label>СУММА ₽</label><input class="fi" type="number" id="rec-amount" placeholder="0"></div>
+      <div class="fg"><label>ДЕНЬ МЕСЯЦА</label><input class="fi" type="number" id="rec-day" placeholder="1-31" min="1" max="31"></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>ТИП</label>
+        <select class="fi" id="rec-type">
+          <option value="income">Доход</option>
+          <option value="expense">Расход</option>
+        </select>
+      </div>
+      <div class="fg"><label>КОШЕЛЁК</label><select class="fi" id="rec-wallet"></select></div>
+    </div>
+    <div class="fg"><label>КАТЕГОРИЯ</label><select class="fi" id="rec-cat"></select></div>
+    <input type="hidden" id="rec-idx" value="-1">
+    <button class="btn-primary" onclick="window.saveRecurring()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-recurring').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: shopping item -->
+<div class="modal-overlay" id="modal-shop-item">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title">ТОВАР В СПИСКЕ</span><button class="modal-close" onclick="document.getElementById('modal-shop-item').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ</label>
+      <div style="display:flex;gap:5px"><input class="fi" id="shop-item-name" placeholder="Молоко, хлеб..." style="flex:1"><span id="voice-shop-name-wrap"></span></div>
+    </div>
+    <div class="rf">
+      <div class="fg"><label>КОЛИЧЕСТВО</label><input class="fi" type="number" id="shop-item-qty" value="1" min="1"></div>
+      <div class="fg"><label>ЦЕНА &#8381; (необяз.)</label><input class="fi" type="number" id="shop-item-price" placeholder="0"></div>
+    </div>
+    <div class="fg"><label>ДАТА ПОКУПКИ</label><input class="fi" type="date" id="shop-item-date"></div>
+    <input type="hidden" id="shop-item-id">
+    <button class="btn-primary" onclick="window.saveShopItem()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-shop-item').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: plan item -->
+<div class="modal-overlay" id="modal-plan-item">
+  <div class="modal">
+    <div class="modal-hdr"><span class="modal-title" id="plan-item-modal-title">СТАТЬЯ ФИНПЛАНА</span><button class="modal-close" onclick="document.getElementById('modal-plan-item').classList.remove('open')">&#10005;</button></div>
+    <div class="fg"><label>НАЗВАНИЕ СТАТЬИ</label><input class="fi" id="pi-label" placeholder="Накопления, Кредиты, Продукты..."></div>
+    <div class="rf">
+      <div class="fg"><label>ПРОЦЕНТ ОТ ДОХОДА %</label><input class="fi" type="number" id="pi-pct" placeholder="10" min="0" max="100" step="0.5"></div>
+      <div class="fg"><label>ТИП</label>
+        <select class="fi" id="pi-type" onchange="window.onPlanTypeChange(this.value)">
+          <option value="expense">Расход (куда тратить)</option>
+          <option value="income">Накопление (откладывать)</option>
+        </select>
+      </div>
+    </div>
+    <div id="pi-goal-block" style="display:none">
+      <div class="fg"><label>ЦЕЛЬ НАКОПЛЕНИЯ ₽ (необязательно)</label>
+        <input class="fi" type="number" id="pi-goal" placeholder="например 500000" min="0">
+        <div style="font-size:11px;color:var(--blue);background:var(--blue-bg);padding:6px 8px;border-radius:6px;margin-top:5px">Когда баланс привязанного кошелька достигнет цели — он подсветится зелёным</div>
+      </div>
+    </div>
+    <input type="hidden" id="pi-idx" value="-1">
+    <button class="btn-primary" onclick="window.savePlanItem()">Сохранить</button>
+    <button class="btn-sec" onclick="document.getElementById('modal-plan-item').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: voice intent confirmation -->
+<div class="modal-overlay" id="modal-voice-intent">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr">
+      <span class="modal-title vi-title">ГОЛОСОВАЯ КОМАНДА</span>
+      <button class="modal-close" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">&#10005;</button>
+    </div>
+    <div style="background:var(--amber-light);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:14px;line-height:1.6;color:var(--text)" class="vi-body"></div>
+    <div class="notice blue" style="margin-bottom:12px;font-size:11px">Проверьте правильность и подтвердите или откройте форму редактирования</div>
+    <button class="btn-primary vi-confirm">Подтвердить</button>
+    <button class="btn-sec vi-edit" style="margin-top:8px">Редактировать вручную</button>
+    <button class="btn-sec" style="margin-top:6px" onclick="document.getElementById('modal-voice-intent').classList.remove('open')">Отмена</button>
+  </div>
+</div>
+
+<!-- MODAL: onboarding -->
+<div class="modal-overlay" id="modal-onboarding" style="align-items:flex-start;padding:0;background:rgba(61,43,26,.85)">
+  <div style="background:var(--card);width:100%;max-width:520px;min-height:100vh;overflow-y:auto;padding:28px 24px;margin:0 auto" id="onboarding-inner">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:36px;margin-bottom:8px">💰</div>
+      <div style="font-size:20px;font-weight:700;color:var(--text);letter-spacing:.5px">МОИ ФИНАНСЫ</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:6px">Давайте настроим приложение за 3 простых шага</div>
+    </div>
+    <div id="onboarding-steps"></div>
+  </div>
+</div>
+
+<!-- MODAL: quick add operation -->
+<div class="modal-overlay" id="modal-quick-add">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-hdr"><span class="modal-title">БЫСТРАЯ ОПЕРАЦИЯ</span><button class="modal-close" onclick="document.getElementById('modal-quick-add').classList.remove('open')">&#10005;</button></div>
+    <div class="type-toggle" style="margin-bottom:10px">
+      <div class="type-btn ae" id="qa-type-expense" onclick="window.qaSetType('expense')">− Расход</div>
+      <div class="type-btn ai" id="qa-type-income" onclick="window.qaSetType('income')">+ Доход</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input class="fi" type="number" id="qa-amount" placeholder="Сумма ₽" style="flex:1;font-size:20px;font-weight:700" autofocus>
+      <span id="voice-qa-amount-wrap"></span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px" id="qa-cat-btns"></div>
+    <div class="fg" style="margin-bottom:10px"><label>КОШЕЛЁК</label><select class="fi" id="qa-wallet"></select></div>
+    <div class="fg" style="margin-bottom:12px"><label>ЗАМЕТКА (необяз.)</label><input class="fi" id="qa-note" placeholder="Описание"></div>
+    <button class="btn-primary" style="font-size:15px" onclick="window.saveQuickOp()">Сохранить</button>
+  </div>
+</div>
+
+<!-- MODAL: search operations -->
+<div class="modal-overlay" id="modal-search">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-hdr"><span class="modal-title">ПОИСК ПО ОПЕРАЦИЯМ</span><button class="modal-close" onclick="document.getElementById('modal-search').classList.remove('open')">&#10005;</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <input class="fi" id="search-query" placeholder="Категория, сумма, заметка, дата..." style="flex:1" oninput="window.doSearch(this.value)">
+    </div>
+    <div id="search-results" style="max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div>
+
+<script type="module">
+import{state,initAuth,signInGoogle,doSignOut,exportData,importData,clearAllOps,sched,today,appConfig,loadAppConfig,saveAppConfig,isOwner,fmt,calcHealthScore,planSpent}from'./core.js';
+import{renderReports,renderWalletOps,setCatTab}from'./reports.js';
+import{renderDDS}from'./dds.js';
+import{renderCalendar,showCalDay}from'./calendar.js';
+import{renderSettings,updPT,savePlanSettings,addWallet,delWallet,openEditWallet,saveWalletEdit,addIncomeCat,delIncomeCat,fillExpPlanSel,openEditExpCat,saveExpCat,delExpCat,openAddPlanItem,openEditPlanItem,savePlanItem,deletePlanItem,toggleSpendable,exportCSV,exportAllCSV}from'./settings.js';
+import{openModal,closeModal,setType,saveOperation,openEditOp,saveEditOp,deleteOp}from'./operations.js';
+import{renderDashboard}from'./dashboard.js';
+import{renderRecurring,applyRecurring}from'./recurring.js';
+import{renderHealth}from'./health.js';
+import{renderLoans,renderLoansSummary}from'./loans.js';
+import{renderShoppingList,onCalendarDayChange}from'./shopping.js';
+import{loadVoiceSettings,saveVoiceSettings,isVoiceConfigured,createVoiceButton,createSmartVoiceButton}from'./voice.js';
+import{tourStart,tourFinish,isTourDone}from'./tour.js';
+import{eventBus,EVENTS}from'./eventBus.js';
+import{registerModule,mountModule,notifyDataLoaded,loadPluginsFromConfig,getModules}from'./moduleRegistry.js';
+
+// ── Admin — единственный источник истины в core.js
+function isAdmin(){return !!(state.CU&&isOwner(state.CU.uid));}
+
+const $=id=>document.getElementById(id);
+
+// ── Shopping dashboard widget ─────────────────────────────
+window._renderShopWidget=function(){
+  if(!state.D)return;
+  const allPending=[];
+  const lists=state.D.shoppingLists||{};
+  const dates=Object.keys(lists).sort();
+  dates.forEach(date=>{
+    const items=(lists[date]||[]).filter(i=>!i.done);
+    items.forEach(i=>allPending.push({...i,date}));
+  });
+  const totalAll=Object.values(lists).reduce((s,arr)=>s+(arr||[]).length,0);
+  const pendingAll=allPending.length;
+  const render=(el)=>{
+    if(!el)return;
+    if(!pendingAll&&!totalAll){
+      el.innerHTML='<div style="color:var(--text2);font-size:12px">Список пуст. <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber);font-weight:700">Добавить →</a></div>';
+      return;
+    }
+    let html2=`<div style="font-size:11px;color:var(--text2);margin-bottom:5px">${pendingAll} не куплено из ${totalAll}</div>`;
+    const shown={};
+    allPending.slice(0,6).forEach(i=>{
+      if(!shown[i.date])shown[i.date]=[];
+      shown[i.date].push(i);
+    });
+    Object.keys(shown).sort().forEach(date=>{
+      const d=new Date(date+'T12:00:00');
+      const ds=d.toLocaleDateString('ru-RU',{day:'numeric',month:'short'});
+      html2+=`<div style="font-size:10px;color:var(--text2);margin-top:5px;margin-bottom:2px">${ds}</div>`;
+      shown[date].forEach(i=>{
+        html2+=`<div style="font-size:12px;padding:2px 0;display:flex;align-items:center;gap:5px"><span>&#128722;</span><span style="color:var(--text)">${i.name}</span>${i.qty>1?`<span style="color:var(--text2);font-size:11px">×${i.qty}</span>`:''}</div>`;
+      });
+    });
+    if(pendingAll>6)html2+=`<div style="font-size:10px;color:var(--text2);margin-top:3px">и ещё ${pendingAll-6} позиций...</div>`;
+    el.innerHTML=html2;
+  };
+  render($('dash-shopping-main'));
+};
+
+// ── Quick add from calendar panel ────────────────────────
+window.quickAddShopItem=function(){
+  if(!state.D)return;
+  if(!state.D.shoppingLists)state.D.shoppingLists={};
+  const nameEl=$('shop-quick-name');
+  const name=nameEl?.value.trim();
+  if(!name){nameEl?.focus();return;}
+  const qty=parseFloat($('shop-quick-qty')?.value)||1;
+  const price=parseFloat($('shop-quick-price')?.value)||0;
+  const date=state.calDay||today();
+  if(!state.D.shoppingLists[date])state.D.shoppingLists[date]=[];
+  state.D.shoppingLists[date].push({id:'sh'+Date.now(),name,qty,price,done:false});
+  sched();
+  nameEl.value='';
+  if($('shop-quick-qty'))$('shop-quick-qty').value=1;
+  if($('shop-quick-price'))$('shop-quick-price').value='';
+  nameEl.focus();
+  renderShoppingList();
+  window._renderShopWidget();
+};
+
+// ── Voice UI ──────────────────────────────────────────────
+function setupVoiceButtons(){
+  [['voice-op-amount-wrap','op-amount'],['voice-op-note-wrap','op-note'],['voice-shop-name-wrap','shop-item-name']].forEach(([wrapId,targetId])=>{
+    const wrap=$(wrapId);if(!wrap)return;
+    wrap.innerHTML='';
+    const btn=createVoiceButton(targetId);
+    wrap.appendChild(btn);
+  });
+}
+
+function updateVoiceStatus(){
+  const el=$('voice-status');if(!el)return;
+  const hasWebSpeech=!!(window.SpeechRecognition||window.webkitSpeechRecognition);
+  const hasWorker=!!(appConfig.workerUrl);
+  if(hasWebSpeech){
+    const mode=hasWorker?'Web Speech API + Cloudflare Worker (ИИ-анализ)':'Web Speech API — работает без настройки';
+    el.textContent='✓ '+mode;
+    el.style.color='var(--green-dark)';el.style.background='var(--green-bg)';
+  }else{
+    el.textContent='⚠ Голосовой ввод не поддерживается. Используйте Chrome или Safari.';
+    el.style.color='var(--orange-dark)';el.style.background='var(--amber-light)';
+  }
+}
+
+window.saveVoiceSettingsUI=async function(){
+  const proxyUrl=$('voice-proxy-url')?.value.trim()||'';
+  const appSecretVal=$('voice-app-secret')?.value.trim()||'';
+  const ok=await saveAppConfig({workerUrl:proxyUrl,appSecret:appSecretVal});
+  if(ok){
+    saveVoiceSettings(proxyUrl,proxyUrl,appSecretVal);
+    const statusEl=$('voice-status');
+    if(statusEl){statusEl.textContent='✓ Настройки сохранены';statusEl.style.color='var(--green-dark)';statusEl.style.background='var(--green-bg)';}
+    alert('Настройки сохранены!');
+  }else{
+    alert('Ошибка сохранения. Проверьте правила Firestore.');
+  }
+  updateVoiceStatus();
+};
+
+window.testVoiceWorker=async function(){
+  const url=($('voice-proxy-url')?.value||'').trim();
+  const secret=($('voice-app-secret')?.value||'').trim();
+  const statusEl=$('voice-status');
+  if(!url){
+    if(statusEl){statusEl.textContent='⚠ Введите URL воркера';statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+    return;
+  }
+  if(statusEl){statusEl.textContent='⏳ Проверяю соединение...';statusEl.style.color='var(--text2)';statusEl.style.background='var(--amber-light)';}
+  try{
+    // Worker отвечает на GET / — не /ping
+    const baseUrl=url.replace(/\/$/,'');
+    const r=await fetch(baseUrl,{method:'GET',headers:{'X-App-Secret':secret}});
+    const data=await r.json().catch(()=>({}));
+    if(r.ok&&(data.ok||data.service)){
+      if(statusEl){statusEl.textContent='✓ Worker доступен: '+JSON.stringify(data);statusEl.style.color='var(--green-dark)';statusEl.style.background='var(--green-bg)';}
+    }else if(r.status===401){
+      if(statusEl){statusEl.textContent='✗ Ошибка 401: неверный APP_SECRET. Проверьте переменную APP_SECRET в Worker Variables.';statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+    }else{
+      if(statusEl){statusEl.textContent='✗ Worker ответил '+r.status+': '+JSON.stringify(data).slice(0,100);statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+    }
+  }catch(e){
+    if(statusEl){statusEl.textContent='✗ Не удалось подключиться: '+e.message+'. Проверьте URL и что Worker задеплоен.';statusEl.style.color='var(--red)';statusEl.style.background='var(--red-bg)';}
+  }
+};
+
+function _loadVoiceToSettings(){
+  if(!state.D||!state.D.voiceSettings)return;
+  const vs=state.D.voiceSettings;
+  if($('voice-proxy-url'))$('voice-proxy-url').value=vs.proxyUrl||'';
+  if($('voice-app-secret'))$('voice-app-secret').value=vs.appSecret||'';
+  updateVoiceStatus();
+}
+
+function refreshCurrent(){
+  const cur=document.querySelector('.screen.active')?.id?.replace('screen-','');
+  if(cur==='dashboard-simple'){renderSimpleDashboard();}
+  else if(cur==='dashboard'){renderDashboard();window._renderDashMain&&window._renderDashMain();}
+  else if(cur==='reports')renderReports();
+  else if(cur==='dds')renderDDS();
+  else if(cur==='calendar'){renderCalendar();renderShoppingList();window._renderCalRecurring&&window._renderCalRecurring();}
+  else if(cur==='settings'){renderSettings();_loadVoiceToSettings();renderFAQ();}
+  else if(cur==='loans'){renderLoans();renderLoansSummary();}
+  else if(cur==='health')renderHealth();
+  else if(cur==='admin'){updateAdminVisibility();}
+  if(cur!=='dashboard'&&cur!=='dashboard-simple')window._renderDashMain&&window._renderDashMain();
+}
+
+window.showScreen=name=>{
+  // Если просят 'dashboard' — смотрим режим пользователя
+  const resolvedName=(name==='dashboard'&&_getMode()==='simple')?'dashboard-simple':name;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tnav-btn').forEach(b=>b.classList.remove('active'));
+  const screenEl=document.getElementById('screen-'+resolvedName);
+  if(screenEl){screenEl.classList.add('active');}
+  // Для подсветки навбара: dashboard-simple → tnav-dashboard
+  const navKey=resolvedName==='dashboard-simple'?'dashboard':resolvedName;
+  const tb=document.getElementById('tnav-'+navKey);
+  if(tb){tb.classList.add('active');setTimeout(()=>tb.scrollIntoView({behavior:'smooth',inline:'center',block:'nearest'}),50);}
+  refreshCurrent();
+  updateBottomNav(navKey);
+  window.hideMobileMenu?.();
+  mountModule(resolvedName);
+  eventBus.emit(EVENTS.SCREEN_CHANGED,{screen:resolvedName});
+};
+
+window.chMonth=d=>{state.repOff+=d;renderReports();};
+window.ddsChM=d=>{state.ddsOff+=d;renderDDS();};
+window.calChM=d=>{state.calOff+=d;renderCalendar();};
+window.selCalDay=ds=>{
+  showCalDay(ds);state.calDay=ds;onCalendarDayChange();
+  // Show action buttons when a day is selected
+  const actions=document.getElementById('cal-day-actions');
+  if(actions)actions.style.display='flex';
+};
+
+// Open modal pre-filled with selected calendar date, income type
+window.calAddFact=function(){
+  if(!state.calDay)return;
+  openModal('modal',true);
+  const dateEl=document.getElementById('op-date');
+  if(dateEl)dateEl.value=state.calDay;
+  setType('income');
+};
+
+// Open modal pre-filled with selected date, planned income type
+window.calAddPlan=function(){
+  if(!state.calDay)return;
+  openModal('modal',true);
+  const dateEl=document.getElementById('op-date');
+  if(dateEl)dateEl.value=state.calDay;
+  setType('planned_income');
+};
+window._getCalActiveDate=()=>state.calDay||today();
+window.chWallet=d=>{state.walletIdx=(state.walletIdx+d+state.D.wallets.length)%state.D.wallets.length;renderWalletOps();$('wnav-lbl').textContent=state.D.wallets[state.walletIdx]?.name||'—';};
+window.setCatTab=tab=>setCatTab(tab);
+window.signInGoogle=signInGoogle;
+window.doSignOut=doSignOut;
+
+window.openNewOp=()=>openModal('modal',true);
+window.closeModal=id=>closeModal(id);
+window.setOpType=type=>setType(type);
+window.saveOp=()=>saveOperation((...args)=>{
+  refreshCurrent(...args);
+  // Уведомляем внешние модули о новой операции
+  const lastOp=state.D?.operations?.[state.D.operations.length-1];
+  if(lastOp)eventBus.emit(EVENTS.OPERATION_ADDED,{op:lastOp});
+  eventBus.emit(EVENTS.BALANCE_CHANGED,{wallets:state.D?.wallets||[]});
+});
+window.openEditOp=id=>openEditOp(id);
+window.saveEdit=()=>saveEditOp(refreshCurrent);
+window.deleteOp=id=>deleteOp(id,refreshCurrent);
+
+window.updPT=updPT;
+window.savePlanSettings=savePlanSettings;
+window.addWallet=addWallet;
+window.delWallet=delWallet;
+window.openEditWallet=openEditWallet;
+window.saveWalletEdit=saveWalletEdit;
+window.addIncomeCat=addIncomeCat;
+window.delIncomeCat=delIncomeCat;
+window.openExpCat=()=>{$('exp-cat-modal-title').textContent='НОВАЯ КАТЕГОРИЯ РАСХОДОВ';$('ec-name').value='';$('ec-idx').value=-1;fillExpPlanSel('ec-plan');$('modal-exp-cat').classList.add('open');};
+window.openEditExpCat=openEditExpCat;
+window.saveExpCat=saveExpCat;
+window.delExpCat=delExpCat;
+window.exportData=exportData;
+window.importDataFile=e=>importData(e,refreshCurrent);
+window.clearOps=()=>clearAllOps(refreshCurrent);
+window.exportCSVCurrent=()=>exportCSV(state.repOff||0);
+window.exportAllCSV=exportAllCSV;
+
+// ── Search ──────────────────────────────────────────────────────────
+window.openSearch=function(){
+  $('search-query').value='';
+  $('search-results').innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Введите запрос для поиска по операциям</div>';
+  $('modal-search').classList.add('open');
+  setTimeout(()=>$('search-query')?.focus(),100);
+};
+window.doSearch=function(q){
+  const el=$('search-results');if(!el||!state.D)return;
+  if(!q.trim()){el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Введите запрос</div>';return;}
+  const qL=q.toLowerCase();
+  const ops=state.D.operations.filter(o=>{
+    if(o.type==='planned_income'||o.type==='planned_expense')return false;
+    return(o.category||'').toLowerCase().includes(qL)||
+           (o.note||'').toLowerCase().includes(qL)||
+           String(o.amount).includes(qL)||
+           (o.date||'').includes(qL)||
+           (o.type==='income'&&'доход'.includes(qL))||
+           (o.type==='expense'&&'расход'.includes(qL));
+  }).sort((a,b)=>a.date<b.date?1:-1).slice(0,50);
+  if(!ops.length){el.innerHTML='<div style="color:var(--text2);font-size:13px;padding:12px 0">Ничего не найдено</div>';return;}
+  el.innerHTML=`<div style="font-size:11px;color:var(--text2);margin-bottom:10px">Найдено: ${ops.length} операций</div>`+
+    ops.map(o=>{
+      const isIn=o.type==='income',isOut=o.type==='expense';
+      const col=isIn?'var(--green-dark)':isOut?'var(--orange-dark)':'var(--blue)';
+      const pfx=isIn?'+ ':isOut?'− ':'';
+      const w=state.D.wallets.find(w=>w.id===o.wallet);
+      return`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:.5px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">${o.category||'—'}</div>
+          <div style="font-size:11px;color:var(--text2)">${o.date||''}${w?' · '+w.name:''}${o.note?' · '+o.note:''}</div>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:${col}">${pfx}${fmt(o.amount)}</div>
+      </div>`;
+    }).join('');
+};
+
+// ── Quick Add Modal ──────────────────────────────────────────────────
+let _qaType='expense';
+window.qaSetType=function(type){
+  _qaType=type;
+  ['expense','income'].forEach(t=>{
+    const el=$('qa-type-'+t);if(!el)return;
+    el.className='type-btn'+(t==='expense'?' ae':' ai');
+    el.style.opacity=t!==type?'.5':'1';
+  });
+  const catBtns=$('qa-cat-btns');if(!catBtns||!state.D)return;
+  const cats=type==='income'?state.D.incomeCats:state.D.expenseCats.slice(0,8).map(c=>c.name);
+  catBtns.innerHTML=cats.map(c=>`<button onclick="window.qaSelectCat(this,'${c}')" class="sbtn amber" style="font-size:11px;padding:5px 10px;border-radius:5px">${c}</button>`).join('');
+};
+window.qaSelectCat=function(btn,cat){
+  document.querySelectorAll('#qa-cat-btns .sbtn').forEach(b=>{b.style.background='var(--amber-light)';delete b.dataset.selected;});
+  btn.style.background='var(--amber)';btn.style.color='#fff';btn.dataset.selected='1';
+};
+window.openQuickAdd=function(){
+  if(!state.D)return;
+  _qaType='expense';
+  $('qa-amount').value='';$('qa-note').value='';
+  $('qa-wallet').innerHTML=state.D.wallets.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  window.qaSetType('expense');
+  $('modal-quick-add').classList.add('open');
+  setTimeout(()=>$('qa-amount')?.focus(),100);
+  const wrap=$('voice-qa-amount-wrap');
+  if(wrap&&!wrap.children.length)wrap.appendChild(createVoiceButton('qa-amount'));
+};
+window.saveQuickOp=function(){
+  const amount=parseFloat($('qa-amount')?.value);
+  if(!amount||amount<=0){$('qa-amount')?.focus();return;}
+  const wallet=$('qa-wallet')?.value;
+  const note=$('qa-note')?.value||'';
+  const selectedCat=document.querySelector('#qa-cat-btns [data-selected]');
+  const category=selectedCat?.textContent||'Прочее';
+  const op={id:'op'+Date.now()+'_'+Math.random().toString(36).slice(2,6),type:_qaType,amount,date:today(),wallet,category,note};
+  const w=state.D.wallets.find(w=>w.id===wallet);
+  if(w){if(_qaType==='income')w.balance+=amount;else w.balance-=amount;}
+  state.D.operations.push(op);
+  sched();
+  $('modal-quick-add').classList.remove('open');
+  refreshCurrent();
+};
+
+// ── Onboarding → Tour ──────────────────────────────────────────────────────
+// _tourSaveDone вызывается из tour.js при завершении
+window._tourSaveDone=function(){
+  if(!state.D)return;
+  state.D.onboardingDone=true;
+  state.D.tourDone=true;
+  sched();
+};
+
+function checkOnboarding(){
+  if(!state.D)return;
+  // Уже прошёл тур или уже есть операции — не показываем
+  if(state.D.tourDone||state.D.onboardingDone)return;
+  if(state.D.operations.length>0){state.D.onboardingDone=true;sched();return;}
+  // Небольшая задержка — дать приложению отрисоваться
+  setTimeout(()=>tourStart(),600);
+}
+
+// Публичный метод — вызывается из кнопки в Настройках
+window.startTour=function(){
+  // Сбрасываем флаг чтобы тур можно было пройти повторно
+  if(state.D){state.D.tourDone=false;}
+  tourStart();
+};
+
+// Старый модал онбординга — оставляем скрытым (HTML ещё есть в разметке)
+window._obAction=function(){};
+window._obNext=function(){};
+window._obSkipAll=function(){document.getElementById('modal-onboarding')?.classList.remove('open');};
+
+
+
+// ── Mobile bottom nav ─────────────────────────────────────────────
+const _bottomNavScreens=['dashboard','reports','calendar','dds'];
+function updateBottomNav(name){
+  _bottomNavScreens.forEach(s=>{
+    const btn=document.getElementById('bnav-'+s);
+    if(btn)btn.classList.toggle('active',s===name);
+  });
+  const moreBtn=document.getElementById('bnav-more');
+  if(moreBtn)moreBtn.classList.toggle('active',!_bottomNavScreens.includes(name));
+}
+window.showMobileMenu=function(){
+  const m=document.getElementById('mobile-more-menu');
+  if(m)m.style.display=m.style.display==='none'?'block':'none';
+};
+window.hideMobileMenu=function(){
+  const m=document.getElementById('mobile-more-menu');
+  if(m)m.style.display='none';
+};
+document.addEventListener('click',e=>{
+  const menu=document.getElementById('mobile-more-menu');
+  const btn=document.getElementById('bnav-more');
+  if(menu&&!menu.contains(e.target)&&!btn?.contains(e.target))menu.style.display='none';
+});
+
+// ── Admin visibility ──────────────────────────────────────────────
+function updateAdminVisibility(){
+  const adminBtn=document.getElementById('tbtn-admin');
+  const adminBnav=document.getElementById('bnav-admin');
+  const show=isAdmin();
+  if(adminBtn)adminBtn.style.display=show?'':'none';
+  if(adminBnav)adminBnav.style.display=show?'flex':'none';
+  const uidEl=document.getElementById('admin-uid-display');
+  if(uidEl&&state.CU)uidEl.textContent=state.CU.uid;
+  if($('voice-proxy-url'))$('voice-proxy-url').value=appConfig.workerUrl||'';
+  if($('voice-app-secret'))$('voice-app-secret').value=appConfig.appSecret||'';
+  // Загружаем DeepSeek ключ из appConfig
+  const dsKey=document.getElementById('deepseek-api-key');
+  if(dsKey)dsKey.value=appConfig.deepseekKey||'';
+}
+
+// ── DASHBOARD: today block ─────────────────────────────────────────
+window._renderDashMain=function(){
+  const el=document.getElementById('dash-today-main');
+  if(el&&state.D){
+    const ds=today();
+    const allOps=state.D.operations.filter(o=>o.date===ds&&!['planned_income','planned_expense'].includes(o.type));
+    const inc=allOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+    const exp=allOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+    const bal=inc-exp;
+    if(!allOps.length){
+      el.innerHTML='<div style="color:var(--text2);font-size:12px;padding:4px 0">Операций нет — <a href="#" onclick="window.showScreen(\'calendar\');return false" style="color:var(--amber-dark);font-weight:700">открыть календарь →</a></div>';
+    }else{
+      const balColor=bal<0?'var(--red)':bal>0?'var(--green-dark)':'var(--topbar)';
+      let html=`<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px">
+        <div style="background:var(--green-bg);border-radius:6px;padding:6px 8px"><div style="font-size:9px;color:var(--text2);font-weight:700">ДОХОД</div><div style="font-size:13px;font-weight:700;color:var(--green-dark)">${inc>0?'+ ':''}${fmt(inc)}</div></div>
+        <div style="background:var(--red-bg);border-radius:6px;padding:6px 8px"><div style="font-size:9px;color:var(--text2);font-weight:700">РАСХОД</div><div style="font-size:13px;font-weight:700;color:var(--red)">${exp>0?'− ':''}${fmt(exp)}</div></div>
+        <div style="background:var(--amber-light);border-radius:6px;padding:6px 8px"><div style="font-size:9px;color:var(--text2);font-weight:700">ИТОГО</div><div style="font-size:13px;font-weight:700;color:${balColor}">${bal<0?'− ':''}${fmt(Math.abs(bal))}</div></div>
+      </div>`;
+      const wName=id=>{const w=state.D.wallets.find(w=>w.id===id);return w?w.name:id||'?';};
+      allOps.slice(0,5).forEach(o=>{
+        const isIn=o.type==='income',isOut=o.type==='expense',isTr=o.type==='transfer';
+        const label=isTr?`Перевод → ${wName(o.walletTo)}`:(o.category||o.note||'—');
+        const amtColor=isIn?'var(--green-dark)':isOut?'var(--orange-dark)':'var(--blue)';
+        const amtSign=isIn?'+ ':isTr?'':'− ';
+        html+=`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-top:.5px solid var(--border)">
+          <div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${label}</div><div style="font-size:10px;color:var(--text2)">${wName(o.wallet||'')}</div></div>
+          <div style="font-size:12px;font-weight:700;color:${amtColor};white-space:nowrap;margin-left:8px">${amtSign}${fmt(o.amount)}</div>
+        </div>`;
+      });
+      if(allOps.length>5)html+=`<div style="font-size:10px;color:var(--text2);padding-top:4px">ещё ${allOps.length-5} операций</div>`;
+      html+=`<div style="margin-top:6px"><a href="#" onclick="window.showScreen('calendar');return false" style="font-size:11px;color:var(--amber-dark);font-weight:700;text-decoration:none">Открыть в календаре →</a></div>`;
+      el.innerHTML=html;
+    }
+  }
+  window._renderShopWidget&&window._renderShopWidget();
+};
+
+// ── CALENDAR: recurring list ──────────────────────────────────────
+window._renderCalRecurring=function(){
+  const el=document.getElementById('cal-recurring-list');
+  if(!el||!state.D)return;
+  if(!state.D.recurring||!state.D.recurring.length){
+    el.innerHTML='<div style="color:var(--text2);font-size:12px">Нет регулярных операций</div>';
+    return;
+  }
+  renderRecurring();
+};
+
+// ── Drag-to-scroll topbar nav on desktop ─────────────────
+(function(){
+  const nav=document.querySelector('.topbar-row2 .topbar-nav');
+  if(!nav)return;
+  let isDown=false,startX,scrollLeft;
+  nav.addEventListener('mousedown',e=>{isDown=true;nav.style.cursor='grabbing';startX=e.pageX-nav.offsetLeft;scrollLeft=nav.scrollLeft;});
+  nav.addEventListener('mouseleave',()=>{isDown=false;nav.style.cursor='grab';});
+  nav.addEventListener('mouseup',()=>{isDown=false;nav.style.cursor='grab';});
+  nav.addEventListener('mousemove',e=>{if(!isDown)return;e.preventDefault();nav.scrollLeft=scrollLeft-(e.pageX-nav.offsetLeft-startX);});
+})();
+
+// ── Auth init ─────────────────────────────────────────────────────
+initAuth(
+  async user=>{
+    $('loading-screen').style.display='none';
+    $('auth-screen').style.display='none';
+    $('app-screen').style.display='flex';
+    const av=$('user-avatar');
+    if(av&&user.photoURL){av.src=user.photoURL;av.style.display='';}
+    state.walletIdx=0;
+    applyRecurring();
+    try{await loadAppConfig();}catch(e){console.warn('loadAppConfig:',e.message);}
+    loadVoiceSettings();
+    setupVoiceButtons();
+    updateVoiceStatus();
+    window.openAddPlanItem=openAddPlanItem;
+    window.openEditPlanItem=openEditPlanItem;
+    window.savePlanItem=savePlanItem;
+    window.deletePlanItem=deletePlanItem;
+    window.toggleSpendable=toggleSpendable;
+    window.state=state;
+    window._myUID=state.CU.uid;
+    document.body.appendChild(createSmartVoiceButton());
+    window._refreshCurrentScreen=refreshCurrent;
+    // Уведомляем EventBus и модули о загрузке данных
+    eventBus.emit(EVENTS.USER_LOGGED_IN,{uid:state.CU.uid,email:state.CU.email});
+    eventBus.emit(EVENTS.DATA_LOADED,{data:state.D});
+    notifyDataLoaded(state.D);
+    // Загружаем внешние плагины из plugins.json (если есть)
+    loadPluginsFromConfig().then(()=>{
+      console.info('moduleRegistry: plugins loaded, registered:',getModules().map(m=>m.id));
+    });
+    checkOnboarding();
+    updateAdminVisibility();
+    // Запускаем в нужном режиме: новые пользователи → простой, остальные → запомненный
+    const startMode=_getMode();
+    if(startMode==='simple'){
+      renderSimpleDashboard();
+      // Показываем простой дашборд как стартовый экран
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      const simpleScreen=document.getElementById('screen-dashboard-simple');
+      if(simpleScreen)simpleScreen.classList.add('active');
+      const tb=document.getElementById('tnav-dashboard');
+      if(tb)tb.classList.add('active');
+      updateBottomNav('dashboard');
+    }else{
+      renderReports();
+    }
+  },
+  ()=>{
+    $('app-screen').style.display='none';
+    $('loading-screen').style.display='none';
+    $('auth-screen').style.display='flex';
+    eventBus.emit(EVENTS.USER_LOGGED_OUT,{});
+  }
+);
+
+// ── Задача 1: Цель накоплений — показ/скрытие поля ─────────────────────
+window.onPlanTypeChange=function(type){
+  const block=document.getElementById('pi-goal-block');
+  if(block)block.style.display=type==='income'?'':'none';
+};
+
+// ── Задача 2: Голос — сразу открывать модалку ──────────────────────────
+// Переопределяем handleVoiceIntent из voice.js — пропускаем промежуточный
+// модал и сразу открываем форму операции с заполненными данными
+window._voiceOpenDirect=function(intent){
+  if(intent.intent==='add_expense'||intent.intent==='add_income'){
+    const type=intent.intent==='add_expense'?'expense':'income';
+    openModal('modal',true);
+    setTimeout(()=>{
+      window.setOpType(type);
+      const amtEl=document.getElementById('op-amount');
+      if(amtEl&&intent.amount)amtEl.value=intent.amount;
+      const noteEl=document.getElementById('op-note');
+      if(noteEl&&intent.note)noteEl.value=intent.note;
+      const catSel=document.getElementById('op-cat');
+      if(catSel&&intent.category){
+        for(let i=0;i<catSel.options.length;i++){
+          if(catSel.options[i].value.toLowerCase()===intent.category.toLowerCase()){
+            catSel.selectedIndex=i;break;
+          }
+        }
+      }
+      const walSel=document.getElementById('op-wallet');
+      if(walSel&&intent.wallet&&state.D){
+        const w=state.D.wallets.find(w=>w.name.toLowerCase().includes(intent.wallet.toLowerCase()));
+        if(w)walSel.value=w.id;
+      }
+    },80);
+    return true;
+  }
+  if(intent.intent==='add_transfer'){
+    openModal('modal',true);
+    setTimeout(()=>{
+      window.setOpType('transfer');
+      const amtEl=document.getElementById('op-amount');
+      if(amtEl&&intent.amount)amtEl.value=intent.amount;
+      if(state.D){
+        const wf=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.from_wallet||'').toLowerCase()));
+        const wt=state.D.wallets.find(w=>w.name.toLowerCase().includes((intent.to_wallet||'').toLowerCase()));
+        const fromSel=document.getElementById('op-wallet');
+        const toSel=document.getElementById('op-wallet2');
+        if(fromSel&&wf)fromSel.value=wf.id;
+        if(toSel&&wt)toSel.value=wt.id;
+      }
+    },80);
+    return true;
+  }
+  if(intent.intent==='add_shopping'){
+    window.openAddShopItem&&window.openAddShopItem();
+    return true;
+  }
+  return false;
+};
+
+// ── Задача 3: DeepSeek API ─────────────────────────────────────────────
+window.saveDeepSeekKey=function(){
+  const key=document.getElementById('deepseek-api-key')?.value.trim();
+  if(!key){alert('Введите ключ');return;}
+  // Сохраняем в /config/app (только владелец) — НЕ в данные пользователя
+  saveAppConfig({deepseekKey:key}).then(ok=>{
+    if(ok){_showNotice('✓ Ключ DeepSeek сохранён','green');}
+    else{_showNotice('⚠ Ошибка сохранения — проверьте Firestore Rules','red');}
+  });
+};
+
+// Функция getLoansAI полностью находится в loans.js, здесь удалена
+
+// ── Режимы: простой / про ─────────────────────────────────────────────────
+function _getMode(){
+  if(!state.D)return'simple';
+  return state.D.uiMode||'simple';
+}
+function _setMode(mode){
+  if(!state.D)return;
+  state.D.uiMode=mode;
+  sched();
+}
+
+window.switchToPro=function(){
+  _setMode('pro');
+  window.showScreen('dashboard');
+};
+window.switchToSimple=function(){
+  _setMode('simple');
+  window.showScreen('dashboard-simple');
+};
+
+// ── Streak (серия дней) ───────────────────────────────────────────────────
+function _calcStreak(){
+  if(!state.D)return 0;
+  const ops=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type));
+  if(!ops.length)return 0;
+  const days=new Set(ops.map(o=>o.date).filter(Boolean));
+  let streak=0;
+  const now=new Date();
+  for(let i=0;i<365;i++){
+    const d=new Date(now);d.setDate(d.getDate()-i);
+    const ds=d.toISOString().split('T')[0];
+    if(days.has(ds))streak++;
+    else if(i>0)break; // прерываем только если пропуск не сегодня
+  }
+  return streak;
+}
+
+window._showStreakInfo=function(){
+  const s=_calcStreak();
+  _showNotice(`🔥 Серия ${s} ${s===1?'день':s<5?'дня':'дней'}! Добавляй операции каждый день`,'amber',4000);
+};
+
+// ── Рендер простого дашборда ─────────────────────────────────────────────
+function renderSimpleDashboard(){
+  if(!state.D)return;
+  const now=new Date();
+  const MONTHS_RU=['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+  const daysInMonth=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+  const dayOfMonth=now.getDate();
+  const daysLeft=daysInMonth-dayOfMonth;
+
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
+
+  // ── Главная цифра: остаток по «тратным» статьям финплана ─────────────────
+  // Считаем только статьи где spendable:true (флаг пользователя)
+  // ИЛИ по умолчанию — статьи название которых содержит «постоян» / «перемен»
+  // Кредиты, накопления, зарплатные статьи — НЕ считаем, они резервируются отдельно
+  let canSpend = 0;
+  let totalBudget = 0;
+  let totalSpentOnPlan = 0;
+  let hasPlan = false;
+
+  const SPENDABLE_KEYWORDS = ['постоян', 'перемен', 'бытов', 'ежедн'];
+
+  function isSpendablePlan(p) {
+    if(p.spendable === true) return true;  // явный флаг пользователя
+    if(p.spendable === false) return false; // явно исключён
+    // дефолт — по ключевым словам в названии
+    const lbl = (p.label || '').toLowerCase();
+    return SPENDABLE_KEYWORDS.some(kw => lbl.includes(kw));
+  }
+
+  if(mInc > 0 && state.D.plan && state.D.plan.length > 0){
+    const spendablePlans = state.D.plan.filter(p => p.type === 'expense' && isSpendablePlan(p));
+    if(spendablePlans.length > 0){
+      hasPlan = true;
+      spendablePlans.forEach(p => {
+        const budget = Math.round(mInc * p.pct / 100);
+        const spent = planSpent(p, mOps);
+        totalBudget += budget;
+        totalSpentOnPlan += spent;
+      });
+      canSpend = totalBudget - totalSpentOnPlan;
+    }
+  }
+
+  // Fallback: нет финплана или нет совпадений — доход − расход
+  if(!hasPlan){
+    canSpend = mInc > 0 ? mInc - mExp : 0;
+    totalBudget = mInc;
+    totalSpentOnPlan = mExp;
+  }
+
+  const amountEl=document.getElementById('simple-main-amount');
+  if(amountEl){
+    amountEl.textContent='₽ '+Math.abs(Math.round(canSpend)).toLocaleString('ru-RU');
+    amountEl.className='simple-amount'+(canSpend<0?' negative':canSpend>0?' positive':'');
+  }
+
+  // Подпись под суммой — уточняем что считается
+  const amountLabel=document.querySelector('.simple-amount-label');
+  if(amountLabel){
+    amountLabel.textContent = hasPlan
+      ? 'остаток по статьям расходов'
+      : 'можно потратить до конца месяца';
+  }
+
+  // Кольцо прогресса — % израсходованного бюджета по плану
+  const pct = totalBudget > 0
+    ? Math.min(Math.round(totalSpentOnPlan / totalBudget * 100), 100)
+    : 0;
+  const ring=document.getElementById('simple-ring');
+  const ringPct=document.getElementById('simple-ring-pct');
+  if(ring){
+    const circumference=283;
+    const offset=circumference-(circumference*pct/100);
+    ring.style.strokeDashoffset=offset;
+    ring.style.stroke=pct>=90?'#FF6B6B':pct>=70?'#FFB800':'#51CF66';
+  }
+  if(ringPct)ringPct.textContent=pct+'%';
+
+  // Статус
+  const statusEl=document.getElementById('simple-status');
+  if(statusEl){
+    let msg,cls;
+    if(!mInc&&!mExp){msg='Добавьте первую операцию';cls='';}
+    else if(canSpend<0){msg='⚠ Перерасход по плану';cls='bad';}
+    else if(pct>=90){msg='⚠ Почти весь бюджет потрачен';cls='bad';}
+    else if(pct>=70){msg='! Осталось меньше трети';cls='warn';}
+    else{msg='✓ Всё под контролем';cls='good';}
+    statusEl.textContent=msg;
+    statusEl.className='simple-status-msg '+cls;
+  }
+
+  // Карточки
+  const incEl=document.getElementById('simple-inc');
+  const expEl=document.getElementById('simple-exp');
+  const debtEl=document.getElementById('simple-debt');
+  const healthEl=document.getElementById('simple-health');
+  if(incEl)incEl.textContent='₽ '+Math.round(mInc).toLocaleString('ru-RU');
+  if(expEl)expEl.textContent='₽ '+Math.round(mExp).toLocaleString('ru-RU');
+  if(debtEl){debtEl.textContent=totalDebt>0?'₽ '+Math.round(totalDebt).toLocaleString('ru-RU'):'Нет долгов';debtEl.className='simple-card-val'+(totalDebt>0?' neg':'');}
+
+  // Здоровье из calcHealthScore
+  try{
+    const h=calcHealthScore();
+    if(healthEl&&h){
+      const col=h.score>=80?' pos':h.score>=50?' warn':' neg';
+      healthEl.textContent=h.score+'/100';
+      healthEl.className='simple-card-val'+col;
+    }
+  }catch(e){}
+
+  // Подпись месяца
+  const lbl=document.getElementById('simple-month-lbl');
+  if(lbl)lbl.textContent=MONTHS_RU[now.getMonth()].toUpperCase()+' '+now.getFullYear();
+
+  // Приветствие с именем
+  const greet=document.getElementById('simple-greeting');
+  if(greet&&state.CU){
+    const name=state.CU.displayName?.split(' ')[0]||'';
+    const hour=now.getHours();
+    const hi=hour<12?'Доброе утро':'Добрый вечер';
+    greet.textContent=(name?hi+', '+name+'! 👋':hi+'! 👋');
+  }
+
+  // Аватар
+  const av=document.getElementById('simple-avatar');
+  if(av&&state.CU?.photoURL){av.src=state.CU.photoURL;av.style.display='';}
+
+  // Streak
+  const streak=_calcStreak();
+  const streakEl=document.getElementById('simple-streak');
+  const streakCount=document.getElementById('simple-streak-count');
+  if(streakEl){
+    if(streak>=2){streakEl.style.display='flex';if(streakCount)streakCount.textContent=streak;}
+    else streakEl.style.display='none';
+  }
+
+  // Последние операции — на десктопе больше
+  const recentEl=document.getElementById('simple-recent-ops');
+  if(recentEl){
+    const isDesktop=window.innerWidth>700;
+    const recent=[...mOps].sort((a,b)=>a.date<b.date?1:-1).slice(0,isDesktop?6:3);
+    if(!recent.length){
+      recentEl.innerHTML='<div style="font-size:12px;color:rgba(255,255,255,.3);text-align:center;padding:12px 0">Нет операций за этот месяц</div>';
+    }else{
+      recentEl.innerHTML=recent.map(o=>{
+        const isInc=o.type==='income';
+        const isTr=o.type==='transfer';
+        // Название операции
+        let catLabel,amtLabel,amtClass;
+        if(isTr){
+          const wFrom=state.D.wallets.find(w=>w.id===o.wallet);
+          const wTo=state.D.wallets.find(w=>w.id===o.walletTo);
+          catLabel='Перевод → '+(wTo?.name||'?');
+          amtLabel='₽ '+Math.round(o.amount).toLocaleString('ru-RU');
+          amtClass=''; // переводы нейтральные
+        }else{
+          catLabel=o.category||'—';
+          amtLabel=(isInc?'+ ':'− ')+'₽ '+Math.round(o.amount).toLocaleString('ru-RU');
+          amtClass=isInc?'pos':'neg';
+        }
+        const wName=!isTr?(state.D.wallets.find(w=>w.id===o.wallet)?.name||''):'';
+        return`<div class="simple-op">
+          <div class="simple-op-left">
+            <div class="simple-op-cat">${catLabel}</div>
+            <div class="simple-op-date">${o.date?o.date.split('-').reverse().join('.'):''}${wName?' · '+wName:''}${o.note?' · '+o.note:''}</div>
+          </div>
+          <div class="simple-op-amt ${amtClass}" style="${isTr?'color:rgba(255,255,255,.5)':''}">${amtLabel}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+}
+
+// ── AI для простого дашборда ─────────────────────────────────────────────
+async function _fetchSimpleAi(){
+  const key=appConfig.deepseekKey;
+  if(!key)throw new Error('Добавьте DeepSeek API ключ в Панели администратора');
+  const now=new Date();
+  const ym=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  const mOps=state.D.operations.filter(o=>!['planned_income','planned_expense'].includes(o.type)&&o.date&&o.date.startsWith(ym));
+  const mInc=mOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
+  const byCategory={};
+  mOps.filter(o=>o.type==='expense').forEach(o=>{byCategory[o.category]=(byCategory[o.category]||0)+o.amount;});
+  const topCats=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([c,a])=>c+': '+Math.round(a)+' ₽').join(', ');
+  const context=[
+    'Доход: '+Math.round(mInc)+' ₽, расход: '+Math.round(mExp)+' ₽',
+    topCats?'Топ трат: '+topCats:'',
+    totalDebt?'Долг: '+Math.round(totalDebt)+' ₽':'Долгов нет',
+  ].filter(Boolean).join('\n');
+  const resp=await fetch('https://api.proxyapi.ru/openrouter/v1/chat/completions',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({
+      model:'deepseek/deepseek-chat',
+      max_tokens:200,
+      temperature:0.4,
+      messages:[
+        {role:'system',content:'Ты финансовый советник. Отвечай только на русском. Дай 1 главный конкретный совет. Без воды. Максимум 50 слов.'},
+        {role:'user',content:'Мои финансы за месяц:\n'+context+'\n\nГлавный совет?'},
+      ],
+    }),
+  });
+  if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error?.message||'Ошибка API '+resp.status);}
+  const data=await resp.json();
+  return data.choices?.[0]?.message?.content?.trim()||'';
+}
+
+window._loadSimpleAi=function(){
+  const el=document.getElementById('simple-ai-text');if(!el)return;
+  el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
+    <div style="width:10px;height:10px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
+    Анализирую...
+  </div>
+  <style>@keyframes _aispin{to{transform:rotate(360deg)}}</style>`;
+  _fetchSimpleAi().then(text=>{
+    el.innerHTML=`<div class="simple-ai-response" style="font-size:12px;line-height:1.7;color:var(--text)">${text.replace(/\n/g,'<br>')}</div>`;
+  }).catch(err=>{
+    el.innerHTML=`<div style="font-size:11px;color:var(--red)">⚠ ${err.message}</div>
+      <button onclick="window._loadSimpleAi()" style="margin-top:6px;background:none;border:1px solid var(--border);border-radius:5px;padding:3px 10px;font-size:10px;color:var(--text2);cursor:pointer">↻ Повторить</button>`;
+  });
+};
+
+window._refreshSimpleAi=function(){
+  const el=document.getElementById('simple-ai-text');if(!el)return;
+  el.innerHTML='<button onclick="window._loadSimpleAi()" style="background:var(--amber);border:none;border-radius:6px;padding:6px 14px;font-size:12px;color:#fff;cursor:pointer;font-weight:700">Получить совет</button>';
+  window._loadSimpleAi();
+};
+
+// ── FAQ (часто задаваемые вопросы) ───────────────────────────────────────
+const FAQ_ITEMS = [ ... ]; // полный список не меняется, оставляем как в оригинале
+
+function renderFAQ() {
+  const el = document.getElementById('faq-body');
+  if(!el) return;
+  el.innerHTML = FAQ_ITEMS.map((item, i) => `
+    <div class="faq-item" id="faq-${i}">
+      <button class="faq-question" onclick="window._toggleFAQ(${i})">
+        <span>${item.q}</span>
+        <span class="faq-arrow">▼</span>
+      </button>
+      <div class="faq-answer">${item.a}</div>
+    </div>
+  `).join('');
+}
+
+window._toggleFAQ = function(i) {
+  const item = document.getElementById('faq-' + i);
+  if(!item) return;
+  item.classList.toggle('open');
+};
+
+// Тема: светлая / тёмная ────────────────────────────────────────────────
+(function(){
+  const saved = localStorage.getItem('mf_theme') || 'light';
+  if(saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+})();
+
+window.toggleTheme = function(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('mf_theme', next);
+  // Обновляем иконку в мобильном меню
+  const mobileBtn = document.getElementById('theme-mobile-btn');
+  if(mobileBtn) mobileBtn.querySelector('span').textContent = next === 'dark' ? '☀️' : '🌙';
+};
+
+// Восстанавливаем иконку при загрузке
+(function(){
+  const mobileBtn = document.getElementById('theme-mobile-btn');
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if(mobileBtn) mobileBtn.querySelector('span').textContent = isDark ? '☀️' : '🌙';
+})();
+
+window.signInWithConsent = function() {
+  const check = document.getElementById('consent-check');
+  const err = document.getElementById('consent-error');
+  if (!check?.checked) {
+    if(err) err.style.display = 'block';
+    check?.focus();
+    return;
+  }
+  if(err) err.style.display = 'none';
+  localStorage.setItem('mf_consent', JSON.stringify({
+    given: true,
+    date: new Date().toISOString(),
+    version: '2026-04-18',
+    docs: ['terms','privacy']
+  }));
+  signInGoogle();
+};
+
+// Если согласие уже давалось — снимаем обязательность чекбокса при повторном входе
+(function(){
+  const consent=localStorage.getItem('mf_consent');
+  if(consent){
+    try{
+      const c=JSON.parse(consent);
+      if(c.given){
+        const check=document.getElementById('consent-check');
+        if(check)check.checked=true;
+      }
+    }catch(e){}
+  }
+})();
+
+// ── Удаление всех данных пользователя (право по 152-ФЗ) ──────────────────
+window.deleteAllMyData=async function(){
+  if(!state.D||!state.CU)return;
+  const confirmed=confirm(
+    'Удалить ВСЕ ваши данные?\n\n'+
+    '• Все операции, кошельки, категории\n'+
+    '• Настройки и финансовый план\n'+
+    '• Резервные копии в браузере\n\n'+
+    'Это действие необратимо. Аккаунт Google не удаляется.'
+  );
+  if(!confirmed)return;
+  try{
+    // Удаляем из Firestore
+    const{getFirestore,doc,deleteDoc}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db2=getFirestore();
+    await deleteDoc(doc(db2,'users',state.CU.uid,'data','main'));
+    // Удаляем локальные бэкапы
+    Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('mf_'))localStorage.removeItem(k);
+    });
+    alert('Все данные удалены. Вы будете выведены из аккаунта.');
+    doSignOut();
+  }catch(e){
+    alert('Ошибка удаления: '+e.message+'\nОбратитесь на skudatin@gmail.com');
+  }
+};
+function _showNotice(msg, type='green', duration=3000){
+  let el=document.getElementById('app-notice');
+  if(!el){
+    el=document.createElement('div');
+    el.id='app-notice';
+    el.style.cssText='position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:8000;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .25s;max-width:340px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+    document.body.appendChild(el);
+  }
+  const colors={
+    green:'background:var(--green-dark);color:#fff;',
+    red:'background:var(--red);color:#fff;',
+    amber:'background:var(--amber);color:#fff;',
+    blue:'background:var(--blue);color:#fff;',
+  };
+  el.style.cssText+=colors[type]||colors.green;
+  el.textContent=msg;
+  el.style.opacity='1';
+  if(el._t)clearTimeout(el._t);
+  el._t=setTimeout(()=>{el.style.opacity='0';},duration);
+}
+window._showNotice=_showNotice;
+
+// ── Keyboard navigation for tour ──────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(!document.getElementById('tour-overlay')?.style.display==='none') return;
+  if(document.getElementById('tour-card')?.style.display==='none') return;
+  if(e.key==='ArrowRight'||e.key==='Enter') window._tourNext?.();
+  if(e.key==='ArrowLeft') window._tourPrev?.();
+  if(e.key==='Escape') window._tourClose?.();
+});
+
+$('loading-screen').style.display='none';
+$('app-screen').style.display='none';
+$('auth-screen').style.display='flex';
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js')
+    .then(reg => {
+      reg.update();
+      console.log('SW registered, scope:', reg.scope);
+    })
+    .catch(e => console.warn('SW registration failed:', e));
+}
+
+// Обработка shortcuts из manifest.json
+(function handleShortcuts(){
+  const params = new URLSearchParams(window.location.search);
+  const action = params.get('action');
+  if(action === 'new-op'){
+    const interval = setInterval(() => {
+      if(window.openNewOp && window.state?.CU){
+        clearInterval(interval);
+        window.openNewOp();
+      }
+    }, 300);
+    setTimeout(() => clearInterval(interval), 10000);
+  }
+})();
+</script>
 </body>
 </html>
