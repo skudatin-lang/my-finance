@@ -224,7 +224,6 @@ export function isRecording() {
   return _isRecording;
 }
 
-// ── Заглушки для совместимости (не используются, но оставляем) ──
 export function loadVoiceSettings() {}
 export function saveVoiceSettings(sttUrl, gptUrl, appSecret) {
   if (!state.D) return;
@@ -243,11 +242,9 @@ export async function parseIntent(text) {
 
   // 1. Переводы
   if (/перевёл|перевел|перевести|перевод|переведи|с карты на карту|на карту/i.test(t)) {
-    const wallets = _transferWallets(text); // используем оригинальный текст для поиска
+    const wallets = _transferWallets(text);
     const amount = _amount(t);
-    // Если не удалось определить кошельки, попробуем извлечь из текста без строгих правил
     if (!wallets.from || !wallets.to) {
-      // Поищем слова "с X на Y"
       const match = t.match(/с\s+([а-яё\s\-]+?)\s+на\s+([а-яё\s\-]+?)(?:\s+(?:перевёл|перевел|перевод|$))/i);
       if (match) {
         wallets.from = match[1].trim();
@@ -257,25 +254,21 @@ export async function parseIntent(text) {
     return { intent: 'add_transfer', amount, from_wallet: wallets.from, to_wallet: wallets.to };
   }
 
-  // 2. Покупки
   if (['купить','купи','куплю','добавь в список','нужно купить'].some(v => t.includes(v))) {
     const items = _parseShoppingItems(t);
     if (items.length) return { intent: 'add_shopping', items };
   }
 
-  // 3. Баланс
   if (/баланс|сколько|остаток|денег|кошелёк|кошелек/i.test(t)) {
     const w = _findWallet(t);
     return { intent: 'check_balance', wallet: w?.name || '' };
   }
 
-  // 4. Доходы
   if (['получил','получила','заработал','заработала','пришло','пришла','зарплата','аванс','начислили','перевели на карту','поступило'].some(v => t.includes(v))) {
     const w = _findWallet(t);
     return { intent: 'add_income', amount: _amount(t), category: _cat(t, 'income'), wallet: w?.name || '', note: '' };
   }
 
-  // 5. Расходы
   const amount = _amount(t);
   if (amount > 0) {
     const w = _findWallet(t);
@@ -285,7 +278,6 @@ export async function parseIntent(text) {
   return { intent: 'unknown', raw_text: text };
 }
 
-// ── Извлечение суммы (поддерживает числа прописью) ──────────────
 function _amount(text) {
   const all = [...text.matchAll(/\b(\d[\d\s]{0,5}\d|\d+)(?:[,\.](\d{1,2}))?\b/g)];
   for (const m of all) {
@@ -311,7 +303,6 @@ function _amount(text) {
   return total + cur;
 }
 
-// ── Извлечение категории ─────────────────────────────────────────
 function _cat(text, type) {
   if (!state.D) return 'Прочее';
   const cats = type === 'income' ? state.D.incomeCats : state.D.expenseCats.map(c => c.name);
@@ -338,16 +329,13 @@ function _cat(text, type) {
   return 'Прочее';
 }
 
-// ── Поиск кошелька в тексте (улучшено) ──────────────────────────
 function _findWallet(text) {
   if (!state.D) return null;
   const t = text.toLowerCase();
-  // Сначала ищем точное совпадение с названием кошелька
   for (const w of state.D.wallets) {
     const walletName = w.name.toLowerCase();
     if (t.includes(walletName)) return w;
   }
-  // Синонимы для распространённых названий
   const synonyms = {
     'т банк': ['т банк', 'тинькофф', 'т-банк', 'тблэк', 'т-блэк', 'тиньк'],
     'сбер': ['сбер', 'сбербанк', 'сбербанк онлайн'],
@@ -357,52 +345,37 @@ function _findWallet(text) {
   for (const [canonical, aliases] of Object.entries(synonyms)) {
     for (const alias of aliases) {
       if (t.includes(alias)) {
-        // Ищем кошелёк, содержащий canonical
         const wallet = state.D.wallets.find(w => w.name.toLowerCase().includes(canonical));
         if (wallet) return wallet;
       }
     }
   }
-  // Если не нашли, ищем по слову "карта" — выбираем первый подходящий
   if (t.includes('карта')) {
     const cardWallet = state.D.wallets.find(w => /карт|дебет|кредит/i.test(w.name));
     if (cardWallet) return cardWallet;
   }
-  return state.D.wallets[0]; // fallback
+  return state.D.wallets[0];
 }
 
-// ── Определение кошельков для перевода (улучшено) ────────────────
 function _transferWallets(text) {
   const t = text.toLowerCase();
   let from = '', to = '';
-
-  // Попытка найти по регулярному выражению "с X на Y"
   const match = t.match(/с\s+([а-яё\s\-]+?)\s+на\s+([а-яё\s\-]+?)(?:\s+(?:перевёл|перевел|перевод|$))/i);
   if (match) {
     from = match[1].trim();
     to = match[2].trim();
   } else {
-    // Более сложный перебор: ищем позиции упоминаний кошельков
-    const wallets = state.D.wallets.map(w => w.name.toLowerCase());
-    let foundFrom = null, foundTo = null;
-    // Ищем первое упоминание после "с" и второе после "на"
     const parts = t.split(/\s+/);
     let i = 0;
     while (i < parts.length) {
       if (parts[i] === 'с' && i+1 < parts.length) {
-        const possible = parts[i+1];
-        foundFrom = possible;
+        from = parts[i+1];
       } else if (parts[i] === 'на' && i+1 < parts.length) {
-        const possible = parts[i+1];
-        foundTo = possible;
+        to = parts[i+1];
       }
       i++;
     }
-    if (foundFrom) from = foundFrom;
-    if (foundTo) to = foundTo;
   }
-
-  // Преобразуем найденные строки в реальные названия кошельков (нечеткое соответствие)
   if (from) {
     const matchedFrom = state.D.wallets.find(w => w.name.toLowerCase().includes(from) || from.includes(w.name.toLowerCase()));
     if (matchedFrom) from = matchedFrom.name;
@@ -414,7 +387,6 @@ function _transferWallets(text) {
   return { from, to };
 }
 
-// ── Разбор списка покупок ────────────────────────────────────────
 function _parseShoppingItems(text) {
   const clean = text.replace(/купить|купи|куплю|добавь в список|нужно купить/g, ' ');
   const parts = clean.split(/,|\bи\b/).map(s => s.trim()).filter(s => s.length > 1);
@@ -426,7 +398,6 @@ function _parseShoppingItems(text) {
   }).filter(Boolean);
 }
 
-// ── Модал подтверждения (улучшено отображение перевода) ─────────
 export function handleVoiceIntent(intent, onConfirm) {
   const modal = document.getElementById('modal-voice-intent');
   if (!modal) return;
@@ -469,14 +440,22 @@ export function handleVoiceIntent(intent, onConfirm) {
   modal.classList.add('open');
 }
 
-// ── Открыть форму редактирования с заполнением всех полей ────────
+// ── Открыть форму редактирования с заполнением всех полей (исправлено) ──
 function _openEdit(intent) {
-  switch (intent.intent) {
-    case 'add_expense': case 'add_income': {
-      const m = document.getElementById('modal'); if (!m) return;
-      m.classList.add('open');
-      setTimeout(() => {
-        window.setOpType && window.setOpType(intent.intent === 'add_expense' ? 'expense' : 'income');
+  // Сначала открываем модальное окно через стандартную функцию, чтобы поля кошельков были инициализированы
+  if (typeof window.openModal === 'function') {
+    window.openModal('modal', true);
+  } else {
+    // fallback: просто добавить класс
+    const m = document.getElementById('modal');
+    if (m) m.classList.add('open');
+  }
+
+  setTimeout(() => {
+    switch (intent.intent) {
+      case 'add_expense': case 'add_income': {
+        const type = intent.intent === 'add_expense' ? 'expense' : 'income';
+        window.setOpType && window.setOpType(type);
         const a = document.getElementById('op-amount'); if (a && intent.amount) a.value = intent.amount;
         const n = document.getElementById('op-note'); if (n && intent.note) n.value = intent.note;
         const cs = document.getElementById('op-cat');
@@ -487,7 +466,6 @@ function _openEdit(intent) {
             }
           }
         }
-        // Заполняем кошелёк, если найден
         if (intent.wallet && state.D) {
           const wallet = state.D.wallets.find(w => w.name.toLowerCase().includes(intent.wallet.toLowerCase()));
           if (wallet) {
@@ -495,13 +473,9 @@ function _openEdit(intent) {
             if (ws) ws.value = wallet.id;
           }
         }
-      }, 100);
-      break;
-    }
-    case 'add_transfer': {
-      const m = document.getElementById('modal'); if (!m) return;
-      m.classList.add('open');
-      setTimeout(() => {
+        break;
+      }
+      case 'add_transfer': {
         window.setOpType && window.setOpType('transfer');
         const a = document.getElementById('op-amount'); if (a && intent.amount) a.value = intent.amount;
         if (intent.from_wallet && state.D) {
@@ -518,20 +492,14 @@ function _openEdit(intent) {
             if (toSel) toSel.value = wt.id;
           }
         }
-        // Также можно заполнить заметку
-        if (intent.note) {
-          const note = document.getElementById('op-note');
-          if (note) note.value = intent.note;
-        }
-      }, 100);
-      break;
+        break;
+      }
+      case 'add_shopping': window.openAddShopItem && window.openAddShopItem(); break;
+      default: break;
     }
-    case 'add_shopping': window.openAddShopItem && window.openAddShopItem(); break;
-    default: document.getElementById('modal')?.classList.add('open');
-  }
+  }, 100);
 }
 
-// ── Выполнить команду (execute) с полным заполнением ─────────────
 export function executeIntent(intent) {
   if (!state.D) return;
   switch (intent.intent) {
@@ -579,7 +547,6 @@ export function executeIntent(intent) {
   }
 }
 
-// ── Плавающая кнопка ─────────────────────────────────────────────
 export function createSmartVoiceButton() {
   const btn = document.createElement('button');
   btn.id = 'smart-voice-btn';
@@ -608,7 +575,6 @@ export function createSmartVoiceButton() {
   return btn;
 }
 
-// ── Встроенная кнопка в поле ввода (для форм) ────────────────────
 export function createVoiceButton(targetInputId, extraStyle = '') {
   const btn = document.createElement('button');
   btn.type = 'button';
