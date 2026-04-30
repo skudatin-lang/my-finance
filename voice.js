@@ -1,5 +1,5 @@
 // voice.js — Гибридный голосовой ввод: Web Speech API + MediaRecorder через Cloudflare Worker
-import { state, sched, fmt, today } from './core.js';
+import { state, sched, fmt, today, appConfig } from './core.js';
 
 let _recognition = null;
 let _isRecording = false;
@@ -14,12 +14,11 @@ function isStandalone() {
 
 // ── Получение настроек Worker ─────────────────────────────────
 function getWorkerUrl() {
-  // Глобальный appConfig из core.js
-  return window.appConfig?.workerUrl || '';
+  return appConfig?.workerUrl || '';
 }
 
 function getAppSecret() {
-  return window.appConfig?.appSecret || '';
+  return appConfig?.appSecret || '';
 }
 
 // ── Проверка доступности Web Speech API ───────────────────────
@@ -118,7 +117,14 @@ async function startMediaRecorder(onResult, onError, onStateChange) {
     return;
   }
 
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    onError && onError('Нет доступа к микрофону');
+    return;
+  }
+
   const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
   _mediaRecorder = new MediaRecorder(stream, { mimeType });
   _audioChunks = [];
@@ -135,7 +141,7 @@ async function startMediaRecorder(onResult, onError, onStateChange) {
       const workerUrl = getWorkerUrl();
       const secret = getAppSecret();
       if (!workerUrl) {
-        onError && onError('Worker URL не задан в настройках');
+        onError && onError('Worker URL не задан. Настройте в Админ-панели.');
         stopMediaRecorder(onStateChange);
         return;
       }
@@ -156,10 +162,11 @@ async function startMediaRecorder(onResult, onError, onStateChange) {
         if (data.text) {
           onResult && onResult(data.text);
         } else {
-          onError && onError(data.error || 'Не удалось распознать');
+          onError && onError(data.error || 'Не удалось распознать речь');
         }
       } catch (err) {
-        onError && onError('Ошибка Worker: ' + err.message);
+        console.error('Worker error:', err);
+        onError && onError('Ошибка связи с сервером распознавания');
       } finally {
         stopMediaRecorder(onStateChange);
       }
@@ -226,6 +233,7 @@ export function saveVoiceSettings(sttUrl, gptUrl, appSecret) {
   state.D.voiceSettings.appSecret = appSecret || '';
 }
 export function isVoiceConfigured() {
+  // Работает, если есть Web Speech ИЛИ настроен Worker
   return hasWebSpeech() || !!getWorkerUrl();
 }
 
