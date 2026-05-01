@@ -1,4 +1,4 @@
-// tour.js — исправленное позиционирование для мобильных (последние шаги)
+// tour.js — исправленное позиционирование и очистка DOM после тура
 import { $ } from './core.js';
 
 const TOUR_STEPS = [
@@ -50,6 +50,13 @@ function _createTourDOM() {
   });
 }
 
+function _removeTourDOM() {
+  const overlay = document.getElementById('tour-overlay');
+  const card = document.getElementById('tour-card');
+  if (overlay) overlay.remove();
+  if (card) card.remove();
+}
+
 function _positionSpotlight(el) {
   const pad = 6;
   const r = el.getBoundingClientRect();
@@ -83,20 +90,6 @@ function _positionCard(el, position) {
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
 
-  // Для мобильных устройств карточка всегда внизу экрана (над навигацией)
-  if (isMobile) {
-    card.style.position = 'fixed';
-    card.style.transform = '';
-    card.style.left = '10px';
-    card.style.right = '10px';
-    card.style.width = 'auto';
-    card.style.maxWidth = 'none';
-    card.style.top = 'auto';
-    card.style.bottom = '20px';
-    return;
-  }
-
-  // Десктопная логика
   if (position === 'center' || !el) {
     card.style.position = 'fixed';
     card.style.top = '50%';
@@ -106,6 +99,18 @@ function _positionCard(el, position) {
     card.style.right = 'auto';
     card.style.width = 'auto';
     card.style.maxWidth = '320px';
+    return;
+  }
+
+  if (isMobile) {
+    card.style.transform = '';
+    card.style.position = 'fixed';
+    card.style.left = '10px';
+    card.style.right = '10px';
+    card.style.width = 'auto';
+    card.style.maxWidth = 'none';
+    card.style.top = 'auto';
+    card.style.bottom = '20px';
     return;
   }
 
@@ -148,13 +153,13 @@ function _renderStep(idx) {
   const targetEl = step.targetId ? document.getElementById(step.targetId) : null;
   setTimeout(() => {
     if (targetEl) {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       _positionSpotlight(targetEl);
     } else {
       _clearSpotlight();
     }
     _positionCard(targetEl, step.position);
-  }, 100);
+  }, 120);
 }
 
 export function tourStart() {
@@ -189,16 +194,11 @@ export function tourPrev() {
 
 export function tourFinish(skipped = false) {
   _tourActive = false;
-  const overlay = document.getElementById('tour-overlay');
-  const card = document.getElementById('tour-card');
-  if (overlay) overlay.style.display = 'none';
-  if (card) card.style.display = 'none';
+  // Полностью удаляем элементы тура, чтобы они не влияли на вёрстку
+  _removeTourDOM();
   window._tourNext = null;
   window._tourPrev = null;
   window._tourClose = null;
-  // Сброс возможных стилей body (на случай, если что-то изменилось)
-  document.body.style.overflow = '';
-  document.body.style.position = '';
   if (window._tourSaveDone) window._tourSaveDone();
   if (!skipped) setTimeout(() => window.showScreen?.('dashboard'), 100);
 }
