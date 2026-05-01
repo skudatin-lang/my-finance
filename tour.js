@@ -1,4 +1,4 @@
-// tour.js — исправленное позиционирование для мобильных (всегда внизу)
+// tour.js — исправленное позиционирование для мобильных (для последних шагов)
 import { $ } from './core.js';
 
 const TOUR_STEPS = [
@@ -83,30 +83,35 @@ function _positionCard(el, position) {
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
 
-  // Для всех мобильных устройств: всегда внизу, независимо от наличия целевого элемента
-  if (isMobile) {
+  // Для позиции 'center' или если нет целевого элемента
+  if (position === 'center' || !el) {
+    // На мобильных устройствах центрируем по вертикали и горизонтали
     card.style.position = 'fixed';
-    card.style.top = 'auto';
-    card.style.bottom = '10px';
+    card.style.top = '50%';
+    card.style.left = '50%';
+    card.style.transform = 'translate(-50%, -50%)';
+    card.style.bottom = 'auto';
+    card.style.right = 'auto';
+    card.style.width = 'auto';
+    card.style.maxWidth = '320px';
+    return;
+  }
+
+  // Для мобильных устройств – карточка всегда внизу экрана
+  if (isMobile) {
+    card.style.transform = '';
+    card.style.position = 'fixed';
     card.style.left = '10px';
     card.style.right = '10px';
     card.style.width = 'auto';
     card.style.maxWidth = 'none';
-    card.style.transform = 'none';
+    card.style.top = 'auto';
+    card.style.bottom = '20px';
     return;
   }
 
-  // Десктопная логика
-  if (position === 'center' || !el) {
-    card.style.top = '50%';
-    card.style.left = '50%';
-    card.style.transform = 'translate(-50%,-50%)';
-    card.style.bottom = 'auto';
-    card.style.right = 'auto';
-    card.style.maxWidth = '360px';
-    return;
-  }
-
+  // Десктопная логика – размещаем рядом с элементом
+  card.style.position = 'fixed';
   card.style.transform = '';
   const r = el.getBoundingClientRect();
   const cw = card.offsetWidth || 320;
