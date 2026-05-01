@@ -1,4 +1,4 @@
-// tour.js — исправленное позиционирование для мобильных (для последних шагов)
+// tour.js — исправленное позиционирование для мобильных (всегда внизу)
 import { $ } from './core.js';
 
 const TOUR_STEPS = [
@@ -68,7 +68,6 @@ function _positionSpotlight(el) {
 }
 
 function _clearSpotlight() {
-  // Затемняем весь экран
   const set = (id, top, left, width, height) => {
     const d = document.getElementById(id);
     if (d) { d.style.top = top+'px'; d.style.left = left+'px'; d.style.width = width+'px'; d.style.height = height+'px'; }
@@ -84,34 +83,30 @@ function _positionCard(el, position) {
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
 
-  // Если это центральный шаг (нет целевого элемента или position === 'center')
-  if (!el || position === 'center') {
-    // Центрируем по вертикали и горизонтали
-    card.style.position = 'fixed';
-    card.style.top = '50%';
-    card.style.left = '50%';
-    card.style.transform = 'translate(-50%, -50%)';
-    card.style.bottom = 'auto';
-    card.style.right = 'auto';
-    card.style.width = 'auto';
-    card.style.maxWidth = isMobile ? '280px' : '360px';
-    return;
-  }
-
-  // Для целевых элементов на мобильных устройствах: карточка снизу
+  // Для всех мобильных устройств: всегда внизу, независимо от наличия целевого элемента
   if (isMobile) {
-    card.style.transform = '';
+    card.style.position = 'fixed';
+    card.style.top = 'auto';
+    card.style.bottom = '10px';
     card.style.left = '10px';
     card.style.right = '10px';
     card.style.width = 'auto';
     card.style.maxWidth = 'none';
-    card.style.top = 'auto';
-    card.style.bottom = '10px';
-    card.style.position = 'fixed';
+    card.style.transform = 'none';
     return;
   }
 
   // Десктопная логика
+  if (position === 'center' || !el) {
+    card.style.top = '50%';
+    card.style.left = '50%';
+    card.style.transform = 'translate(-50%,-50%)';
+    card.style.bottom = 'auto';
+    card.style.right = 'auto';
+    card.style.maxWidth = '360px';
+    return;
+  }
+
   card.style.transform = '';
   const r = el.getBoundingClientRect();
   const cw = card.offsetWidth || 320;
