@@ -1,5 +1,10 @@
 // voice.js — Гибридный голосовой ввод: Web Speech API + MediaRecorder через Cloudflare Worker
-// Версия с прямым открытием формы операции (без промежуточного модала подтверждения)
+// БАГ-ФИX: Улучшенный парсер голосовых команд
+// Порядок разбора фразы: "1500 зарплата жены т-блэк"
+//   1. Ищем сумму (числа / словесные числа)
+//   2. Ищем кошелёк (по точному совпадению ИЛИ синонимам банков)
+//   3. Определяем тип операции (доход/расход) по ключевым словам
+//   4. Определяем категорию (по совпадению с категориями пользователя)
 import { state, sched, fmt, today, appConfig } from './core.js';
 
 let _recognition = null;
@@ -144,164 +149,363 @@ export function saveVoiceSettings(sttUrl, gptUrl, appSecret) {
 }
 export function isVoiceConfigured() { return hasWebSpeech() || !!getWorkerUrl(); }
 
-// ── Улучшенный разбор намерений ───────────────────────────────
+// ══════════════════════════════════════════════════════════════
+//  УЛУЧШЕННЫЙ ПАРСЕР НАМЕРЕНИЙ
+//  БАГ: "1500 зарплата жены т-блэк" → неверное определение
+//  ФИКС: пошаговый разбор с приоритетом точного совпадения
+// ══════════════════════════════════════════════════════════════
+
 export async function parseIntent(text) {
   if (!state.D || !text) return { intent: 'unknown', raw_text: text };
-  let t = text.toLowerCase().trim();
+  const t = text.toLowerCase().trim();
 
-  // 1. Переводы (с учётом фраз "перевел", "перевод", "с карты на карту")
-  if (/перевёл|перевел|перевести|перевод|переведи|с карты|на карту/i.test(t)) {
+  // 1. Переводы (с учётом фраз "перевел", "перевод")
+  if (/перевёл|перевел|перевести|перевод|переведи/i.test(t)) {
     const wallets = _transferWallets(text);
-    const amount = _amount(t);
-    // Улучшенный поиск кошельков, если не нашли
-    if (!wallets.from || !wallets.to) {
-      const match = t.match(/с\s+([а-яё\s\-]+?)\s+на\s+([а-яё\s\-]+?)(?:\s+(?:перевёл|перевел|перевод|$))/i);
-      if (match) {
-        wallets.from = match[1].trim();
-        wallets.to = match[2].trim();
-      }
-    }
+    const amount = _parseAmount(t);
     return { intent: 'add_transfer', amount, from_wallet: wallets.from, to_wallet: wallets.to };
   }
 
-  // 2. Покупки
-  if (['купить','купи','куплю','добавь в список','нужно купить'].some(v => t.includes(v))) {
+  // 2. Покупки (список)
+  if (/купить|купи|куплю|добавь в список|нужно купить/i.test(t)) {
     const items = _parseShoppingItems(t);
     if (items.length) return { intent: 'add_shopping', items };
   }
 
   // 3. Баланс
-  if (/баланс|сколько|остаток|денег|кошелёк|кошелек/i.test(t)) {
-    const w = _findWallet(t);
+  if (/баланс|сколько.*(?:денег|осталось|на карте)|остаток/i.test(t)) {
+    const w = _findWalletInText(t);
     return { intent: 'check_balance', wallet: w?.name || '' };
   }
 
-  // 4. Доходы
-  if (['получил','получила','заработал','заработала','пришло','пришла','зарплата','аванс','начислили','перевели на карту','поступило'].some(v => t.includes(v))) {
-    const w = _findWallet(t);
-    return { intent: 'add_income', amount: _amount(t), category: _cat(t, 'income'), wallet: w?.name || '', note: '' };
+  // ── ОСНОВНОЙ БЛОК: разбор операции ──────────────────────────────────
+  // Порядок: сначала находим сумму и кошелёк, потом определяем тип и категорию
+
+  const amount = _parseAmount(t);
+
+  // Ищем кошелёк — это самое важное для правильного распознавания
+  const walletMatch = _findWalletInText(t);
+
+  // Определяем тип операции по ключевым словам
+  const isIncomeByKeyword = /получил|получила|заработал|заработала|пришло|пришла|зарплата|аванс|начислили|поступило|прибыль|выручка|гонорар|доход/i.test(t);
+  const isExpenseByKeyword = /потратил|потратила|заплатил|заплатила|купил|купила|оплатил|оплатила|расход|списали|снял|сняла/i.test(t);
+
+  // Определяем категорию — ищем совпадение с категориями пользователя
+  // ВАЖНО: ищем и в доходных, и в расходных категориях
+  const { category, categoryType } = _findCategory(t);
+
+  // Итоговый тип:
+  // - если явное ключевое слово → его приоритет
+  // - если категория из доходных → доход
+  // - если категория из расходных → расход
+  // - если нет признаков → смотрим на кошелёк
+  let intent;
+  if (isIncomeByKeyword || categoryType === 'income') {
+    intent = 'add_income';
+  } else if (isExpenseByKeyword || categoryType === 'expense') {
+    intent = 'add_expense';
+  } else {
+    // Нет явных признаков — по умолчанию расход (самая частая операция)
+    intent = 'add_expense';
   }
 
-  // 5. Расходы
-  const amount = _amount(t);
-  if (amount > 0) {
-    const w = _findWallet(t);
-    return { intent: 'add_expense', amount, category: _cat(t, 'expense'), wallet: w?.name || '', note: '' };
-  }
-  return { intent: 'unknown', raw_text: text };
+  // Формируем заметку из оставшихся слов (которые не сумма и не кошелёк)
+  const note = _extractNote(t, amount, walletMatch?.name || '');
+
+  return {
+    intent,
+    amount,
+    category: category || _defaultCategory(t, intent),
+    wallet: walletMatch?.name || '',
+    note,
+  };
 }
 
-function _amount(text) {
-  const all = [...text.matchAll(/\b(\d[\d\s]{0,5}\d|\d+)(?:[,\.](\d{1,2}))?\b/g)];
-  for (const m of all) {
-    const n = parseFloat(m[0].replace(/\s/g, '').replace(',', '.'));
-    if (!isNaN(n) && n > 0 && !(n >= 2000 && n <= 2035)) return n;
+// ── Парсинг суммы ──────────────────────────────────────────────────────────
+// Ищет числа (1500, 1 500, 1.5, 1,5) и словесные числа
+function _parseAmount(text) {
+  // Числа с пробелами как разделитель тысяч: "1 500", "58 560"
+  const groupedMatch = text.match(/\b(\d{1,3}(?:\s\d{3})+)\b/);
+  if (groupedMatch) {
+    const n = parseFloat(groupedMatch[1].replace(/\s/g, ''));
+    if (n > 0 && n < 10000000) return n;
   }
-  const words = {
-    'ноль':0,'один':1,'одна':1,'два':2,'две':2,'три':3,'четыре':4,'пять':5,
-    'шесть':6,'семь':7,'восемь':8,'девять':9,'десять':10,'двадцать':20,'тридцать':30,
-    'сорок':40,'пятьдесят':50,'шестьдесят':60,'семьдесят':70,'восемьдесят':80,
-    'девяносто':90,'сто':100,'двести':200,'триста':300,'четыреста':400,'пятьсот':500,
-    'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900,'тысяча':1000,
-    'тысячи':1000,'тысяч':1000,'тыщ':1000,'миллион':1000000
+
+  // Числа с точкой/запятой как десятичные
+  const decimalMatch = text.match(/\b(\d+)[,.](\d{1,2})\b/);
+  if (decimalMatch) {
+    const n = parseFloat(decimalMatch[1] + '.' + decimalMatch[2]);
+    if (n > 0) return n;
+  }
+
+  // Простые числа (исключаем годы 2020-2035)
+  const nums = [...text.matchAll(/\b(\d+)\b/g)];
+  for (const m of nums) {
+    const n = parseInt(m[1]);
+    if (n > 0 && !(n >= 2000 && n <= 2040)) return n;
+  }
+
+  // Словесные числа
+  return _parseWordNumber(text);
+}
+
+// Словесные числа: "пятьсот", "тысяча пятьсот", "полторы тысячи"
+function _parseWordNumber(text) {
+  const WORD_MAP = {
+    'ноль':0,'нуля':0,'нулей':0,
+    'один':1,'одна':1,'одного':1,
+    'два':2,'две':2,'двух':2,
+    'три':3,'трёх':3,'трех':3,
+    'четыре':4,'четырёх':4,'четырех':4,
+    'пять':5,'пяти':5,
+    'шесть':6,'шести':6,
+    'семь':7,'семи':7,
+    'восемь':8,'восьми':8,
+    'девять':9,'девяти':9,
+    'десять':10,'десяти':10,
+    'одиннадцать':11,'двенадцать':12,'тринадцать':13,'четырнадцать':14,
+    'пятнадцать':15,'шестнадцать':16,'семнадцать':17,'восемнадцать':18,'девятнадцать':19,
+    'двадцать':20,'тридцать':30,'сорок':40,'пятьдесят':50,
+    'шестьдесят':60,'семьдесят':70,'восемьдесят':80,'девяносто':90,
+    'сто':100,'двести':200,'триста':300,'четыреста':400,
+    'пятьсот':500,'шестьсот':600,'семьсот':700,'восемьсот':800,'девятьсот':900,
+    'тысяча':1000,'тысячи':1000,'тысяч':1000,'тыщ':1000,'тыща':1000,
+    'полторы':1500,'полтора':1500,
+    'миллион':1000000,'миллиона':1000000,'миллионов':1000000,
   };
-  let total = 0, cur = 0;
-  for (const w of text.split(/\s+/)) {
-    const v = words[w];
+  let total = 0, cur = 0, found = false;
+  const words = text.toLowerCase().split(/\s+/);
+  for (const w of words) {
+    const v = WORD_MAP[w];
     if (v !== undefined) {
-      if (v >= 1000) { total = (total + cur) * v; cur = 0; }
+      found = true;
+      if (v >= 1000) { total = (total + (cur || 1)) * v; cur = 0; }
+      else if (v === 1500) { total += v; cur = 0; } // полторы
       else cur += v;
     }
   }
-  return total + cur;
+  return found ? (total + cur) : 0;
 }
 
-function _cat(text, type) {
-  if (!state.D) return 'Прочее';
-  const cats = type === 'income' ? state.D.incomeCats : state.D.expenseCats.map(c => c.name);
-  const t = text.toLowerCase();
-  for (const c of cats) if (t.includes(c.toLowerCase())) return c;
-  const map = [
-    [/продукт|еда|магазин|супермаркет|пятёрочк|магнит|лента|ашан/,'Продукты'],
-    [/транспорт|метро|такси|автобус|бензин|заправк/,'Транспорт'],
-    [/кафе|ресторан|кофе|обед|ужин|завтрак/,'Кафе и рестораны'],
-    [/аптек|лекарств|врач|больниц/,'Здоровье'],
-    [/одежд|обувь/,'Одежда'],
-    [/зарплат|аванс|оклад/,'Зарплата'],
-    [/кредит|ипотек/,'Кредит'],
-    [/связь|интернет|телефон/,'Связь'],
-    [/квартплат|коммунал|аренда|жкх/,'Квартплата'],
-    [/развлечен|кино|игр/,'Развлечения'],
-  ];
-  for (const [re, cat] of map) {
-    if (re.test(t)) {
-      const found = cats.find(c => c.toLowerCase() === cat.toLowerCase());
-      if (found) return found;
-    }
-  }
-  return 'Прочее';
-}
-
-function _findWallet(text) {
+// ── Поиск кошелька в тексте ────────────────────────────────────────────────
+// ВАЖНО: приоритет — точное совпадение имени кошелька, затем синонимы банков
+function _findWalletInText(text) {
   if (!state.D) return null;
   const t = text.toLowerCase();
-  // Точное совпадение
-  for (const w of state.D.wallets) {
+
+  // 1. ТОЧНОЕ совпадение имени кошелька (из данных пользователя)
+  // Сортируем по убыванию длины, чтобы "Т-Банк Зарплатный" нашёлся раньше "Т-Банк"
+  const sortedWallets = [...state.D.wallets].sort((a, b) => b.name.length - a.name.length);
+  for (const w of sortedWallets) {
     if (t.includes(w.name.toLowerCase())) return w;
   }
-  // Синонимы
-  const synonyms = {
-    'т банк': ['т банк', 'тинькофф', 'т-банк', 'тблэк', 'т-блэк', 'тиньк', 'black'],
-    'сбер': ['сбер', 'сбербанк', 'сбербанк онлайн'],
-    'наличные': ['наличные', 'кэш', 'налик', 'наличка'],
-    'карта': ['карта', 'дебетовая', 'кредитная', 'пластик'],
-  };
-  for (const [canonical, aliases] of Object.entries(synonyms)) {
-    for (const alias of aliases) {
-      if (t.includes(alias)) {
-        const wallet = state.D.wallets.find(w => w.name.toLowerCase().includes(canonical));
-        if (wallet) return wallet;
+
+  // 2. Расширенные синонимы банков — покрываем реальные речевые паттерны
+  // Каждый банк: список произносимых вариантов + ключевые слова для поиска
+  const BANK_SYNONYMS = [
+    // Т-Банк (бывший Тинькофф)
+    {
+      keywords: ['т-блэк', 'т блэк', 'тблэк', 'т-банк', 'тбанк', 'тинькофф', 'тиньков', 'тинькоф',
+                 'тинькова', 'тинек', 'тинька', 'тиньк', 'тинкофф', 'black', 'блек', 'блэк', 'ти банк',
+                 'ти-банк', 'т bank', 'tinkoff', 'tbank', 't-bank'],
+      searchNames: ['т-банк', 'тинькофф', 'т банк', 'тинкофф', 'black', 'блэк', 'блек'],
+    },
+    // Сбер
+    {
+      keywords: ['сбер', 'сбербанк', 'сберегательный', 'сбероне', 'сбер онлайн', 'sber', 'sbr'],
+      searchNames: ['сбер', 'сбербанк'],
+    },
+    // ВТБ
+    {
+      keywords: ['втб', 'vtb', 'в т б'],
+      searchNames: ['втб'],
+    },
+    // Альфа
+    {
+      keywords: ['альфа', 'альфабанк', 'alfa', 'альфа банк'],
+      searchNames: ['альфа'],
+    },
+    // Газпром
+    {
+      keywords: ['газпром', 'газпромбанк', 'газпром банк', 'gpb'],
+      searchNames: ['газпром'],
+    },
+    // Райффайзен
+    {
+      keywords: ['райф', 'райффайзен', 'raiff', 'raiffeisen'],
+      searchNames: ['райф', 'райффайзен'],
+    },
+    // Наличные
+    {
+      keywords: ['наличные', 'наличка', 'налик', 'кэш', 'cash', 'нал', 'в руках', 'из кармана'],
+      searchNames: ['наличные', 'наличка', 'нал'],
+    },
+    // Сберегательный / накопительный
+    {
+      keywords: ['сбережения', 'накопления', 'копилка', 'накопительный'],
+      searchNames: ['сбережения', 'накопления'],
+    },
+  ];
+
+  // Проходим по синонимам — если нашли совпадение, ищем соответствующий кошелёк
+  for (const bank of BANK_SYNONYMS) {
+    const matched = bank.keywords.some(kw => t.includes(kw));
+    if (matched) {
+      // Ищем кошелёк среди кошельков пользователя
+      for (const searchName of bank.searchNames) {
+        const found = state.D.wallets.find(w =>
+          w.name.toLowerCase().includes(searchName)
+        );
+        if (found) return found;
       }
     }
   }
-  // Если упомянута карта, но нет точного совпадения – вернуть первую карту
-  if (t.includes('карта')) {
-    const cardWallet = state.D.wallets.find(w => /карт|дебет|кредит/i.test(w.name));
-    if (cardWallet) return cardWallet;
+
+  // 3. Общие слова: "карта", "счёт" → возвращаем первый дебетовый кошелёк
+  if (/карта|карточка|по карте|дебетовая|счёт|счет/i.test(text)) {
+    const card = state.D.wallets.find(w =>
+      /карт|дебет|bank|банк/i.test(w.name) && w.balance >= 0
+    );
+    if (card) return card;
   }
-  return state.D.wallets[0]; // fallback
+
+  // 4. Нет совпадений — вернуть null (не угадываем!)
+  // Лучше оставить поле пустым, чем выбрать неверный кошелёк
+  return null;
 }
 
+// ── Поиск категории ────────────────────────────────────────────────────────
+// Возвращает { category: string, categoryType: 'income'|'expense'|null }
+function _findCategory(text) {
+  if (!state.D) return { category: null, categoryType: null };
+  const t = text.toLowerCase();
+
+  // Сначала проверяем РАСХОДНЫЕ категории пользователя (длинные имена — первые)
+  const expCats = [...state.D.expenseCats].sort((a, b) => b.name.length - a.name.length);
+  for (const c of expCats) {
+    if (t.includes(c.name.toLowerCase())) {
+      return { category: c.name, categoryType: 'expense' };
+    }
+  }
+
+  // Затем ДОХОДНЫЕ категории
+  const incCats = [...state.D.incomeCats].sort((a, b) => b.length - a.length);
+  for (const c of incCats) {
+    if (t.includes(c.toLowerCase())) {
+      return { category: c, categoryType: 'income' };
+    }
+  }
+
+  // Расширенная база синонимов категорий (русские варианты произношения)
+  const CATEGORY_MAP = [
+    // РАСХОДЫ
+    { patterns: [/продукт|еда|магазин|супермаркет|пятёрочк|пятерочк|магнит|лента|ашан|перекресток|перекрёсток|дикси|окей|о'кей/], name: 'Продукты', type: 'expense' },
+    { patterns: [/транспорт|метро|такси|автобус|маршрутка|бензин|заправк|топливо|проездной|электричка|яндекс такси|убер|uber/], name: 'Транспорт', type: 'expense' },
+    { patterns: [/кафе|ресторан|кофе|кофейн|обед|ужин|завтрак|еда на работе|бизнес ланч|суши|пицца|фастфуд|макдак|kfc|бургер/], name: 'Кафе и рестораны', type: 'expense' },
+    { patterns: [/аптек|лекарств|врач|больниц|поликлиник|клиник|лечение|таблетк|витамин|анализ/], name: 'Здоровье', type: 'expense' },
+    { patterns: [/одежд|обувь|шмотк|гардероб|пальто|куртк|джинс|костюм|платье/], name: 'Одежда', type: 'expense' },
+    { patterns: [/кредит(?!ная)|ипотек|займ|долг(?!и мне)|выплат|погашен/], name: 'Кредит', type: 'expense' },
+    { patterns: [/связь|интернет|телефон|мобильн|симкарт|оператор|мтс|билайн|мегафон|теле2|tele2/], name: 'Связь', type: 'expense' },
+    { patterns: [/квартплат|коммунал|аренда|жкх|жилье|жильё|электричество|свет|газ|вода|отопление/], name: 'Квартплата', type: 'expense' },
+    { patterns: [/развлечен|кино|театр|игр|стриминг|netflix|нетфликс|spotify|яндекс плюс|подписк/], name: 'Развлечения', type: 'expense' },
+    { patterns: [/ребенок|ребёнок|дети|детск|школ|сад(?!ик)|садик|игрушк|детское/], name: 'Дети', type: 'expense' },
+    { patterns: [/спорт|фитнес|зал|тренировк|бассейн|секция/], name: 'Спорт', type: 'expense' },
+    // ДОХОДЫ
+    { patterns: [/зарплат|оклад|зп|зарплату|жалование/, ], name: 'Зарплата', type: 'income' },
+    { patterns: [/аванс|предоплат/], name: 'Аванс', type: 'income' },
+    { patterns: [/фриланс|проект|заказ|клиент/], name: 'Фриланс', type: 'income' },
+    { patterns: [/подработк|халтур|шабашк/], name: 'Подработка', type: 'income' },
+    { patterns: [/проценты|дивидент|инвестиц|пассивн доход/], name: 'Прочее', type: 'income' },
+  ];
+
+  for (const entry of CATEGORY_MAP) {
+    for (const pat of entry.patterns) {
+      if (pat.test(t)) {
+        // Проверяем что такая категория есть у пользователя (точное или частичное совпадение)
+        if (entry.type === 'expense') {
+          const found = state.D.expenseCats.find(c =>
+            c.name.toLowerCase().includes(entry.name.toLowerCase()) ||
+            entry.name.toLowerCase().includes(c.name.toLowerCase())
+          );
+          if (found) return { category: found.name, categoryType: 'expense' };
+        } else {
+          const found = state.D.incomeCats.find(c =>
+            c.toLowerCase().includes(entry.name.toLowerCase()) ||
+            entry.name.toLowerCase().includes(c.toLowerCase())
+          );
+          if (found) return { category: found, categoryType: 'income' };
+        }
+        // Категории нет у пользователя — всё равно возвращаем тип
+        return { category: entry.name, categoryType: entry.type };
+      }
+    }
+  }
+
+  return { category: null, categoryType: null };
+}
+
+// Категория по умолчанию если не нашли ничего
+function _defaultCategory(text, intent) {
+  if (intent === 'add_income') {
+    return state.D?.incomeCats?.[0] || 'Прочее';
+  }
+  return state.D?.expenseCats?.[0]?.name || 'Прочее';
+}
+
+// ── Извлечение заметки ─────────────────────────────────────────────────────
+// Убираем из текста сумму, имя кошелька, ключевые слова — остаток = заметка
+function _extractNote(text, amount, walletName) {
+  let note = text;
+  // Убираем числа (суммы)
+  note = note.replace(/\b\d[\d\s]{0,5}\b/g, ' ');
+  // Убираем имя кошелька
+  if (walletName) {
+    note = note.replace(new RegExp(walletName.toLowerCase(), 'gi'), ' ');
+  }
+  // Убираем общие слова
+  const STOP_WORDS = ['потратил','потратила','заплатил','заплатила','купил','купила',
+    'получил','получила','рублей','рубль','рубля','руб','р','тысяч','тысячи','тыс',
+    'за','на','в','с','из','по','у','от','до','к','и','или','а','но','что','это',
+    'мне','мой','моя','моё','было','есть','нужно','надо'];
+  STOP_WORDS.forEach(w => {
+    note = note.replace(new RegExp('\\b' + w + '\\b', 'gi'), ' ');
+  });
+  note = note.replace(/\s+/g, ' ').trim();
+  return note.length > 2 ? note : '';
+}
+
+// ── Парсинг переводов ──────────────────────────────────────────────────────
 function _transferWallets(text) {
   const t = text.toLowerCase();
   let from = '', to = '';
-  const match = t.match(/с\s+([а-яё\s\-]+?)\s+на\s+([а-яё\s\-]+?)(?:\s+(?:перевёл|перевел|перевод|$))/i);
-  if (match) {
-    from = match[1].trim();
-    to = match[2].trim();
-  } else {
-    const words = t.split(/\s+/);
-    let i = 0;
-    while (i < words.length) {
-      if (words[i] === 'с' && i+1 < words.length) from = words[i+1];
-      else if (words[i] === 'на' && i+1 < words.length) to = words[i+1];
-      i++;
-    }
+
+  // Паттерн: "с [кошелёк] на [кошелёк]"
+  const matchSN = t.match(/с\s+(.{2,25}?)\s+на\s+(.{2,25}?)(?:\s+\d|\s*$)/i);
+  if (matchSN) {
+    from = matchSN[1].trim();
+    to = matchSN[2].trim();
   }
-  // Сопоставить с реальными кошельками
-  if (from) {
-    const matched = state.D.wallets.find(w => w.name.toLowerCase().includes(from) || from.includes(w.name.toLowerCase()));
-    if (matched) from = matched.name;
-  }
-  if (to) {
-    const matched = state.D.wallets.find(w => w.name.toLowerCase().includes(to) || to.includes(w.name.toLowerCase()));
-    if (matched) to = matched.name;
-  }
-  return { from, to };
+
+  // Ищем реальные кошельки по найденным фрагментам
+  const resolveWallet = (fragment) => {
+    if (!fragment || !state.D) return '';
+    // Прямое совпадение
+    const direct = state.D.wallets.find(w => w.name.toLowerCase().includes(fragment));
+    if (direct) return direct.name;
+    // Через функцию поиска
+    const found = _findWalletInText(fragment);
+    return found ? found.name : fragment;
+  };
+
+  return {
+    from: resolveWallet(from),
+    to: resolveWallet(to),
+  };
 }
 
+// ── Парсинг списка покупок ─────────────────────────────────────────────────
 function _parseShoppingItems(text) {
-  const clean = text.replace(/купить|купи|куплю|добавь в список|нужно купить/g, ' ');
+  const clean = text.replace(/купить|купи|куплю|добавь в список|нужно купить/gi, ' ');
   const parts = clean.split(/,|\bи\b/).map(s => s.trim()).filter(s => s.length > 1);
   return parts.map(p => {
     const qm = p.match(/(\d+)/);
@@ -311,7 +515,7 @@ function _parseShoppingItems(text) {
   }).filter(Boolean);
 }
 
-// ── Прямое открытие формы операции (без промежуточного модала) ──
+// ── Открытие формы операции ────────────────────────────────────────────────
 function openEditForm(intent) {
   switch (intent.intent) {
     case 'add_expense':
@@ -320,30 +524,30 @@ function openEditForm(intent) {
       if (!modal) return;
       modal.classList.add('open');
       setTimeout(() => {
-        // Устанавливаем тип операции
         const type = intent.intent === 'add_expense' ? 'expense' : 'income';
         if (window.setOpType) window.setOpType(type);
-        // Сумма
         const amountInput = document.getElementById('op-amount');
         if (amountInput && intent.amount) amountInput.value = intent.amount;
-        // Заметка
         const noteInput = document.getElementById('op-note');
         if (noteInput && intent.note) noteInput.value = intent.note;
-        // Категория
         if (intent.category) {
           const catSelect = document.getElementById('op-cat');
           if (catSelect) {
             for (let i = 0; i < catSelect.options.length; i++) {
-              if (catSelect.options[i].value.toLowerCase().includes(intent.category.toLowerCase())) {
+              if (catSelect.options[i].value.toLowerCase() === intent.category.toLowerCase() ||
+                  catSelect.options[i].value.toLowerCase().includes(intent.category.toLowerCase())) {
                 catSelect.selectedIndex = i;
                 break;
               }
             }
           }
         }
-        // Кошелёк
+        // Устанавливаем кошелёк — только если нашли реальное совпадение
         if (intent.wallet && state.D) {
-          const wallet = state.D.wallets.find(w => w.name.toLowerCase().includes(intent.wallet.toLowerCase()));
+          const wallet = state.D.wallets.find(w =>
+            w.name.toLowerCase() === intent.wallet.toLowerCase() ||
+            w.name.toLowerCase().includes(intent.wallet.toLowerCase())
+          );
           if (wallet) {
             const walletSelect = document.getElementById('op-wallet');
             if (walletSelect) walletSelect.value = wallet.id;
@@ -360,23 +564,14 @@ function openEditForm(intent) {
         if (window.setOpType) window.setOpType('transfer');
         const amountInput = document.getElementById('op-amount');
         if (amountInput && intent.amount) amountInput.value = intent.amount;
-        // Кошелёк откуда
-        if (intent.from_wallet && state.D) {
-          const wf = state.D.wallets.find(w => w.name.toLowerCase().includes(intent.from_wallet.toLowerCase()));
-          if (wf) {
-            const fromSel = document.getElementById('op-wallet');
-            if (fromSel) fromSel.value = wf.id;
-          }
+        if (state.D) {
+          const wf = state.D.wallets.find(w => w.name.toLowerCase().includes((intent.from_wallet||'').toLowerCase()));
+          const wt = state.D.wallets.find(w => w.name.toLowerCase().includes((intent.to_wallet||'').toLowerCase()));
+          const fromSel = document.getElementById('op-wallet');
+          const toSel = document.getElementById('op-wallet2');
+          if (fromSel && wf) fromSel.value = wf.id;
+          if (toSel && wt) toSel.value = wt.id;
         }
-        // Кошелёк куда
-        if (intent.to_wallet && state.D) {
-          const wt = state.D.wallets.find(w => w.name.toLowerCase().includes(intent.to_wallet.toLowerCase()));
-          if (wt) {
-            const toSel = document.getElementById('op-wallet2');
-            if (toSel) toSel.value = wt.id;
-          }
-        }
-        // Заметка
         const noteInput = document.getElementById('op-note');
         if (noteInput && intent.note) noteInput.value = intent.note;
       }, 100);
@@ -385,31 +580,23 @@ function openEditForm(intent) {
     case 'add_shopping':
       if (window.openAddShopItem) window.openAddShopItem();
       break;
-    case 'check_balance':
-      // Можно показать всплывающее сообщение, но по желанию
-      _showToast(`Баланс: ${intent.wallet ? '???' : 'пока не реализовано'}`);
-      break;
     default:
-      // Если не распознали, всё равно открываем форму (можно пустую)
       const modal = document.getElementById('modal');
       if (modal) modal.classList.add('open');
       break;
   }
 }
 
-// ── Глобальная функция для кнопки микрофона ───────────────────
-// Вместо handleVoiceIntent → сразу openEditForm
+// ── Экспортируемые обработчики ─────────────────────────────────────────────
 export function handleVoiceIntent(intent, onConfirm) {
-  // Игнорируем onConfirm, просто открываем форму
   openEditForm(intent);
 }
 
-// Для обратной совместимости (если где-то вызывается executeIntent)
 export function executeIntent(intent) {
   openEditForm(intent);
 }
 
-// ── UI кнопки ──────────────────────────────────────────────────
+// ── UI кнопки ──────────────────────────────────────────────────────────────
 export function createSmartVoiceButton() {
   const btn = document.createElement('button');
   btn.id = 'smart-voice-btn';
@@ -425,8 +612,13 @@ export function createSmartVoiceButton() {
         _showToast('🔍 «' + text + '» — разбираю...');
         try {
           const intent = await parseIntent(text);
-          // Сразу открываем форму редактирования
-          openEditForm(intent);
+          // Показываем что распознали — для отладки
+          const walletInfo = intent.wallet ? ` · ${intent.wallet}` : '';
+          const catInfo = intent.category ? ` · ${intent.category}` : '';
+          if (intent.amount > 0) {
+            _showToast(`✓ ${intent.intent === 'add_income' ? 'Доход' : 'Расход'} ${intent.amount}₽${catInfo}${walletInfo}`);
+          }
+          setTimeout(() => openEditForm(intent), 1200);
         } catch (e) { _showToast('⚠ Не удалось разобрать команду'); }
       },
       msg => { setIdle(); _showToast('⚠ ' + msg); },
