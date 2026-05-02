@@ -1,4 +1,4 @@
-// tour.js — исправленное позиционирование и очистка DOM после тура
+// tour.js — исправлено позиционирование для мобильных устройств
 import { $ } from './core.js';
 
 const TOUR_STEPS = [
@@ -13,6 +13,26 @@ const TOUR_STEPS = [
 ];
 
 let _tourStep = 0, _tourActive = false;
+
+// ── ФИКС: проверяем что элемент реально виден в DOM ──────────────────────
+// Проблема: topbar-row2 скрыта на мобиле (display:none!important в styles.css строка 476).
+// Элементы tnav-* и tour-btn-settings внутри неё находятся через getElementById,
+// но getBoundingClientRect() на них даёт {width:0, height:0, top:0, left:0}.
+// Результат: карточка позиционируется в {0,0} — левый верхний угол — и ломает UI.
+function _isVisible(el) {
+  if (!el) return false;
+  const r = el.getBoundingClientRect();
+  // Нулевые размеры = элемент скрыт
+  if (r.width === 0 && r.height === 0) return false;
+  // Проверяем сам элемент и его предков на display:none / visibility:hidden
+  let node = el;
+  while (node && node !== document.body) {
+    const s = window.getComputedStyle(node);
+    if (s.display === 'none' || s.visibility === 'hidden') return false;
+    node = node.parentElement;
+  }
+  return true;
+}
 
 function _createTourDOM() {
   if (document.getElementById('tour-overlay')) return;
@@ -50,13 +70,6 @@ function _createTourDOM() {
   });
 }
 
-function _removeTourDOM() {
-  const overlay = document.getElementById('tour-overlay');
-  const card = document.getElementById('tour-card');
-  if (overlay) overlay.remove();
-  if (card) card.remove();
-}
-
 function _positionSpotlight(el) {
   const pad = 6;
   const r = el.getBoundingClientRect();
@@ -90,31 +103,32 @@ function _positionCard(el, position) {
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
 
+  if (isMobile) {
+    // На мобиле карточка ВСЕГДА фиксирована внизу экрана, над bottom-nav (60px).
+    // Обнуляем top/right/transform чтобы не было конфликтов с прошлым состоянием.
+    card.style.top = 'auto';
+    card.style.right = 'auto';
+    card.style.transform = 'none';
+    card.style.left = '12px';
+    card.style.width = 'calc(100% - 24px)';
+    card.style.maxWidth = 'none';
+    card.style.bottom = '68px';
+    return;
+  }
+
+  // Десктоп: center или рядом с элементом
+  // Обнуляем мобильные стили
+  card.style.bottom = 'auto';
+  card.style.width = '';
+  card.style.maxWidth = '360px';
+
   if (position === 'center' || !el) {
-    card.style.position = 'fixed';
     card.style.top = '50%';
     card.style.left = '50%';
-    card.style.transform = 'translate(-50%, -50%)';
-    card.style.bottom = 'auto';
+    card.style.transform = 'translate(-50%,-50%)';
     card.style.right = 'auto';
-    card.style.width = 'auto';
-    card.style.maxWidth = '320px';
     return;
   }
-
-  if (isMobile) {
-    card.style.transform = '';
-    card.style.position = 'fixed';
-    card.style.left = '10px';
-    card.style.right = '10px';
-    card.style.width = 'auto';
-    card.style.maxWidth = 'none';
-    card.style.top = 'auto';
-    card.style.bottom = '20px';
-    return;
-  }
-
-  card.style.position = 'fixed';
   card.style.transform = '';
   const r = el.getBoundingClientRect();
   const cw = card.offsetWidth || 320;
@@ -134,7 +148,6 @@ function _positionCard(el, position) {
   top  = Math.max(12, Math.min(top, window.innerHeight - ch - 12));
   card.style.top = top + 'px';
   card.style.left = left + 'px';
-  card.style.bottom = 'auto';
   card.style.right = 'auto';
 }
 
@@ -150,7 +163,11 @@ function _renderStep(idx) {
     dots.innerHTML = TOUR_STEPS.map((_, i) => `<div style="width:${i===idx?14:6}px;height:6px;border-radius:3px;background:${i===idx?'var(--amber)':i<idx?'var(--green)':'var(--border)'};transition:all .2s"></div>`).join('');
   }
   if (step.action) step.action();
-  const targetEl = step.targetId ? document.getElementById(step.targetId) : null;
+
+  // ── ФИКС: используем элемент только если он реально виден ──
+  const rawEl = step.targetId ? document.getElementById(step.targetId) : null;
+  const targetEl = _isVisible(rawEl) ? rawEl : null;
+
   setTimeout(() => {
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
@@ -158,7 +175,7 @@ function _renderStep(idx) {
     } else {
       _clearSpotlight();
     }
-    _positionCard(targetEl, step.position);
+    _positionCard(targetEl, targetEl ? step.position : 'center');
   }, 120);
 }
 
@@ -194,8 +211,10 @@ export function tourPrev() {
 
 export function tourFinish(skipped = false) {
   _tourActive = false;
-  // Полностью удаляем элементы тура, чтобы они не влияли на вёрстку
-  _removeTourDOM();
+  const overlay = document.getElementById('tour-overlay');
+  const card = document.getElementById('tour-card');
+  if (overlay) overlay.style.display = 'none';
+  if (card) card.style.display = 'none';
   window._tourNext = null;
   window._tourPrev = null;
   window._tourClose = null;

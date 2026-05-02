@@ -119,17 +119,19 @@ async function fetchAiAdvice(){
 
 function renderAiDash(){
   const el=document.getElementById('dash-ai');if(!el)return;
-  // Не обновляем если уже есть текст (обновляется только по кнопке или при первом рендере)
-  if(el.dataset.loaded==='1')return;
+  // Не трогаем если уже загружен текст или идёт загрузка
+  if(el.dataset.loaded==='1'||el.dataset.loaded==='loading')return;
   if(!appConfig.deepseekKey){
     el.innerHTML='<div style="font-size:11px;color:var(--text2)">Добавьте DeepSeek API ключ в Панели администратора для получения AI советов.</div>';
     return;
   }
-  _loadAiAdvice(el);
+  // Показываем кнопку — НЕ запускаем автоматически
+  el.dataset.loaded='idle';
+  el.innerHTML=`<button onclick="window._refreshAiAdvice()" style="background:var(--amber);border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.3px">✦ Получить совет</button>`;
 }
 
 function _loadAiAdvice(el){
-  el.dataset.loaded='0';
+  el.dataset.loaded='loading';
   el.innerHTML=`<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text2)">
     <div style="width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--amber);border-radius:50%;animation:_aispin .7s linear infinite;flex-shrink:0"></div>
     Анализирую данные...
@@ -153,7 +155,7 @@ function _loadAiAdvice(el){
 
 window._refreshAiAdvice=function(){
   const el=document.getElementById('dash-ai');if(!el)return;
-  el.dataset.loaded='0';
+  el.dataset.loaded='loading';
   _loadAiAdvice(el);
 };
 

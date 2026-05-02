@@ -621,11 +621,11 @@
       </div>
       <div class="dash-right">
         <div class="dash-right-grid">
-          <!-- AI советник — полная строка -->
+          <!-- AI советник — полная строка вверху -->
           <div id="dash-widget-ai" class="dash-card" style="grid-column:1/-1">
             <div class="dash-card-head" style="display:flex;justify-content:space-between;align-items:center">
               <span>✦ AI СОВЕТНИК</span>
-              <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid rgba(255,255,255,.2);border-radius:4px;padding:2px 8px;font-size:10px;color:#C9A96E;cursor:pointer;letter-spacing:.3px">↻ Обновить</button>
+              <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:2px 9px;font-size:10px;color:#C9A96E;cursor:pointer;letter-spacing:.3px">↻ Обновить</button>
             </div>
             <div class="dash-card-body"><div id="dash-ai"></div></div>
           </div>
@@ -1725,59 +1725,12 @@ function renderSimpleDashboard(){
   const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
   const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
 
-  // ── БАГ-ФИX №3: накопленный остаток с предыдущих месяцев ─────────────────
-  // Логика: «можно потратить» = текущий баланс кошельков (уже включает все прошлые периоды)
-  // минус долги, минус расходы текущего месяца которые ещё впереди
-  //
-  // Конкретно: берём сумму балансов всех НЕ-долговых кошельков.
-  // Это уже отражает перенос остатка — деньги реально лежат на счетах.
-  // К этому добавляем разницу дохода и расхода ТЕКУЩЕГО месяца.
-  //
-  // Пояснение: если прошлый месяц закончился с +5000, эти 5000 уже в балансе кошелька.
-  // Если с -3000, то кошелёк похудел на 3000. Всё честно.
-
-  // Сумма реальных балансов (без долгов — они отдельно)
-  const walletTotal = state.D.wallets
-    .filter(w => w.balance > 0)
-    .reduce((s, w) => s + w.balance, 0);
-
-  // ── Главная цифра: остаток по «тратным» статьям финплана ─────────────────
-  let canSpend = 0;
-  let totalBudget = 0;
-  let totalSpentOnPlan = 0;
-  let hasPlan = false;
-
-  const SPENDABLE_KEYWORDS = ['постоян', 'перемен', 'бытов', 'ежедн'];
-
-  function isSpendablePlan(p) {
-    if(p.spendable === true) return true;
-    if(p.spendable === false) return false;
-    const lbl = (p.label || '').toLowerCase();
-    return SPENDABLE_KEYWORDS.some(kw => lbl.includes(kw));
-  }
-
-  if(mInc > 0 && state.D.plan && state.D.plan.length > 0){
-    const spendablePlans = state.D.plan.filter(p => p.type === 'expense' && isSpendablePlan(p));
-    if(spendablePlans.length > 0){
-      hasPlan = true;
-      spendablePlans.forEach(p => {
-        const budget = Math.round(mInc * p.pct / 100);
-        const spent = planSpent(p, mOps);
-        totalBudget += budget;
-        totalSpentOnPlan += spent;
-      });
-      canSpend = totalBudget - totalSpentOnPlan;
-    }
-  }
-
-  // Fallback: нет финплана — показываем реальный баланс всех кошельков
-  // (это включает остатки со всех прошлых месяцев автоматически)
-  if(!hasPlan){
-    // walletTotal — это накопленный общий баланс (все прошлые периоды учтены)
-    canSpend = walletTotal > 0 ? walletTotal : (mInc - mExp);
-    totalBudget = walletTotal > 0 ? walletTotal : mInc;
-    totalSpentOnPlan = walletTotal > 0 ? Math.max(0, walletTotal - (mInc - mExp)) : mExp;
-  }
+  // ── Главная цифра: доход − расход текущего месяца ───────────────────────
+  // Простая честная формула без финплана: сколько заработали минус сколько потратили.
+  // Кольцо = % от дохода уже потраченный.
+  const canSpend = mInc - mExp;
+  const totalBudget = mInc;
+  const totalSpentOnPlan = mExp;
 
   const amountEl=document.getElementById('simple-main-amount');
   if(amountEl){
@@ -1785,12 +1738,10 @@ function renderSimpleDashboard(){
     amountEl.className='simple-amount'+(canSpend<0?' negative':canSpend>0?' positive':'');
   }
 
-  // Подпись под суммой — уточняем что считается
+  // Подпись под суммой
   const amountLabel=document.querySelector('.simple-amount-label');
   if(amountLabel){
-    amountLabel.textContent = hasPlan
-      ? 'остаток по статьям расходов (этот месяц)'
-      : 'доступно с учётом прошлых периодов';
+    amountLabel.textContent = 'можно потратить до конца месяца';
   }
 
   // Кольцо прогресса — % израсходованного бюджета по плану
