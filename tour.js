@@ -27,7 +27,7 @@ function _createTourDOM() {
   });
   const card = document.createElement('div');
   card.id = 'tour-card';
-  card.style.cssText = `position:fixed;z-index:9001;background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:14px 16px;max-width:360px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);transition:top .25s ease, left .25s ease;`;
+  card.style.cssText = `position:fixed;z-index:9001;background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:14px 16px;max-width:360px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);`;
   card.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
       <div id="tour-title" style="font-size:14px;font-weight:700;color:var(--topbar);line-height:1.3;flex:1;padding-right:8px"></div>
@@ -78,12 +78,14 @@ function _clearSpotlight() {
   set('tour-shade-right', 0, 0, 0, 0);
 }
 
-// Проверяет что элемент реально виден в браузере (не скрыт через display:none).
-// Обходит дерево родителей — если хоть один скрыт, элемент невидим.
+// Возвращает true только если элемент реально виден на экране.
+// Проверяет сам элемент и всех его родителей до body.
 function _isVisible(el) {
   if (!el) return false;
+  // Нулевые размеры = элемент или его предок скрыт через display:none
   const r = el.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return false;
+  // Дополнительно идём вверх по DOM и проверяем каждого предка
   let node = el;
   while (node && node !== document.body) {
     const s = window.getComputedStyle(node);
@@ -97,32 +99,34 @@ function _positionCard(el, position) {
   const card = document.getElementById('tour-card');
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
+
   if (isMobile) {
-    // На мобиле карточка всегда внизу над bottom-nav (60px) + отступ 8px = 68px.
-    // bottom:10px перекрывался навигацией и ломал UI — исправлено.
-    card.style.transform = 'none';
+    // На мобиле карточка ВСЕГДА фиксирована внизу над bottom-nav.
+    // Bottom-nav = 60px, даём 8px зазор → bottom: 68px.
+    // Явно сбрасываем top чтобы не конфликтовал с bottom.
     card.style.top = 'auto';
     card.style.right = 'auto';
+    card.style.transform = 'none';
     card.style.left = '10px';
+    card.style.bottom = '68px';
     card.style.width = 'calc(100% - 20px)';
     card.style.maxWidth = 'none';
-    card.style.bottom = '68px';
     return;
   }
+
+  // Десктоп: сначала сбрасываем мобильные свойства
+  card.style.bottom = 'auto';
+  card.style.width = '';
+  card.style.maxWidth = '360px';
+
   if (position === 'center' || !el) {
     card.style.top = '50%';
     card.style.left = '50%';
     card.style.transform = 'translate(-50%,-50%)';
-    card.style.bottom = 'auto';
     card.style.right = 'auto';
-    card.style.width = '';
-    card.style.maxWidth = '360px';
     return;
   }
   card.style.transform = '';
-  card.style.width = '';
-  card.style.maxWidth = '360px';
-  card.style.bottom = 'auto';
   const r = el.getBoundingClientRect();
   const cw = card.offsetWidth || 320;
   const ch = card.offsetHeight || 160;
@@ -157,10 +161,10 @@ function _renderStep(idx) {
   }
   if (step.action) step.action();
 
-  // Получаем элемент, но проверяем что он реально виден.
-  // На мобиле tnav-* находятся в topbar-row2 (display:none!important),
-  // их getBoundingClientRect() даёт {top:0,left:0,width:0,height:0}
-  // → карточка прыгает в угол и перекрывает всё приложение.
+  // Ищем целевой элемент, но используем его ТОЛЬКО если он реально виден.
+  // На мобиле topbar-row2 скрыта (display:none!important), поэтому tnav-*
+  // элементы внутри неё имеют getBoundingClientRect() = {0,0,0,0}.
+  // Без этой проверки карточка прыгает в угол (top:0, left:0) и ломает UI.
   const rawEl = step.targetId ? document.getElementById(step.targetId) : null;
   const targetEl = _isVisible(rawEl) ? rawEl : null;
 
