@@ -27,7 +27,7 @@ function _createTourDOM() {
   });
   const card = document.createElement('div');
   card.id = 'tour-card';
-  card.style.cssText = `position:fixed;z-index:9001;background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:14px 16px;max-width:360px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);transition:top .25s ease, left .25s ease;`;
+  card.style.cssText = `position:fixed;z-index:9001;background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:14px 16px;max-width:360px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);`;
   card.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
       <div id="tour-title" style="font-size:14px;font-weight:700;color:var(--topbar);line-height:1.3;flex:1;padding-right:8px"></div>
@@ -83,8 +83,8 @@ function _positionCard(el, position) {
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
   if (isMobile) {
-    // bottom-nav = 60px высотой. Ставим карточку над ней с зазором 8px.
-    // Обнуляем top — иначе браузер попытается применить оба свойства.
+    // bottom-nav = 60px. Ставим карточку выше с зазором 8px.
+    // top:'auto' обязателен — иначе конфликтует с bottom при CSS.
     card.style.top = 'auto';
     card.style.right = 'auto';
     card.style.transform = 'none';
@@ -123,8 +123,8 @@ function _positionCard(el, position) {
   top  = Math.max(12, Math.min(top, window.innerHeight - ch - 12));
   card.style.top = top + 'px';
   card.style.left = left + 'px';
-  card.style.bottom = 'auto';
   card.style.right = 'auto';
+  card.style.bottom = 'auto';
 }
 
 function _renderStep(idx) {
@@ -140,24 +140,22 @@ function _renderStep(idx) {
   }
   if (step.action) step.action();
 
-  // Получаем элемент из DOM
+  // Проверяем реальную видимость элемента через getBoundingClientRect.
+  // Если элемент скрыт (например tnav-* в topbar-row2 которая display:none на мобиле),
+  // его размеры будут 0×0. Передавать такой элемент в _positionSpotlight нельзя:
+  // shade-bottom получит top=6px height=всё_окно и закроет весь экран чёрным.
   const rawEl = step.targetId ? document.getElementById(step.targetId) : null;
-
-  // КРИТИЧНО: проверяем что элемент реально виден.
-  // На мобиле topbar-row2 скрыта (display:none!important в styles.css).
-  // Элементы tnav-* внутри неё возвращают getBoundingClientRect() = {0,0,0,0}.
-  // Если передать такой элемент в _positionSpotlight — shade-bottom покроет
-  // весь экран (top=6px, height=100vh) и приложение сломается визуально.
-  const r = rawEl ? rawEl.getBoundingClientRect() : null;
-  const isHidden = !rawEl || (r.width === 0 && r.height === 0);
-  const targetEl = isHidden ? null : rawEl;
+  let targetEl = null;
+  if (rawEl) {
+    const r = rawEl.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) targetEl = rawEl;
+  }
 
   setTimeout(() => {
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       _positionSpotlight(targetEl);
     } else {
-      // Элемент скрыт или отсутствует — убираем spotlight полностью
       _clearSpotlight();
     }
     _positionCard(targetEl, targetEl ? step.position : 'center');
