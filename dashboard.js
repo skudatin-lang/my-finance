@@ -119,13 +119,13 @@ async function fetchAiAdvice(){
 
 function renderAiDash(){
   const el=document.getElementById('dash-ai');if(!el)return;
-  // Не трогаем если уже загружен текст или идёт загрузка
+  // Не трогаем если уже загружен результат или идёт загрузка
   if(el.dataset.loaded==='1'||el.dataset.loaded==='loading')return;
   if(!appConfig.deepseekKey){
     el.innerHTML='<div style="font-size:11px;color:var(--text2)">Добавьте DeepSeek API ключ в Панели администратора для получения AI советов.</div>';
     return;
   }
-  // Показываем кнопку — НЕ запускаем автоматически
+  // Показываем кнопку — запрос только по нажатию, НЕ автоматически
   el.dataset.loaded='idle';
   el.innerHTML=`<button onclick="window._refreshAiAdvice()" style="background:var(--amber);border:none;border-radius:6px;padding:7px 16px;font-size:12px;font-weight:700;color:#fff;cursor:pointer;letter-spacing:.3px">✦ Получить совет</button>`;
 }

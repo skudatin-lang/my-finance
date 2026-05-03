@@ -621,11 +621,10 @@
       </div>
       <div class="dash-right">
         <div class="dash-right-grid">
-          <!-- AI советник — полная строка вверху -->
           <div id="dash-widget-ai" class="dash-card" style="grid-column:1/-1">
             <div class="dash-card-head" style="display:flex;justify-content:space-between;align-items:center">
               <span>✦ AI СОВЕТНИК</span>
-              <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:2px 9px;font-size:10px;color:#C9A96E;cursor:pointer;letter-spacing:.3px">↻ Обновить</button>
+              <button onclick="window._refreshAiAdvice()" style="background:none;border:1px solid rgba(255,255,255,.25);border-radius:4px;padding:2px 9px;font-size:10px;color:#C9A96E;cursor:pointer">↻ Обновить</button>
             </div>
             <div class="dash-card-body"><div id="dash-ai"></div></div>
           </div>
@@ -1725,10 +1724,20 @@ function renderSimpleDashboard(){
   const mExp=mOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
   const totalDebt=state.D.wallets.filter(w=>w.balance<0).reduce((s,w)=>s+Math.abs(w.balance),0);
 
-  // ── Главная цифра: доход − расход текущего месяца ───────────────────────
-  // Простая честная формула без финплана: сколько заработали минус сколько потратили.
-  // Кольцо = % от дохода уже потраченный.
-  const canSpend = mInc - mExp;
+  // ── Главная цифра: накопленный остаток по всем месяцам ───────────────────
+  // Логика: берём ВСЕ операции (не только текущий месяц) и считаем
+  // суммарный доход − суммарный расход. Это и есть "сколько осталось"
+  // с учётом переноса из прошлых периодов.
+  // Пример: апрель закончился −41600 (перерасход), в мае заработали 100к,
+  // потратили 50к → итого: −41600 + 100000 − 50000 = +8400 ✓
+  const allFactOps = state.D.operations.filter(o =>
+    !['planned_income','planned_expense'].includes(o.type)
+  );
+  const allInc = allFactOps.filter(o=>o.type==='income').reduce((s,o)=>s+o.amount,0);
+  const allExp = allFactOps.filter(o=>o.type==='expense').reduce((s,o)=>s+o.amount,0);
+  const canSpend = allInc - allExp;
+
+  // Для кольца — % расходов текущего месяца от дохода текущего месяца
   const totalBudget = mInc;
   const totalSpentOnPlan = mExp;
 
@@ -1741,7 +1750,7 @@ function renderSimpleDashboard(){
   // Подпись под суммой
   const amountLabel=document.querySelector('.simple-amount-label');
   if(amountLabel){
-    amountLabel.textContent = 'можно потратить до конца месяца';
+    amountLabel.textContent='можно потратить (с учётом всех месяцев)';
   }
 
   // Кольцо прогресса — % израсходованного бюджета по плану
@@ -1762,8 +1771,8 @@ function renderSimpleDashboard(){
   const statusEl=document.getElementById('simple-status');
   if(statusEl){
     let msg,cls;
-    if(!mInc&&!mExp){msg='Добавьте первую операцию';cls='';}
-    else if(canSpend<0){msg='⚠ Перерасход по плану';cls='bad';}
+    if(!allInc&&!allExp){msg='Добавьте первую операцию';cls='';}
+    else if(canSpend<0){msg='⚠ Общий перерасход';cls='bad';}
     else if(pct>=90){msg='⚠ Почти весь бюджет потрачен';cls='bad';}
     else if(pct>=70){msg='! Осталось меньше трети';cls='warn';}
     else{msg='✓ Всё под контролем';cls='good';}
