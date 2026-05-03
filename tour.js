@@ -27,7 +27,7 @@ function _createTourDOM() {
   });
   const card = document.createElement('div');
   card.id = 'tour-card';
-  card.style.cssText = `position:fixed;z-index:9001;background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:14px 16px;max-width:360px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);`;
+  card.style.cssText = `position:fixed;z-index:9001;background:var(--card);border:2px solid var(--amber);border-radius:14px;padding:14px 16px;max-width:360px;min-width:240px;box-shadow:0 8px 32px rgba(0,0,0,.45);transition:top .25s ease, left .25s ease;`;
   card.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
       <div id="tour-title" style="font-size:14px;font-weight:700;color:var(--topbar);line-height:1.3;flex:1;padding-right:8px"></div>
@@ -78,47 +78,25 @@ function _clearSpotlight() {
   set('tour-shade-right', 0, 0, 0, 0);
 }
 
-// Возвращает true только если элемент реально виден на экране.
-// Проверяет сам элемент и всех его родителей до body.
-function _isVisible(el) {
-  if (!el) return false;
-  // Нулевые размеры = элемент или его предок скрыт через display:none
-  const r = el.getBoundingClientRect();
-  if (r.width === 0 && r.height === 0) return false;
-  // Дополнительно идём вверх по DOM и проверяем каждого предка
-  let node = el;
-  while (node && node !== document.body) {
-    const s = window.getComputedStyle(node);
-    if (s.display === 'none' || s.visibility === 'hidden') return false;
-    node = node.parentElement;
-  }
-  return true;
-}
-
 function _positionCard(el, position) {
   const card = document.getElementById('tour-card');
   if (!card) return;
   const isMobile = window.innerWidth <= 700;
-
   if (isMobile) {
-    // На мобиле карточка ВСЕГДА фиксирована внизу над bottom-nav.
-    // Bottom-nav = 60px, даём 8px зазор → bottom: 68px.
-    // Явно сбрасываем top чтобы не конфликтовал с bottom.
+    // bottom-nav = 60px высотой. Ставим карточку над ней с зазором 8px.
+    // Обнуляем top — иначе браузер попытается применить оба свойства.
     card.style.top = 'auto';
     card.style.right = 'auto';
     card.style.transform = 'none';
     card.style.left = '10px';
-    card.style.bottom = '68px';
     card.style.width = 'calc(100% - 20px)';
     card.style.maxWidth = 'none';
+    card.style.bottom = '68px';
     return;
   }
-
-  // Десктоп: сначала сбрасываем мобильные свойства
   card.style.bottom = 'auto';
   card.style.width = '';
   card.style.maxWidth = '360px';
-
   if (position === 'center' || !el) {
     card.style.top = '50%';
     card.style.left = '50%';
@@ -145,6 +123,7 @@ function _positionCard(el, position) {
   top  = Math.max(12, Math.min(top, window.innerHeight - ch - 12));
   card.style.top = top + 'px';
   card.style.left = left + 'px';
+  card.style.bottom = 'auto';
   card.style.right = 'auto';
 }
 
@@ -161,18 +140,24 @@ function _renderStep(idx) {
   }
   if (step.action) step.action();
 
-  // Ищем целевой элемент, но используем его ТОЛЬКО если он реально виден.
-  // На мобиле topbar-row2 скрыта (display:none!important), поэтому tnav-*
-  // элементы внутри неё имеют getBoundingClientRect() = {0,0,0,0}.
-  // Без этой проверки карточка прыгает в угол (top:0, left:0) и ломает UI.
+  // Получаем элемент из DOM
   const rawEl = step.targetId ? document.getElementById(step.targetId) : null;
-  const targetEl = _isVisible(rawEl) ? rawEl : null;
+
+  // КРИТИЧНО: проверяем что элемент реально виден.
+  // На мобиле topbar-row2 скрыта (display:none!important в styles.css).
+  // Элементы tnav-* внутри неё возвращают getBoundingClientRect() = {0,0,0,0}.
+  // Если передать такой элемент в _positionSpotlight — shade-bottom покроет
+  // весь экран (top=6px, height=100vh) и приложение сломается визуально.
+  const r = rawEl ? rawEl.getBoundingClientRect() : null;
+  const isHidden = !rawEl || (r.width === 0 && r.height === 0);
+  const targetEl = isHidden ? null : rawEl;
 
   setTimeout(() => {
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       _positionSpotlight(targetEl);
     } else {
+      // Элемент скрыт или отсутствует — убираем spotlight полностью
       _clearSpotlight();
     }
     _positionCard(targetEl, targetEl ? step.position : 'center');
